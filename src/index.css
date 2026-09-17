@@ -1,0 +1,106 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Luma Semijoias — tema escuro é o único tema */
+    --background: 20 12% 10%; /* #1D1917 */
+    --foreground: 35 42% 92%; /* #F3ECE3 */
+
+    --card: 15 10% 14%; /* #26211F */
+    --card-foreground: 35 42% 92%;
+
+    --popover: 15 10% 14%;
+    --popover-foreground: 35 42% 92%;
+
+    --primary: 42 58% 60%; /* #D4AF5F dourado */
+    --primary-foreground: 20 12% 10%;
+
+    --secondary: 16 11% 18%;
+    --secondary-foreground: 35 42% 92%;
+
+    --muted: 16 11% 17%;
+    --muted-foreground: 29 13% 64%; /* #A99C90+ */
+
+    --accent: 16 11% 18%;
+    --accent-foreground: 35 42% 92%;
+
+    --destructive: 12 59% 63%;
+    --destructive-foreground: 20 12% 10%;
+
+    --border: 35 42% 92% / 0.12; /* rgba(243,236,227,0.12) */
+    --input: 35 42% 92% / 0.18;
+    --ring: 42 58% 60%;
+
+    --radius: 0.625rem;
+
+    --sidebar-background: 20 12% 9%;
+    --sidebar-foreground: 35 42% 92%;
+    --sidebar-primary: 42 58% 60%;
+    --sidebar-primary-foreground: 20 12% 10%;
+    --sidebar-accent: 16 11% 17%;
+    --sidebar-accent-foreground: 35 42% 92%;
+    --sidebar-border: 35 42% 92% / 0.12;
+    --sidebar-ring: 42 58% 60%;
+
+    /* Marca e status */
+    --gold: 42 58% 60%; /* #D4AF5F */
+    --rose: 8 39% 73%; /* #D4A9A2 */
+    --success: 97 26% 58%; /* #8FAE79 */
+    --success-bg: 97 18% 21%; /* #33402C */
+    --late: 12 59% 63%; /* #D9846A */
+    --late-bg: 12 27% 20%; /* #402D26 */
+  }
+
+  .dark {
+    /* O tema escuro é o tema base: os valores vivem em :root */
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+  }
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+}
+
+/* Scrollbar sutil, condizente com bordas finas */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--border)) transparent;
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-thumb {
+  background: hsl(var(--border));
+  border-radius: 8px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Relatório de itens entregues (impressão) */
+.print-only {
+  display: none;
+}
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  .print-only {
+    display: block !important;
+  }
+}
