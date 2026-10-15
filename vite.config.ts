@@ -1,4 +1,4 @@
-import { defineConfig, PluginOption } from "vite";
+import { defineConfig, PluginOption } from "vitest/config";
 import { enterDevPlugin, enterProdPlugin } from "vite-plugin-enter-dev";
 import path from "path";
 
@@ -11,7 +11,7 @@ export default defineConfig(({ mode }) => {
   return {
     server: {
       host: "::",
-      port: 8080,
+      port: 5173,
     },
     plugins: plugins.filter(Boolean) as PluginOption[],
     resolve: {
@@ -22,6 +22,12 @@ export default defineConfig(({ mode }) => {
     base: "/",
     build: {
       outDir: "dist",
+    },
+    test: {
+      environment: "jsdom",
+      setupFiles: ["./src/test/setup.ts"],
+      restoreMocks: true,
+      clearMocks: true,
     },
   };
 });
