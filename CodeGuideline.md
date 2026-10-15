@@ -29,6 +29,7 @@ project-root/
 
 - **public/**: Arquivos estáticos servidos diretamente. Coloque imagens, ícones e `robots.txt` aqui.
 - **public/locales/**: Arquivos de tradução, um por idioma (`{code}.json`). Use chaves simples com pontos (por exemplo, `home.hero.title`); o arquivo de `fallbackLng` é a fonte estrutural de verdade.
+- **public/logo/**: Versões da logo da marca em SVG (`luma-full`, `luma-horizontal`, `luma-symbol`), usadas pelo componente `src/components/logo.tsx`.
 - **i18n.config.json**: Manifesto leve do i18n para o idioma de fallback, rótulos dos idiomas, aliases de detecção do navegador e direção do documento. É a única fonte de verdade para a lista de idiomas.
 - **src/components/**: Todos os componentes de UI.
   - **ui/**: Contém componentes de UI atômicos e compostos.

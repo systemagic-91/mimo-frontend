@@ -36,7 +36,7 @@ export default function Login() {
     <div className="flex min-h-full items-center justify-center px-4 py-10">
       <div className="w-full max-w-sm">
         <div className="mb-8 flex justify-center">
-          <Logo size="lg" />
+          <Logo variant="horizontal" size="lg" />
         </div>
 
         <form
