@@ -1,35 +1,60 @@
 import { useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { Navigate, useLocation, useNavigate } from "react-router-dom";
+import { RemoteQueryState } from "@/components/remote-query-state";
 import { Logo } from "@/components/logo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { login } from "@/lib/domain";
-import { ROLE_LABEL } from "@/lib/status";
+import { ApiError } from "@/lib/api/http";
+import { useCurrentUserQuery, useLoginMutation } from "@/lib/api/hooks";
 
-const DEMO_USERS = [
-  { email: "socios@luma.com.br", role: "owner" },
-  { email: "equipe@luma.com.br", role: "staff" },
-];
+function getLoginErrorMessage(error: unknown): string {
+  if (error instanceof ApiError) {
+    if (error.status === 401) return "E-mail ou senha inválidos.";
+    if (error.status === 0 || error.status === 408) {
+      return "Não foi possível conectar ao servidor. Verifique sua conexão e tente novamente.";
+    }
+  }
+  return "Não foi possível entrar. Tente novamente.";
+}
 
 export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
+  const currentUser = useCurrentUserQuery();
+  const loginMutation = useLoginMutation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
 
-  const from = (location.state as { from?: string } | null)?.from ?? "/";
+  const requestedPath = (location.state as { from?: unknown } | null)?.from;
+  const requestedPathname =
+    typeof requestedPath === "string"
+      ? requestedPath.split(/[?#]/, 1)[0]
+      : null;
+  const from =
+    typeof requestedPath === "string" &&
+    requestedPath.startsWith("/") &&
+    !requestedPath.startsWith("//") &&
+    requestedPathname !== "/login"
+      ? requestedPath
+      : "/";
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  if (currentUser.isPending) return <RemoteQueryState state="loading" />;
+  if (!currentUser.isError && currentUser.data) {
+    return <Navigate to={from} replace />;
+  }
+
+  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
     setError(null);
-    const result = login(email, password);
-    if (!result.ok) {
-      setError(result.error ?? "Não foi possível entrar.");
-      return;
-    }
-    navigate(from, { replace: true });
+    loginMutation.mutate(
+      { email, password },
+      {
+        onSuccess: () => navigate(from, { replace: true }),
+        onError: (cause) => setError(getLoginErrorMessage(cause)),
+      },
+    );
   };
 
   return (
@@ -41,8 +66,23 @@ export default function Login() {
 
         <form
           onSubmit={handleSubmit}
+          aria-busy={loginMutation.isPending}
           className="space-y-4 rounded-lg border bg-card p-6 shadow-none"
         >
+          {currentUser.isError && (
+            <div role="alert" className="space-y-2 rounded-md border p-3 text-sm">
+              <p>Não foi possível validar uma sessão existente.</p>
+              <Button
+                type="button"
+                variant="link"
+                className="h-auto p-0"
+                onClick={() => void currentUser.refetch()}
+              >
+                Tentar novamente
+              </Button>
+            </div>
+          )}
+
           <div className="space-y-1.5">
             <Label htmlFor="email">E-mail</Label>
             <Input
@@ -51,7 +91,8 @@ export default function Login() {
               autoComplete="email"
               placeholder="voce@luma.com.br"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(event) => setEmail(event.target.value)}
+              disabled={loginMutation.isPending}
               required
             />
           </div>
@@ -61,45 +102,27 @@ export default function Login() {
               id="password"
               type="password"
               autoComplete="current-password"
-              placeholder="••••••••"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={(event) => setPassword(event.target.value)}
+              disabled={loginMutation.isPending}
               required
             />
           </div>
 
           {error && (
-            <p className="rounded-md border border-late/30 bg-late-bg px-3 py-2 text-sm text-late">
+            <p role="alert" className="rounded-md border border-late/30 bg-late-bg px-3 py-2 text-sm text-late">
               {error}
             </p>
           )}
 
-          <Button type="submit" className="w-full">
-            Entrar
+          <Button
+            type="submit"
+            className="w-full"
+            disabled={loginMutation.isPending}
+          >
+            {loginMutation.isPending ? "Entrando…" : "Entrar"}
           </Button>
         </form>
-
-        <div className="mt-4 rounded-lg border border-border p-4">
-          <p className="mb-2 text-xs text-muted-foreground">
-            Acesso de demonstração — senha{" "}
-            <span className="font-mono">luma123</span>
-          </p>
-          <ul className="space-y-1.5">
-            {DEMO_USERS.map((u) => (
-              <li
-                key={u.email}
-                className="flex items-center justify-between gap-2"
-              >
-                <span className="font-mono text-xs text-foreground">
-                  {u.email}
-                </span>
-                <span className="text-xs text-muted-foreground">
-                  {ROLE_LABEL[u.role]}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </div>
       </div>
     </div>
   );

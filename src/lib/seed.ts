@@ -317,30 +317,6 @@ export function seedDb(): Db {
       paymentTerms: [30, 60, 90],
       defaultConsignmentDays: 30,
     },
-    users: [
-      {
-        id: "u1",
-        name: "Sócia(o) 1",
-        email: "socios@luma.com.br",
-        password: "luma123",
-        role: "owner",
-      },
-      {
-        id: "u2",
-        name: "Sócia(o) 2",
-        email: "socio2@luma.com.br",
-        password: "luma123",
-        role: "owner",
-      },
-      {
-        id: "u3",
-        name: "Funcionária",
-        email: "equipe@luma.com.br",
-        password: "luma123",
-        role: "staff",
-      },
-    ],
-    session: null,
   };
 }
 

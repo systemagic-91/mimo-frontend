@@ -1,4 +1,4 @@
-import { apiRequest, authTokenStore } from "./http";
+import { ApiError, apiRequest, authTokenStore } from "./http";
 import type {
   AuthResponse,
   AuthSessionResponse,
@@ -24,7 +24,7 @@ export const authApi = {
   async refresh(): Promise<AuthResponse> {
     const refreshToken = authTokenStore.getRefreshToken();
     if (!refreshToken) {
-      throw new Error("No in-memory refresh token is available.");
+      throw new Error("No refresh token is available for this browser session.");
     }
     const response = await apiRequest<AuthResponse>("/auth/refresh", {
       method: "POST",
@@ -38,19 +38,35 @@ export const authApi = {
   },
 
   async logout(): Promise<void> {
-    const refreshToken = authTokenStore.getRefreshToken();
     try {
-      if (refreshToken) {
-        await apiRequest<void>("/auth/logout", {
-          method: "POST",
-          body: { refreshToken },
-          retryOnUnauthorized: false,
-          notifyUnauthorized: false,
-        });
+      if (authTokenStore.getRefreshToken()) {
+        const revokeSession = async () => {
+          const refreshToken = authTokenStore.getRefreshToken();
+          if (!refreshToken) return;
+          await apiRequest<void>("/auth/logout", {
+            method: "POST",
+            body: { refreshToken },
+            retryOnUnauthorized: false,
+            notifyUnauthorized: false,
+          });
+        };
+
+        try {
+          await revokeSession();
+        } catch (error) {
+          if (
+            !(error instanceof ApiError) ||
+            error.status !== 401 ||
+            !authTokenStore.getRefreshToken()
+          ) {
+            throw error;
+          }
+          await authApi.refresh();
+          await revokeSession();
+        }
       }
     } finally {
       authTokenStore.clear();
     }
   },
 };
-

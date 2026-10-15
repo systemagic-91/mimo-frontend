@@ -1,21 +1,5 @@
 export type Role = "owner" | "staff";
 
-export interface DbUser {
-  id: string;
-  name: string;
-  email: string;
-  password: string;
-  role: Role;
-}
-
-export interface Session {
-  userId: string;
-  name: string;
-  email: string;
-  role: Role;
-  loggedAt: string;
-}
-
 export type PieceStage =
   | "fabrica"
   | "banho_ouro"
@@ -94,6 +78,4 @@ export interface Db {
   sellers: Seller[];
   consignments: Consignment[];
   settings: Settings;
-  users: DbUser[];
-  session: Session | null;
 }

@@ -30,36 +30,6 @@ export function pieceEvents(db: Db, pieceId: string): PieceEvent[] {
     .sort((a, b) => a.occurredAt.localeCompare(b.occurredAt));
 }
 
-// ------------------------------------------------------------- autenticação
-
-export function login(
-  email: string,
-  password: string,
-): { ok: boolean; error?: string } {
-  const db = getDb();
-  const user = db.users.find(
-    (u) => u.email.toLowerCase() === email.trim().toLowerCase(),
-  );
-  if (!user || user.password !== password) {
-    return { ok: false, error: "E-mail ou senha inválidos." };
-  }
-  setDb((d) => ({
-    ...d,
-    session: {
-      userId: user.id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      loggedAt: nowIso(),
-    },
-  }));
-  return { ok: true };
-}
-
-export function logout() {
-  setDb((d) => ({ ...d, session: null }));
-}
-
 // ------------------------------------------------------------------- peças
 
 export function nextPieceCode(db: Db): string {

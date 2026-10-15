@@ -11,8 +11,7 @@ import {
   Tag,
 } from "lucide-react";
 import { Logo } from "@/components/logo";
-import { useDb } from "@/lib/db";
-import { logout } from "@/lib/domain";
+import { useCurrentUserQuery, useLogoutMutation } from "@/lib/api/hooks";
 import { ROLE_LABEL } from "@/lib/status";
 import { cn } from "@/lib/utils";
 import {
@@ -25,7 +24,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import type { Role } from "@/lib/types";
+import type { ApiUser } from "@/lib/api/types";
 import type { LucideIcon } from "lucide-react";
+import { toast } from "sonner";
 
 interface NavItem {
   to: string;
@@ -118,11 +119,20 @@ function BottomLink({ item }: { item: NavItem }) {
 }
 
 export function AppShell() {
-  const db = useDb();
-  const session = db.session!;
-  const items = NAV.filter((i) => !i.roles || i.roles.includes(session.role));
+  const currentUser = useCurrentUserQuery();
+  const logoutMutation = useLogoutMutation();
+  const user = currentUser.data?.user;
+  if (!user) return null;
+
+  const items = NAV.filter((i) => !i.roles || i.roles.includes(user.role));
   const primary = items.slice(0, 5);
   const more = items.slice(5);
+  const handleLogout = () => {
+    logoutMutation.mutate(undefined, {
+      onError: () =>
+        toast.error("A sessão foi encerrada neste dispositivo, mas não foi possível confirmar a revogação no servidor."),
+    });
+  };
 
   return (
     <div className="flex h-full">
@@ -139,21 +149,22 @@ export function AppShell() {
         <div className="border-t p-3">
           <div className="flex items-center gap-3 rounded-md px-2 py-2">
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-gold/40 font-serif text-sm text-gold">
-              {session.name.charAt(0)}
+              {user.name.charAt(0)}
             </span>
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-medium text-foreground">
-                {session.name}
+                {user.name}
               </p>
               <p className="truncate text-xs text-muted-foreground">
-                {ROLE_LABEL[session.role]}
+                {ROLE_LABEL[user.role]}
               </p>
             </div>
           </div>
           <Button
             variant="ghost"
             className="mt-1 w-full justify-start text-muted-foreground hover:text-foreground"
-            onClick={logout}
+            onClick={handleLogout}
+            disabled={logoutMutation.isPending}
           >
             <LogOut className="h-4 w-4" />
             Sair
@@ -166,7 +177,12 @@ export function AppShell() {
         {/* Cabeçalho — mobile */}
         <header className="no-print sticky top-0 z-20 flex h-14 items-center justify-between border-b bg-background px-4 md:hidden">
           <Logo size="sm" />
-          <MoreSheet items={more} />
+          <MoreSheet
+            items={more}
+            session={user}
+            onLogout={handleLogout}
+            logoutPending={logoutMutation.isPending}
+          />
         </header>
         <main className="flex-1 overflow-y-auto">
           <div className="mx-auto w-full max-w-6xl px-4 pb-24 pt-5 md:px-8 md:pb-10 md:pt-7">
@@ -189,6 +205,9 @@ export function AppShell() {
                 Mais
               </span>
             }
+            session={user}
+            onLogout={handleLogout}
+            logoutPending={logoutMutation.isPending}
           />
         )}
       </nav>
@@ -199,12 +218,16 @@ export function AppShell() {
 function MoreSheet({
   items,
   trigger,
+  session,
+  onLogout,
+  logoutPending,
 }: {
   items: NavItem[];
   trigger?: React.ReactNode;
+  session: ApiUser;
+  onLogout: () => void;
+  logoutPending: boolean;
 }) {
-  const db = useDb();
-  const session = db.session!;
   return (
     <Sheet>
       <SheetTrigger asChild>
@@ -254,7 +277,8 @@ function MoreSheet({
           </>
         )}
         <button
-          onClick={logout}
+          onClick={onLogout}
+          disabled={logoutPending}
           className="flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left text-sm text-muted-foreground hover:text-foreground"
         >
           <LogOut className="h-4 w-4" />

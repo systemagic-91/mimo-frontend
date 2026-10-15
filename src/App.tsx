@@ -7,9 +7,9 @@ import { routers } from "./router";
 import { createApiQueryClient } from "./lib/api/query-client";
 
 const queryClient = createApiQueryClient();
+const router = createBrowserRouter(routers);
 
 const App = () => {
-  const router = createBrowserRouter(routers);
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>

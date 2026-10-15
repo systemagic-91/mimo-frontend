@@ -54,6 +54,18 @@ let authTokens: AuthTokens | null = null;
 let unauthorizedHandler: (() => void) | undefined;
 let refreshPromise: Promise<boolean> | null = null;
 let unauthorizedNotified = false;
+const REFRESH_TOKEN_KEY = "luma_refresh_token";
+
+function readStoredRefreshToken(): string | null {
+  if (typeof window === "undefined") return null;
+  return window.sessionStorage.getItem(REFRESH_TOKEN_KEY);
+}
+
+function writeStoredRefreshToken(token: string | null) {
+  if (typeof window === "undefined") return;
+  if (token) window.sessionStorage.setItem(REFRESH_TOKEN_KEY, token);
+  else window.sessionStorage.removeItem(REFRESH_TOKEN_KEY);
+}
 
 function notifyUnauthorizedOnce() {
   if (unauthorizedNotified) return;
@@ -63,13 +75,15 @@ function notifyUnauthorizedOnce() {
 
 export const authTokenStore = {
   getAccessToken: () => authTokens?.accessToken ?? null,
-  getRefreshToken: () => authTokens?.refreshToken ?? null,
+  getRefreshToken: () => authTokens?.refreshToken ?? readStoredRefreshToken(),
   set: (tokens: AuthTokens) => {
+    writeStoredRefreshToken(tokens.refreshToken);
     authTokens = { ...tokens };
     unauthorizedNotified = false;
   },
   clear: () => {
     authTokens = null;
+    writeStoredRefreshToken(null);
   },
   setUnauthorizedHandler: (handler?: () => void) => {
     unauthorizedHandler = handler;
@@ -219,12 +233,15 @@ async function refreshTokens(): Promise<boolean> {
     notifyUnauthorized: false,
   })
     .then((tokens) => {
-      authTokens = tokens;
+    authTokenStore.set(tokens);
       return true;
     })
-    .catch(() => {
-      authTokens = null;
+    .catch((error: unknown) => {
+    if (error instanceof ApiError && error.status === 401) {
+      authTokenStore.clear();
       return false;
+    }
+    throw error;
     })
     .finally(() => {
       refreshPromise = null;
@@ -279,7 +296,7 @@ export async function apiRequest<T>(
           return await performRequest<T>(path, preparedOptions);
         } catch (retryError) {
           if (retryError instanceof ApiError && retryError.status === 401) {
-            authTokens = null;
+            authTokenStore.clear();
             if (notifyUnauthorized) notifyUnauthorizedOnce();
           }
           throw retryError;
@@ -287,7 +304,7 @@ export async function apiRequest<T>(
       }
     }
     if (notifyUnauthorized) {
-      authTokens = null;
+      authTokenStore.clear();
       notifyUnauthorizedOnce();
     }
     throw error;

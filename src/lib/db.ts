@@ -12,8 +12,21 @@ function read(): Db {
   try {
     const raw = localStorage.getItem(DB_KEY);
     if (raw) {
-      const parsed = JSON.parse(raw) as Db;
-      if (parsed && Array.isArray(parsed.pieces)) return parsed;
+      const parsed = JSON.parse(raw) as Partial<Db> & {
+        users?: unknown;
+        session?: unknown;
+      };
+      if (parsed && Array.isArray(parsed.pieces)) {
+        delete parsed.users;
+        delete parsed.session;
+        const restored = parsed as Db;
+        try {
+          localStorage.setItem(DB_KEY, JSON.stringify(restored));
+        } catch {
+          // Keeps migrated data in memory when storage is unavailable.
+        }
+        return restored;
+      }
     }
   } catch {
     // storage corrompido: ressemeia

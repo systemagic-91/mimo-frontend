@@ -4,6 +4,7 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { authApi } from "./auth";
+import { ApiError, authTokenStore } from "./http";
 import { consignmentsApi, type ConsignmentListParams } from "./consignments";
 import { dashboardApi } from "./dashboard";
 import { queryKeys } from "./query-keys";
@@ -15,6 +16,7 @@ import type {
   CreateConsignmentRequest,
   CreateSellerRequest,
   ConsignmentStatus,
+  AuthSessionResponse,
   LabelPieceRequest,
   PageRequest,
   PieceStage,
@@ -37,7 +39,29 @@ function useInvalidateOperationalData() {
 export function useCurrentUserQuery(enabled = true) {
   return useQuery({
     queryKey: queryKeys.auth.me(),
-    queryFn: ({ signal }) => authApi.me(signal),
+    queryFn: async ({ signal }): Promise<AuthSessionResponse | null> => {
+      if (!authTokenStore.getAccessToken()) {
+        if (!authTokenStore.getRefreshToken()) return null;
+        try {
+          await authApi.refresh();
+        } catch (error) {
+          if (error instanceof ApiError && error.status === 401) {
+            authTokenStore.clear();
+            return null;
+          }
+          throw error;
+        }
+      }
+      try {
+        return await authApi.me(signal);
+      } catch (error) {
+        if (error instanceof ApiError && error.status === 401) {
+          authTokenStore.clear();
+          return null;
+        }
+        throw error;
+      }
+    },
     enabled,
     retry: false,
   });
@@ -61,6 +85,12 @@ export function useLogoutMutation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: () => authApi.logout(),
+    onMutate: () => {
+      queryClient.setQueryData<AuthSessionResponse | null>(
+        queryKeys.auth.me(),
+        null,
+      );
+    },
     onSettled: () => queryClient.clear(),
   });
 }
