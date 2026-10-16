@@ -330,7 +330,7 @@ Request: `currentPassword`, `newPassword`; invalidar sessões anteriores.
 
 #### `GET /pieces`
 
-Acesso owner/staff. Query: `q`, `status`, `page`, `pageSize`, `sort`. `q` pesquisa código/tipo. Retorna `items`, `pagination` e opcionalmente `totalValueCents`.
+Acesso owner/staff. Query: `q`, `status`, `page`, `pageSize`, `sort`. `q` pesquisa código/tipo. `sort` aceita apenas `code`, `type`, `valueCents`, `status`, `currentLocation`, `createdAt` e `updatedAt`, com direção `asc` ou `desc`. Retorna `items`, `pagination` e opcionalmente `totalValueCents`.
 
 #### `GET /pieces/{pieceId}`
 
@@ -338,7 +338,7 @@ Retorna detalhes da peça; pode incluir eventos ou usar rota separada.
 
 #### `GET /pieces/{pieceId}/events`
 
-Retorna eventos crescentes por `occurredAt`, com `actorUserId` e nota.
+Retorna eventos crescentes por `occurredAt` (desempate por `id`), com `actorUserId` e nota.
 
 #### `GET /pieces/next-code`
 
@@ -352,12 +352,12 @@ Cria peça recebida da fábrica ou encaminhada ao banho.
 {
   "type": "Brinco",
   "valueCents": 8490,
-  "stage": "fabrica",
+  "stage": "FABRICA",
   "note": "Lote do fornecedor"
 }
 ```
 
-Aceitar somente `FABRICA` ou `BANHO_OURO`. Gerar código, peça e evento inicial. Para `BANHO_OURO`, registrar também o evento de fábrica conforme a regra do frontend.
+Aceitar somente `FABRICA` ou `BANHO_OURO` e os tipos `Brinco`, `Colar`, `Pulseira`, `Anel`, `Pingente` ou `Tornozeleira`. Gerar código, peça e evento inicial. Para `BANHO_OURO`, registrar também o evento de fábrica conforme a regra do frontend.
 
 Response `201`: `{ "piece": { ... }, "events": [ ... ] }`.
 
@@ -378,7 +378,7 @@ Request:
 
 **Decisão recomendada:** `sourcePieceId` aponta para uma peça existente em `BANHO_OURO`; o service atualiza essa peça, mantém o código e adiciona o evento `ETIQUETADA`. O frontend atual cria uma nova peça, mas isso duplica estoque e deve ser corrigido na integração.
 
-Validar source, estado atual e `backFromBath`. Se o produto quiser criar nova peça, criar relação de origem e encerrar a anterior explicitamente; nunca deixar duas peças independentes para o mesmo item físico.
+Validar source, estado atual e `backFromBath`. Esta operação representa a conclusão da etiquetagem: `sourcePieceId` deve apontar para uma peça em `BANHO_OURO` e `backFromBath` deve ser `true`; `false` retorna conflito, pois encaminhamento ao banho não conclui uma etiquetagem. A peça existente é atualizada, mantém seu código e recebe o evento `ETIQUETADA`. Se o produto quiser criar nova peça, criar relação de origem e encerrar a anterior explicitamente; nunca deixar duas peças independentes para o mesmo item físico.
 
 ### 3. Vendedoras
 
