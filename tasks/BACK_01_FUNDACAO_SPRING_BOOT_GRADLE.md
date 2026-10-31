@@ -15,7 +15,7 @@ Criar uma aplicação backend inicial compilável, com configuração local, tes
 - Criar módulo de backend em diretório acordado (`C:\Users\rayan\Git\mimo-backend`); preservar o frontend atual.
 - Criar `build.gradle` em Groovy DSL, wrapper Gradle (`gradlew`, `gradlew.bat`, `gradle/wrapper`) e toolchain Java 21.
 - Criar docker compose para subir banco de dados
-- Configurar Spring Boot 3.x e dependências Web MVC, Validation, Data JPA, Security Resource Server, PostgreSQL, Flyway, Lombok, MapStruct, `lombok-mapstruct-binding`, Springdoc, Actuator e Testcontainers conforme o contrato.
+- Configurar Spring Boot 3.x e dependências Web MVC, Validation, Data JPA, Security Resource Server, PostgreSQL, Flyway, Lombok, MapStruct, `lombok-mapstruct-binding`, Springdoc e Actuator conforme o contrato. (Testcontainers chegou a ser configurado e foi removido em 2026-10-30: o projeto não usa testes integrados.)
 - Separar dependências de compilação/teste e configurar annotation processors para Lombok e MapStruct.
 - Criar `LumaApplication`, pacotes iniciais por domínio, `application.yml` e perfis `local`, `test` e `prod`; segredos devem vir do ambiente.
 - Configurar `ddl-auto: validate`, `open-in-view: false`, timezone UTC, CORS parametrizável, health endpoint e documentação OpenAPI.

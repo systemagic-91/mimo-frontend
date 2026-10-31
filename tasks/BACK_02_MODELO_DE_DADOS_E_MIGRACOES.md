@@ -34,7 +34,7 @@ Definir e versionar o schema PostgreSQL por Flyway e implementar entidades/repos
 - [x] Constraints impedem códigos duplicados, FKs inválidas e estados/valores fora das regras estruturais.
 - [x] Há índice para consultas de status, vencimento, histórico e vendas descritas no contrato.
 - [x] Valores monetários persistidos em centavos e comissão histórica preservada por snapshot.
-- [x] Testes de repository rodam com PostgreSQL via Testcontainers.
+- [x] ~~Testes de repository rodam com PostgreSQL via Testcontainers.~~ Substituído em 2026-10-30/31: sem Testcontainers nem testes integrados; as migrations são validadas no CI contra um PostgreSQL limpo (BACK_10).
 
 ## Observações de dependência
 
