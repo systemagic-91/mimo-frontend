@@ -89,6 +89,10 @@ export interface PieceDto {
   currentLocation: string;
   photoUrl?: string | null;
   note?: string | null;
+  /** Custos (BACK_23): sempre null para staff; null também significa "não informado". */
+  factoryCostCents?: number | null;
+  bathCostCents?: number | null;
+  totalCostCents?: number | null;
   createdAt: string;
   updatedAt: string;
   version?: number;
@@ -99,6 +103,8 @@ export interface ReceivePieceRequest {
   valueCents: number;
   stage: "FABRICA" | "BANHO_OURO";
   note?: string;
+  /** Só owner. */
+  factoryCostCents?: number | null;
 }
 
 export interface ReceivePieceResponse {
@@ -113,6 +119,14 @@ export interface LabelPieceRequest {
   photoId?: string;
   note?: string;
   backFromBath: boolean;
+  /** Só owner. */
+  bathCostCents?: number | null;
+}
+
+export interface UpdatePieceCostsRequest {
+  /** Ausente não muda; null limpa. */
+  factoryCostCents?: number | null;
+  bathCostCents?: number | null;
 }
 
 export interface SellerDto {
@@ -232,11 +246,21 @@ export interface TurnoverReportRow {
   sellerId: string;
   sellerName: string;
   daysToSell: number;
+  commissionCents: number;
+  /** null quando nenhum custo foi informado. */
+  totalCostCents: number | null;
+  /** null enquanto faltar o custo da fábrica ou o do banho. */
+  marginCents: number | null;
 }
 
 export interface TurnoverReportResponse {
   items: TurnoverReportRow[];
-  summary: { soldCount: number; soldValueCents: number };
+  summary: {
+    soldCount: number;
+    soldValueCents: number;
+    marginCents: number | null;
+    piecesWithoutFullCost: number;
+  };
 }
 
 export interface OverdueReportRow {
