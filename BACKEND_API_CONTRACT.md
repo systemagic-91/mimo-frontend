@@ -2,12 +2,18 @@
 
 ## Objetivo
 
-Este documento transforma o protótipo frontend Mimo/Luma em um contrato de implementação para um backend em **Spring Boot 3.x, Java 21, PostgreSQL e REST**. O frontend atual mantém todo o estado em `localStorage` (`luma_db_v1`) e concentra as regras em `src/lib/domain.ts`; o backend deve substituir essa camada por persistência, autenticação, autorização e transações reais.
+Este documento transforma o protótipo frontend Mimo/Luma em um contrato de implementação para um backend em **Spring Boot 3.x, Java 21, PostgreSQL e REST**. O frontend começou mantendo todo o estado em `localStorage` (`luma_db_v1`), com as regras em `src/lib/domain.ts`; o backend substitui essa camada por persistência, autenticação, autorização e transações reais.
 
-## Stack recomendada
+O backend vive em um repositório próprio (`mimo-backend`, pacote `br.com.luma`). Este contrato reflete o que já está implementado lá e o que ainda falta.
+
+**Última revisão:** 2026-10-30, alinhada ao backend após BACK_01 a BACK_06 e às decisões de produto da mesma data.
+
+Legenda usada nos endpoints: ✅ implementado · ⏳ pendente (task indicada).
+
+## Stack
 
 - Java 21 LTS.
-- Spring Boot 3.x.
+- Spring Boot 3.5.
 - Gradle com Groovy DSL, usando o arquivo `build.gradle` (não `build.gradle.kts`).
 - Spring Web MVC.
 - Spring Data JPA/Hibernate.
@@ -16,21 +22,22 @@ Este documento transforma o protótipo frontend Mimo/Luma em um contrato de impl
 - Springdoc/OpenAPI para gerar e servir a especificação e a interface Swagger UI.
 - PostgreSQL 16+.
 - Flyway para migrations versionadas.
-- Spring Security OAuth2 Resource Server + JWT para access token.
-- Refresh tokens persistidos e revogáveis no banco.
+- Spring Security OAuth2 Resource Server + JWT (HS256) para access token.
+- Refresh tokens opacos, persistidos como hash e revogáveis no banco.
 - Bean Validation (`jakarta.validation`).
-- Spring Boot Actuator, Micrometer e OpenTelemetry.
-- Testcontainers para testes de integração com PostgreSQL.
-- Object storage compatível com S3 para fotos.
+- Spring Boot Actuator (somente `health` exposto). Micrometer e OpenTelemetry ficam para a BACK_10.
+- **Testes:** JUnit 5 + Mockito para testes unitários; testes de contexto com MockMvc usam H2 em memória. **O projeto não usa Testcontainers**, e os testes não exigem Docker nem PostgreSQL.
+- Fotos das peças guardadas no próprio PostgreSQL (`bytea`) e servidas pelo backend (BACK_07). Sem S3 ou outro storage externo.
+- Hospedagem: frontend na Vercel; backend e PostgreSQL no Railway. A Vercel faz proxy de `/api/*` para o Railway, então o navegador enxerga front e API na mesma origem.
 - Valores monetários persistidos em `long` centavos. A API usa `valueCents`.
 
-### `build.gradle` mínimo (Groovy DSL)
+### `build.gradle` (Groovy DSL)
 
 ```groovy
 plugins {
-  id 'java'
-  id 'org.springframework.boot' version '3.5.0'
-  id 'io.spring.dependency-management' version '1.1.7'
+    id 'java'
+    id 'org.springframework.boot' version '3.5.0'
+    id 'io.spring.dependency-management' version '1.1.7'
 }
 
 group = 'br.com.luma'
@@ -38,38 +45,47 @@ version = '0.0.1-SNAPSHOT'
 
 java {
     toolchain {
-    languageVersion = JavaLanguageVersion.of(21)
+        languageVersion = JavaLanguageVersion.of(21)
     }
 }
 
 repositories {
-  mavenCentral()
+    mavenCentral()
+}
+
+configurations {
+    compileOnly {
+        extendsFrom annotationProcessor
+    }
 }
 
 dependencies {
-  implementation 'org.springframework.boot:spring-boot-starter-web'
-  implementation 'org.springframework.boot:spring-boot-starter-validation'
-  implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
-  implementation 'org.springframework.boot:spring-boot-starter-security'
-  implementation 'org.springframework.boot:spring-boot-starter-oauth2-resource-server'
-  implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.9'
-  implementation 'org.mapstruct:mapstruct:1.6.3'
-  implementation 'org.flywaydb:flyway-core'
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'org.springframework.boot:spring-boot-starter-security'
+    implementation 'org.springframework.boot:spring-boot-starter-oauth2-resource-server'
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.9'
+    implementation 'org.mapstruct:mapstruct:1.6.3'
+    implementation 'org.flywaydb:flyway-core'
+    implementation 'org.flywaydb:flyway-database-postgresql'
 
-  compileOnly 'org.projectlombok:lombok:1.18.38'
-  annotationProcessor 'org.projectlombok:lombok:1.18.38'
-  annotationProcessor 'org.mapstruct:mapstruct-processor:1.6.3'
-  annotationProcessor 'org.projectlombok:lombok-mapstruct-binding:0.2.0'
+    compileOnly 'org.projectlombok:lombok:1.18.38'
+    annotationProcessor 'org.projectlombok:lombok:1.18.38'
+    annotationProcessor 'org.mapstruct:mapstruct-processor:1.6.3'
+    annotationProcessor 'org.projectlombok:lombok-mapstruct-binding:0.2.0'
 
-  runtimeOnly 'org.postgresql:postgresql'
+    runtimeOnly 'org.postgresql:postgresql'
 
-  testImplementation 'org.springframework.boot:spring-boot-starter-test'
-  testImplementation 'org.springframework.security:spring-security-test'
-  testImplementation 'org.testcontainers:junit-jupiter'
-  testImplementation 'org.testcontainers:postgresql'
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.springframework.security:spring-security-test'
+    testRuntimeOnly 'com.h2database:h2'
 
-  testCompileOnly 'org.projectlombok:lombok:1.18.38'
-  testAnnotationProcessor 'org.projectlombok:lombok:1.18.38'
+    testCompileOnly 'org.projectlombok:lombok:1.18.38'
+    testAnnotationProcessor 'org.projectlombok:lombok:1.18.38'
+    testAnnotationProcessor 'org.mapstruct:mapstruct-processor:1.6.3'
+    testAnnotationProcessor 'org.projectlombok:lombok-mapstruct-binding:0.2.0'
 }
 
 tasks.withType(Test).configureEach {
@@ -77,105 +93,155 @@ tasks.withType(Test).configureEach {
 }
 ```
 
-As três bibliotecas acima fazem parte da stack obrigatória. Configure os mappers MapStruct com `componentModel = "spring"` para injeção pelo Spring. O Lombok não deve gerar `equals`, `hashCode` ou `toString` que percorram relações lazy de entidades JPA; prefira anotações pontuais como `@Getter`, `@Setter` e `@NoArgsConstructor`. Springdoc deve publicar o JSON OpenAPI em `/v3/api-docs` e Swagger UI em `/swagger-ui/index.html`; em produção, proteger ou desabilitar a interface conforme a política de acesso.
+Lombok, MapStruct e Springdoc fazem parte da stack obrigatória. Configure os mappers MapStruct com `componentModel = "spring"` (via `MapStructConfiguration`) para injeção pelo Spring. O Lombok não deve gerar `equals`, `hashCode` ou `toString` que percorram relações lazy de entidades JPA; prefira anotações pontuais como `@Getter`, `@Setter` e `@NoArgsConstructor`. Springdoc publica o JSON OpenAPI em `/v3/api-docs` e a Swagger UI em `/swagger-ui/index.html`; em produção, proteger ou desabilitar a interface conforme a política de acesso.
 
 ## Convenções da API
 
 - Base URL: `/api/v1`.
 - JSON UTF-8; upload de foto usa `multipart/form-data`.
-- Datas no JSON: ISO-8601 com offset, preferencialmente UTC, por exemplo `2026-09-18T15:00:00Z`.
-- Banco: `Instant` para eventos/timestamps; `LocalDate` para filtros de dia; `ZoneId` configurado por loja.
+- Datas no JSON: ISO-8601 em UTC, por exemplo `2026-09-18T15:00:00Z`.
+- Banco: `Instant` para eventos/timestamps (`TIMESTAMPTZ`, Hibernate em UTC); `LocalDate` para filtros de dia; `ZoneId` configurado em `settings.timezone`.
 - Valores monetários: inteiros em centavos. `6490` representa R$ 64,90.
 - IDs: UUID (`UUID` em Java), nunca IDs sequenciais expostos.
-- Respostas de lista: `items` e `pagination`.
-- Paginação: `page` começa em 1; `pageSize` padrão 50 e máximo 200.
-- Ordenação: somente campos permitidos por endpoint.
-- Toda mutation aceita `Idempotency-Key`.
+- Respostas de lista: `items` e `pagination` (`page`, `pageSize`, `total`, `totalPages`).
+- Paginação: `page` começa em 1; `pageSize` padrão 50, mínimo 1 e máximo 200. Valores fora disso retornam `400 INVALID_PAGINATION`.
+- Ordenação: `sort=campo,asc` ou `sort=campo,desc`, podendo repetir o parâmetro. Somente campos permitidos por endpoint; campo desconhecido ou repetido retorna `400 INVALID_PAGINATION`.
+- **`Idempotency-Key` é obrigatório** em toda mutation de domínio (peças, vendedoras, configurações, usuários e, quando implementadas, consignações e uploads). Chave ausente, vazia ou com mais de 160 caracteres retorna `400`. Rotas `/auth/*` não usam a chave.
+  - A chave é escopada por usuário e operação. Repetir a mesma chave com o mesmo payload (JSON canônico) devolve o status e o corpo salvos, por 24 horas (`IDEMPOTENCY_TTL`).
+  - Mesma chave com payload diferente: `409 IDEMPOTENCY_KEY_REUSED`. Requisição concorrente com a mesma chave ainda em execução: `409 IDEMPOTENCY_IN_PROGRESS`.
+- Enums no JSON:
+  - `role` e `status` de vendedora: minúsculos (`owner`, `staff`, `ativa`, `inativa`). Na entrada, aceitam qualquer caixa.
+  - `PieceStage`, `ConsignmentStatus` e `ConsignmentItemStatus`: maiúsculos (`FABRICA`, `BANHO_OURO`, `ABERTA`, `COM_VENDEDORA`...). O frontend converte em `src/lib/api/mappers.ts`.
+- Toda resposta inclui `X-Request-Id`. O cliente pode enviar o próprio valor (1 a 64 caracteres: letras, dígitos, `.`, `_`, `-`); valores inválidos são substituídos por `req_<uuid>`. O ID também vai para o MDC de logging.
 - O servidor é a fonte de verdade para códigos, timestamps, status e cálculos.
-- Adicionar logs para monitoramento e observabilidade.
+- Nunca registrar tokens, senhas ou conteúdo de fotos nos logs.
 
 ### Resposta de erro
 
-Implementar um `@RestControllerAdvice` que converta exceções para `ProblemDetail` (RFC 7807):
+Um `@RestControllerAdvice` (`ApiExceptionHandler`) converte exceções em `ProblemDetail` (RFC 7807) com `Content-Type: application/problem+json`:
 
 ```json
 {
   "type": "https://api.luma.com.br/problems/piece-not-available",
-  "title": "Peça indisponível",
+  "title": "Conflict",
   "status": 409,
   "detail": "Uma ou mais peças já foram movimentadas.",
+  "instance": "/api/v1/consignments",
   "code": "PIECE_NOT_AVAILABLE",
   "fields": {
-    "pieceIds": ["p_101"]
+    "pieceIds": ["uuid"]
   },
-  "requestId": "req_01J..."
+  "requestId": "req_5b2c..."
 }
 ```
 
-Mapeamento: `400` JSON inválido, `401` não autenticado, `403` sem permissão, `404` inexistente, `409` conflito/concorrência, `422` regra de negócio, `429` rate limit e `500` erro inesperado. Nunca retornar stack trace ou senha.
+- `type` é derivado do `code` (minúsculo, `_` vira `-`).
+- `title` é a frase padrão do status HTTP.
+- `fields` só aparece em erros de campo e nunca ecoa o valor enviado.
+- Erros internos nunca incluem stack trace, mensagem de exceção ou senha.
+
+| Status | Uso                                                                 | Códigos em uso                                                                                                                                                           |
+| -----: | ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+|  `400` | JSON inválido, Bean Validation, paginação, idempotência mal formada | `INVALID_REQUEST`, `VALIDATION_ERROR`, `INVALID_PAGINATION`, `INVALID_IDEMPOTENCY_KEY`, `INVALID_IDEMPOTENCY_SCOPE`, `INVALID_IDEMPOTENCY_PAYLOAD`, `PASSWORD_UNCHANGED` |
+|  `401` | Não autenticado ou credencial inválida                              | `UNAUTHENTICATED`, `INVALID_CREDENTIALS`, `INVALID_REFRESH_TOKEN`, `INVALID_ACCESS_TOKEN`                                                                                |
+|  `403` | Sem permissão ou usuário inativo                                    | `FORBIDDEN`, `USER_INACTIVE`                                                                                                                                             |
+|  `404` | Recurso inexistente                                                 | `NOT_FOUND`, `PIECE_NOT_FOUND`, `SELLER_NOT_FOUND`                                                                                                                       |
+|  `409` | Conflito de estado, concorrência ou idempotência                    | `CONFLICT` (lock otimista/integridade), `INVALID_PIECE_TRANSITION`, `IDEMPOTENCY_KEY_REUSED`, `IDEMPOTENCY_IN_PROGRESS`                                                  |
+|  `422` | Regra de negócio                                                    | `INVALID_INITIAL_STAGE`, `SELLER_INACTIVE`                                                                                                                               |
+|  `429` | Rate limit                                                          | `RATE_LIMITED`                                                                                                                                                           |
+|  `500` | Erro inesperado                                                     | `INTERNAL_ERROR`                                                                                                                                                         |
+
+Novos códigos previstos para as próximas tasks: `PIECE_NOT_AVAILABLE`, `DUE_DATE_IN_PAST` e `EMPTY_ITEMS` (BACK_08); `PASSWORD_CHANGE_REQUIRED`, `EMAIL_ALREADY_USED`, `LAST_OWNER`, `CANNOT_DEACTIVATE_SELF` e `USER_NOT_FOUND` (BACK_19).
 
 ## Organização do projeto Java
 
 ```text
 src/main/java/br/com/luma/
   LumaApplication.java
-  config/                 # Security, Jackson, OpenAPI, Clock, CORS
-  shared/                 # ProblemDetail, paginação, auditoria, exceções
+  config/                 # Security, CORS, JWT, OpenAPI, Clock, MapStruct
+  shared/                 # enums, ProblemDetail, paginação, idempotência, auditoria, exceções
   auth/                   # controller, service, JWT, user, refresh token
-  piece/                  # entity, repository, service, controller, dto
+  piece/                  # entity, repository, service, controller, dto, mapper
   seller/
-  consignment/
-  dashboard/
-  report/
   setting/
-  upload/
+  consignment/            # entidades, repositories e mappers (service/controller na BACK_08)
+  dashboard/              # BACK_09
+  report/                 # BACK_09
+  upload/                 # BACK_07
 src/main/resources/
   application.yml
-  db/migration/V1__create_schema.sql
-  db/migration/V2__seed_reference_data.sql
+  application-local.yml
+  application-prod.yml
+  application-test.yml
+  db/migration/V1__create_initial_schema.sql
+  db/migration/V2__add_user_auth_version.sql
+  db/migration/V3__seed_default_store_settings.sql
+  db/migration/V4__require_active_seller_for_consignment.sql
 ```
 
-Fluxo recomendado: `Controller -> ApplicationService -> Repository`. Controllers recebem DTOs, services aplicam regras/transações e entities não são serializadas diretamente.
+Fluxo: `Controller -> ApplicationService -> Repository`. Controllers recebem DTOs, services aplicam regras/transações e entities não são serializadas diretamente.
 
 ## Segurança Spring Security
 
 ### Regras
 
-- `POST /api/v1/auth/login`, `POST /api/v1/auth/refresh` e documentação são públicos.
+- Públicos: `POST /api/v1/auth/login`, `POST /api/v1/auth/refresh`, `/actuator/health`, `/v3/api-docs/**` e Swagger UI. Com as próximas tasks entram também `POST /api/v1/auth/logout` (BACK_21) e `GET /api/v1/photos/{photoId}` (BACK_07).
 - Todas as outras rotas exigem JWT válido.
-- `owner`: dashboard, relatórios e configurações, além dos fluxos operacionais.
-- `staff`: estoque, etiquetagem e consignações; não acessa dashboard/relatórios/configurações conforme a UI atual.
-- Repetir autorização no método/service, mesmo com `@PreAuthorize` no controller.
-- Senha com BCrypt ou Argon2id; nunca texto puro.
-- Access token curto, por exemplo 15 minutos; refresh token opaco, hash persistido, rotação e revogação.
-- Rate limit no login e upload.
-- CORS somente para a origem do frontend.
-- Preferir cookie seguro HttpOnly para refresh token; alinhar a estratégia com o frontend.
+- `owner`: dashboard, relatórios, configurações, usuários e custos das peças, além dos fluxos operacionais. Pode haver mais de um owner.
+- `staff`: estoque, etiquetagem, consignações, consulta de vendedoras (lista, detalhe e histórico) e **leitura** de `GET /settings`. Não acessa dashboard, relatórios, usuários, custos, mutations de vendedora/configurações nem stats/comissão.
+- Usuário com `mustChangePassword = true` só acessa `GET /auth/me`, `POST /auth/change-password` e `POST /auth/logout`; o resto retorna `403 PASSWORD_CHANGE_REQUIRED` (BACK_19).
+- A autorização é repetida no service com `@PreAuthorize`, além das regras por rota.
+- Senha com BCrypt; nunca texto puro.
+- Access token JWT HS256 com 15 minutos por padrão. Claims: `sub` (id do usuário), `email`, `roles` e `authVersion`.
+  - O `AuthTokenValidator` rejeita o token se o usuário estiver inativo ou se `authVersion` não bater com o banco. Trocar a senha incrementa `authVersion` e invalida na hora todos os access tokens.
+- Refresh token opaco (32 bytes aleatórios), com validade de 30 dias e salvo apenas como hash SHA-256.
+  - É rotacionado a cada uso.
+  - É revogado no logout e na troca de senha.
+  - Reutilizar um token já revogado revoga todas as sessões ativas do usuário.
+- Rate limit de login por IP: 5 tentativas a cada 15 minutos (`LOGIN_MAX_ATTEMPTS`, `LOGIN_RATE_LIMIT_WINDOW`). O rate limit de upload fica para a BACK_07.
+  - Atrás da Vercel e do Railway, o IP de `getRemoteAddr()` é o do proxy. Em produção é obrigatório usar `server.forward-headers-strategy: framework` para ler o IP real de `X-Forwarded-For`; sem isso, o rate limit trava todos os usuários juntos (BACK_21).
+- CORS restrito às origens de `CORS_ALLOWED_ORIGINS` (padrão local `http://localhost:5173`). Com o proxy da Vercel em produção e o proxy do Vite em desenvolvimento (FRONT_22), o navegador não faz chamadas cross-origin; o CORS fica só como proteção para acessos diretos.
+  - Headers permitidos: `Authorization`, `Content-Type`, `Idempotency-Key` e `X-Request-Id`.
+  - Headers expostos: `Location` e `X-Request-Id`.
+- **Sessão hoje:** os dois tokens vêm no corpo da resposta. O frontend guarda o access token em memória e o refresh token em `sessionStorage`. É um compromisso de desenvolvimento.
+- **Sessão decidida (BACK_21 + FRONT_22, antes do primeiro deploy):**
+  - o refresh token sai do corpo da resposta e passa a viajar só no cookie `luma_refresh` (`HttpOnly; Secure; SameSite=Strict; Path=/api/v1/auth; Max-Age` = validade do token);
+  - o access token continua no corpo e em memória no frontend;
+  - a Vercel faz proxy de `/api/*` para o Railway (rewrite em `vercel.json`), e o Vite faz o mesmo em desenvolvimento. Assim front e API ficam na mesma origem e o cookie é "do próprio site", inclusive no Safari;
+  - proteção contra CSRF: `SameSite=Strict` + o backend confere o header `Origin` em `/auth/refresh` e `/auth/logout`;
+  - explicação em linguagem simples: `SESSAO_E_COOKIES.md`.
+- Primeiro owner: provisionado uma única vez pelas variáveis `BOOTSTRAP_OWNER_*` (ver README do backend). Não existe usuário ou senha padrão versionados.
 
-Exemplo:
+Configuração atual (resumida):
 
 ```java
 @Bean
-SecurityFilterChain security(HttpSecurity http) throws Exception {
+SecurityFilterChain securityFilterChain(HttpSecurity http, ...) throws Exception {
     return http
-        .csrf(csrf -> csrf.disable()) // usar CSRF se autenticação usar cookie
+        .csrf(AbstractHttpConfigurer::disable) // reavaliar se o refresh migrar para cookie
+        .cors(Customizer.withDefaults())
         .sessionManagement(s -> s.sessionCreationPolicy(STATELESS))
+        .exceptionHandling(...) // 401 UNAUTHENTICATED e 403 FORBIDDEN em ProblemDetail
         .authorizeHttpRequests(auth -> auth
+            .requestMatchers("/actuator/health", "/actuator/health/**",
+                "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
             .requestMatchers("/api/v1/auth/login", "/api/v1/auth/refresh").permitAll()
-            .requestMatchers("/api/v1/reports/**", "/api/v1/settings/**").hasRole("OWNER")
+            .requestMatchers("/api/v1/dashboard/**", "/api/v1/reports/**", "/api/v1/settings/**").hasRole("OWNER") // GET /settings passa a aceitar STAFF (BACK_08)
             .anyRequest().authenticated())
-        .oauth2ResourceServer(oauth -> oauth.jwt(Customizer.withDefaults()))
+        .oauth2ResourceServer(oauth -> oauth.jwt(jwt -> jwt.jwtAuthenticationConverter(...)))
         .build();
 }
 ```
 
-Usar `@EnableMethodSecurity` e `@PreAuthorize("hasRole('OWNER')")` nos services de owner.
+`@EnableMethodSecurity` está ativo; services usam `@PreAuthorize("hasRole('OWNER')")` ou `hasAnyRole('OWNER', 'STAFF')`.
 
 ## Modelos JPA e banco
 
 ### `users`
 
-`id UUID PK`, `name`, `email UNIQUE`, `password_hash`, `role`, `active`, `created_at`, `updated_at`.
+`id UUID PK`, `name`, `email` (único por `lower(email)`), `password_hash`, `role`, `active`, `auth_version`, `created_at`, `updated_at`.
+
+A BACK_19 adiciona `must_change_password BOOLEAN NOT NULL DEFAULT false`.
 
 ```java
 public enum Role { OWNER, STAFF }
@@ -187,13 +253,20 @@ public enum Role { OWNER, STAFF }
 
 ### `sellers`
 
-`id UUID PK`, `name`, `phone`, `commission_rate`, `status`, `created_at`, `updated_at`.
+`id UUID PK`, `name`, `phone`, `commission_rate`, `status` (`ATIVA`/`INATIVA`), `created_at`, `updated_at`, `version`.
 
-`commission_rate` é inteiro percentual. Não apagar vendedores com histórico; usar `INATIVA`.
+`commission_rate` é inteiro percentual. Não apagar vendedoras com histórico; usar `INATIVA`. Um trigger (V4) impede criar consignação ou trocar o `seller_id` de uma consignação para vendedora `INATIVA`.
 
 ### `pieces`
 
-`id UUID PK`, `code UNIQUE`, `type`, `value_cents BIGINT`, `status`, `current_location`, `photo_url`, `note`, `created_at`, `updated_at`, `version BIGINT`.
+`id UUID PK`, `code UNIQUE`, `type`, `value_cents BIGINT > 0`, `status`, `current_location`, `photo_url`, `note`, `created_at`, `updated_at`, `version BIGINT`.
+
+Mudanças decididas:
+
+- **BACK_07:** `photo_url` é substituída por `photo_id UUID NULL FK -> piece_photos(id)`.
+- **BACK_23:** custos opcionais, visíveis só para owner: `factory_cost_cents BIGINT NULL CHECK (>= 0)` (custo da fábrica) e `bath_cost_cents BIGINT NULL CHECK (>= 0)` (custo do banho). O custo total é a soma dos dois e não é persistido.
+
+`value_cents` continua sendo o **preço de venda**: é a base da comissão e do valor em posse.
 
 ```java
 public enum PieceStage {
@@ -201,58 +274,76 @@ public enum PieceStage {
 }
 ```
 
-`version` deve ser `@Version` para controle otimista, além de locks pessimistas nas operações que selecionam várias peças.
+`version` é `@Version` para controle otimista, além de locks pessimistas (`findByIdForUpdate`, `findAllForUpdate`) nas operações de escrita.
 
 ### `piece_events`
 
-`id UUID PK`, `piece_id FK`, `stage`, `occurred_at`, `note`, `actor_user_id FK`. Eventos são imutáveis e ordenados por `occurred_at`.
+`id UUID PK`, `piece_id FK`, `stage`, `occurred_at`, `note`, `actor_user_id FK`. Eventos são imutáveis (trigger rejeita `UPDATE`/`DELETE`) e ordenados por `occurred_at`, com desempate por `id`. Um evento novo nunca recebe horário anterior ao último evento da peça (no mínimo, +1 ms).
 
 ### `consignments`
 
-`id UUID PK`, `code UNIQUE`, `seller_id FK`, `delivered_at`, `due_at`, `status`, `note`, `created_by FK`, `version`.
+`id UUID PK`, `code UNIQUE`, `seller_id FK`, `delivered_at`, `due_at` (`>= delivered_at`), `status` (`ABERTA`/`QUITADA`), `note`, `created_by FK`, `created_at`, `updated_at`, `version`.
 
 ### `consignment_items`
 
-`id UUID PK`, `consignment_id FK`, `piece_id FK`, `code_snapshot`, `type_snapshot`, `value_cents_snapshot`, `commission_rate_snapshot`, `status`, `sold_at`, `returned_at`, `version`.
+`id UUID PK`, `consignment_id FK`, `piece_id FK`, `code_snapshot`, `type_snapshot`, `value_cents_snapshot`, `commission_rate_snapshot`, `status` (`COM_VENDEDORA`/`VENDIDA`/`DEVOLVIDA`), `sold_at`, `returned_at`, `created_at`, `updated_at`, `version`.
 
-`piece_id` deve impedir a mesma peça em dois lotes ativos. O snapshot da comissão preserva o cálculo histórico quando a taxa mudar.
+O índice único parcial `uk_consignment_items_active_piece` impede a mesma peça em dois itens `COM_VENDEDORA`. Uma constraint garante coerência entre `status`, `sold_at` e `returned_at`. O snapshot da comissão é capturado **na entrega** (criação do lote) e preserva o cálculo histórico: mudar a taxa da vendedora só afeta lotes novos.
 
 ### `settings`
 
-Uma linha por conta/loja: `id`, `commission_min`, `commission_max`, `commission_step`, `default_commission_rate`, `payment_terms_json` ou tabela filha, `default_consignment_days`, `timezone`, `updated_at`, `updated_by`.
+Linha única (`singleton_key = true`): `id`, `commission_min`, `commission_max`, `commission_step`, `default_commission_rate`, `payment_terms` (`jsonb`), `default_consignment_days`, `timezone`, `updated_at`, `updated_by`, `version`.
+
+A migration V3 cria os valores padrão:
+
+- comissão de 25% a 40%, em passos de 5, com padrão de 30%;
+- prazos de pagamento `[30, 60, 90]`;
+- 30 dias de consignação;
+- fuso `America/Sao_Paulo`.
 
 ### Tabelas auxiliares
 
-- `code_sequences(scope, year, next_value)` com chave única para geração atômica.
-- `audit_logs` com ator, ação, entidade, `entity_id`, before JSON, after JSON, IP e timestamp.
-- `idempotency_keys` com usuário, chave, fingerprint, status, resposta e expiração.
-- `file_uploads` se o storage precisar de metadados e lifecycle.
+- `code_sequences(scope, sequence_year, next_value)` com chave única `(scope, sequence_year)`, para geração atômica via `INSERT ... ON CONFLICT DO UPDATE ... RETURNING`. Peças usam `scope = 'PIECE'` e `sequence_year = 0`; lotes devem usar um escopo próprio, com o ano corrente.
+- `audit_logs` com ator, ação, `entity_type`, `entity_id`, `before_state`/`after_state` (JSON), IP e timestamp.
+- `idempotency_keys` com usuário, chave escopada (`operação:chave`), fingerprint SHA-256, status e corpo da resposta, `created_at` e `expires_at`.
+- `piece_photos` (BACK_07): `id UUID PK`, `content BYTEA`, `content_type`, `width`, `height`, `size_bytes`, `created_by FK`, `created_at`. Fotos sem peça ligada há mais de 24 horas são apagadas por um job agendado.
 
 ### Índices e constraints
 
 ```sql
-CREATE UNIQUE INDEX uk_pieces_code ON pieces(code);
+CREATE UNIQUE INDEX uk_users_email_lower ON users (lower(email));
+CREATE INDEX ix_refresh_tokens_user_expiry ON refresh_tokens(user_id, expires_at);
+CREATE INDEX ix_sellers_status_name ON sellers(status, lower(name));
+-- pieces.code: CONSTRAINT uk_pieces_code UNIQUE (code)
 CREATE INDEX ix_pieces_status_updated ON pieces(status, updated_at);
-CREATE INDEX ix_piece_events_piece_time ON piece_events(piece_id, occurred_at);
-CREATE UNIQUE INDEX uk_consignments_code ON consignments(code);
-CREATE INDEX ix_consignments_seller_delivered ON consignments(seller_id, delivered_at);
+CREATE INDEX ix_piece_events_piece_time ON piece_events(piece_id, occurred_at, id);
+-- consignments.code: CONSTRAINT uk_consignments_code UNIQUE (code)
+CREATE INDEX ix_consignments_seller_delivered ON consignments(seller_id, delivered_at DESC);
 CREATE INDEX ix_consignments_status_due ON consignments(status, due_at);
+CREATE UNIQUE INDEX uk_consignment_items_active_piece ON consignment_items(piece_id)
+    WHERE status = 'COM_VENDEDORA';
 CREATE INDEX ix_items_piece_status ON consignment_items(piece_id, status);
 CREATE INDEX ix_items_status_sold_at ON consignment_items(status, sold_at);
+CREATE INDEX ix_items_consignment_status ON consignment_items(consignment_id, status);
+CREATE INDEX ix_audit_logs_entity_time ON audit_logs(entity_type, entity_id, occurred_at DESC);
+CREATE INDEX ix_audit_logs_actor_time ON audit_logs(actor_user_id, occurred_at DESC);
+CREATE INDEX ix_idempotency_expiry ON idempotency_keys(expires_at);
 ```
 
-Todas as alterações de schema devem ser migrations Flyway. Não usar `ddl-auto=create` em produção.
+Todas as alterações de schema devem ser migrations Flyway. `ddl-auto` fica em `validate`; nunca usar `create` ou `update`.
 
 ## DTOs Java
 
-Exemplo para recebimento:
+Exemplo de request (recebimento):
 
 ```java
 public record ReceivePieceRequest(
-    @NotBlank @Size(max = 80) String type,
-    @NotNull @Positive Long valueCents,
+    @NotBlank @Pattern(regexp = "(?:Brinco|Colar|Pulseira|Anel|Pingente|Tornozeleira)")
+    @Size(max = 80) String type,
+    @Positive long valueCents,
     @NotNull PieceStage stage,
-    @Size(max = 500) String note
+    @Size(max = 500) String note,
+    @PositiveOrZero Long factoryCostCents   // BACK_23: opcional, só owner
 ) {}
 ```
 
@@ -266,10 +357,14 @@ public record PieceResponse(
     long valueCents,
     PieceStage status,
     String currentLocation,
-    String photoUrl,
+    String photoUrl,          // BACK_07: derivado de photo_id -> "/api/v1/photos/{photoId}"
     String note,
     Instant createdAt,
-    Instant updatedAt
+    Instant updatedAt,
+    long version,
+    Long factoryCostCents,    // BACK_23: null para staff
+    Long bathCostCents,       // BACK_23: null para staff
+    Long totalCostCents       // BACK_23: null para staff ou sem custo informado
 ) {}
 ```
 
@@ -279,25 +374,28 @@ Usar DTOs separados para request e response. Não expor entidades JPA, `password
 
 Todas as rotas abaixo têm o prefixo `/api/v1`.
 
-### 1. Autenticação
+### 1. Autenticação ✅
 
-#### `POST /auth/login` (público)
+#### `POST /auth/login` (público) ✅
 
 Request:
 
 ```json
-{ "email": "socios@luma.com.br", "password": "..." }
+{ "email": "owner@example.com", "password": "..." }
 ```
 
-Response `200`:
+O e-mail é normalizado (trim + minúsculas). Response `200`:
 
 ```json
 {
   "user": {
     "id": "uuid",
     "name": "Sócia(o) 1",
-    "email": "socios@luma.com.br",
-    "role": "owner"
+    "email": "owner@example.com",
+    "role": "owner",
+    "active": true,
+    "createdAt": "2026-09-01T12:00:00Z",
+    "updatedAt": "2026-09-01T12:00:00Z"
   },
   "session": {
     "loggedAt": "2026-09-18T15:00:00Z",
@@ -308,45 +406,71 @@ Response `200`:
 }
 ```
 
-Erros: `401 INVALID_CREDENTIALS`, `403 USER_INACTIVE`.
+**Mudanças decididas:**
 
-#### `POST /auth/refresh`
+- **BACK_19:** `user` ganha `mustChangePassword`.
+- **BACK_21:** `refreshToken` sai do corpo. O backend passa a responder com `Set-Cookie: luma_refresh=...; HttpOnly; Secure; SameSite=Strict; Path=/api/v1/auth`.
 
-Recebe refresh token, revoga o anterior e retorna novo par de tokens.
+Erros:
 
-#### `POST /auth/logout`
+- `401 INVALID_CREDENTIALS`: e-mail inexistente ou senha errada. A resposta é genérica, e o e-mail inexistente também passa por uma verificação BCrypt (com hash fictício), para não revelar se a conta existe.
+- `403 USER_INACTIVE`.
+- `429 RATE_LIMITED`.
 
-Revoga o refresh token atual. Resposta `204`.
+#### `POST /auth/refresh` (público) ✅
 
-#### `GET /auth/me`
+Hoje: request `{ "refreshToken": "..." }`. Com a BACK_21: sem corpo, lendo o cookie `luma_refresh` e conferindo o header `Origin`. Revoga o token anterior e retorna um novo par no mesmo formato do login (o refresh novo vai no cookie). Token desconhecido, expirado, revogado ou de usuário inativo retorna `401 INVALID_REFRESH_TOKEN`; reutilizar um token revogado também revoga todas as sessões do usuário.
 
-Retorna usuário e sessão atual. O frontend deve usar esta rota no bootstrap em substituição a `db.session`.
+#### `POST /auth/logout` ✅
 
-#### `POST /auth/change-password`
+Hoje: autenticado, request `{ "refreshToken": "..." }`; revoga o refresh token se pertencer ao usuário autenticado. Com a BACK_21: público, sem corpo; lê o cookie, revoga o token e apaga o cookie (`Max-Age=0`), para que funcione mesmo com o access token vencido. Resposta `204`.
 
-Request: `currentPassword`, `newPassword`; invalidar sessões anteriores.
+#### `GET /auth/me` ✅
 
-### 2. Peças e estoque
+Retorna `{ "user": {...}, "session": { "loggedAt", "expiresAt" } }` a partir do access token atual. O frontend usa esta rota no bootstrap da sessão.
 
-#### `GET /pieces`
+#### `POST /auth/change-password` ✅
 
-Acesso owner/staff. Query: `q`, `status`, `page`, `pageSize`, `sort`. `q` pesquisa código/tipo. `sort` aceita apenas `code`, `type`, `valueCents`, `status`, `currentLocation`, `createdAt` e `updatedAt`, com direção `asc` ou `desc`. Retorna `items`, `pagination` e opcionalmente `totalValueCents`.
+Request:
 
-#### `GET /pieces/{pieceId}`
+- `currentPassword`;
+- `newPassword`, com 12 a 72 caracteres e diferente da atual.
 
-Retorna detalhes da peça; pode incluir eventos ou usar rota separada.
+Resposta `204`. Incrementa `authVersion` e revoga todos os refresh tokens, o que invalida as sessões anteriores na hora. Com a BACK_19, também zera `mustChangePassword`.
 
-#### `GET /pieces/{pieceId}/events`
+Erros: `401 INVALID_CREDENTIALS` (senha atual errada) e `400 PASSWORD_UNCHANGED`.
 
-Retorna eventos crescentes por `occurredAt` (desempate por `id`), com `actorUserId` e nota.
+### 2. Peças e estoque ✅
 
-#### `GET /pieces/next-code`
+Acesso owner/staff em todas as rotas. Campos de custo só aparecem e só podem ser enviados por owner (BACK_23).
 
-Somente pré-visualização. Retorna `{ "code": "LU-0813" }`; o código definitivo sempre é gerado no service transacional.
+#### `GET /pieces` ✅
 
-#### `POST /pieces/receive`
+Query:
 
-Cria peça recebida da fábrica ou encaminhada ao banho.
+- `q` (até 120 caracteres): pesquisa parcial, sem diferenciar maiúsculas, no código e no tipo.
+- `status`: um `PieceStage` em maiúsculas.
+- `page`, `pageSize` e `sort`. O `sort` aceita apenas `code`, `type`, `valueCents`, `status`, `currentLocation`, `createdAt` e `updatedAt`.
+
+Retorna `items` (`PieceResponse`) e `pagination`.
+
+A resposta **não** inclui o valor total filtrado (`totalValueCents`). Se a tela de estoque precisar dele, adicionar ao endpoint junto com a FRONT_13.
+
+#### `GET /pieces/{pieceId}` ✅
+
+Retorna `PieceResponse`. Os eventos ficam na rota separada abaixo. Peça inexistente: `404 PIECE_NOT_FOUND`.
+
+#### `GET /pieces/{pieceId}/events` ✅
+
+Retorna a lista (não paginada) de eventos em ordem crescente de `occurredAt`, com desempate por `id`: `id`, `pieceId`, `stage`, `occurredAt`, `note` e `actorUserId`.
+
+#### `GET /pieces/next-code` ✅
+
+Somente pré-visualização. Retorna `{ "code": "LU-0813" }`. O código definitivo é sempre gerado no service transacional, então o valor pode mudar até a peça ser salva.
+
+#### `POST /pieces/receive` ✅
+
+Exige `Idempotency-Key`. Cria uma peça recebida da fábrica ou encaminhada ao banho.
 
 ```json
 {
@@ -357,34 +481,68 @@ Cria peça recebida da fábrica ou encaminhada ao banho.
 }
 ```
 
-Aceitar somente `FABRICA` ou `BANHO_OURO` e os tipos `Brinco`, `Colar`, `Pulseira`, `Anel`, `Pingente` ou `Tornozeleira`. Gerar código, peça e evento inicial. Para `BANHO_OURO`, registrar também o evento de fábrica conforme a regra do frontend.
+Regras:
+
+- Aceita só os tipos `Brinco`, `Colar`, `Pulseira`, `Anel`, `Pingente` ou `Tornozeleira`; outros retornam `400 VALIDATION_ERROR`.
+- Aceita só os estágios `FABRICA` ou `BANHO_OURO`; outros retornam `422 INVALID_INITIAL_STAGE`.
+- Gera o código `LU-XXXX`, a peça e o evento inicial.
+- Localização inicial: `Fábrica` ou `No banho de ouro`.
+- Para `BANHO_OURO`, registra também o evento `FABRICA` 1 ms antes.
 
 Response `201`: `{ "piece": { ... }, "events": [ ... ] }`.
 
-#### `POST /pieces/label`
+BACK_23: aceita `factoryCostCents` opcional. Se um staff enviar esse campo, a resposta é `403 FORBIDDEN`.
 
-Request:
+#### `POST /pieces/label` ✅
+
+Exige `Idempotency-Key`. Request:
 
 ```json
 {
   "sourcePieceId": "uuid",
   "type": "Brinco",
   "valueCents": 8490,
-  "photoUrl": "https://storage.example/pieces/uuid.jpg",
+  "photoId": "uuid",
   "note": "Dourado",
-  "backFromBath": true
+  "backFromBath": true,
+  "bathCostCents": 1200
 }
 ```
 
-**Decisão recomendada:** `sourcePieceId` aponta para uma peça existente em `BANHO_OURO`; o service atualiza essa peça, mantém o código e adiciona o evento `ETIQUETADA`. O frontend atual cria uma nova peça, mas isso duplica estoque e deve ser corrigido na integração.
+Hoje o campo de foto é `photoUrl` (texto livre). A BACK_07 troca por `photoId`, o ID devolvido pelo upload, para que só fotos enviadas ao próprio backend possam ser ligadas à peça. `bathCostCents` é opcional e só para owner (BACK_23).
 
-Validar source, estado atual e `backFromBath`. Esta operação representa a conclusão da etiquetagem: `sourcePieceId` deve apontar para uma peça em `BANHO_OURO` e `backFromBath` deve ser `true`; `false` retorna conflito, pois encaminhamento ao banho não conclui uma etiquetagem. A peça existente é atualizada, mantém seu código e recebe o evento `ETIQUETADA`. Se o produto quiser criar nova peça, criar relação de origem e encerrar a anterior explicitamente; nunca deixar duas peças independentes para o mesmo item físico.
+**Decisão implementada:** `sourcePieceId` aponta para uma peça existente em `BANHO_OURO`. O service trava essa peça e a atualiza:
 
-### 3. Vendedoras
+- mantém o código;
+- grava o tipo e o valor enviados;
+- muda o status para `ETIQUETADA` e a localização para `Estoque`;
+- liga a foto (`photoId`) e grava `note` quando enviados;
+- adiciona o evento `ETIQUETADA`.
 
-#### `GET /sellers`
+Response `200`: `PieceResponse`.
 
-Acesso owner/staff. Query: `status`, `q`, paginação. A resposta deve trazer dados e agregados da tela de consignação:
+Erros:
+
+- `backFromBath: false` ou peça fora de `BANHO_OURO`: `409 INVALID_PIECE_TRANSITION`.
+- Peça inexistente: `404 PIECE_NOT_FOUND`.
+
+O frontend ainda cria uma peça nova localmente e precisa migrar para este fluxo na FRONT_13. Nunca deixar duas peças independentes para o mesmo item físico.
+
+#### `PATCH /pieces/{pieceId}/costs` ⏳ (BACK_23)
+
+Acesso owner; exige `Idempotency-Key`. Request: `{ "factoryCostCents": 3000, "bathCostCents": 1200 }`. Os dois campos são opcionais e aceitam `null` para limpar o valor. Serve para informar ou corrigir custos depois do recebimento. Response `200`: `PieceResponse`. Grava auditoria `PIECE_COSTS_UPDATED`.
+
+### 3. Vendedoras ✅
+
+#### `GET /sellers` ✅
+
+Acesso owner/staff. Query:
+
+- `status`: `ativa` ou `inativa`, em qualquer caixa.
+- `q` (até 120 caracteres): pesquisa no nome e no telefone.
+- `page`, `pageSize` e `sort`. O `sort` aceita `name`, `phone`, `commissionRate`, `status`, `createdAt` e `updatedAt`.
+
+Vendedoras inativas continuam listadas. A resposta traz os dados e os agregados da tela de consignação:
 
 ```json
 {
@@ -395,7 +553,9 @@ Acesso owner/staff. Query: `status`, `q`, paginação. A resposta deve trazer da
         "name": "Ana Ribeiro",
         "phone": "(11) 98888-0001",
         "commissionRate": 30,
-        "status": "ativa"
+        "status": "ativa",
+        "createdAt": "2026-09-01T12:00:00Z",
+        "updatedAt": "2026-09-01T12:00:00Z"
       },
       "piecesInHand": 2,
       "valueInHandCents": 18890,
@@ -409,41 +569,59 @@ Acesso owner/staff. Query: `status`, `q`, paginação. A resposta deve trazer da
 }
 ```
 
-#### `POST /sellers`
+- `nextDueDays` é a diferença em dias de calendário no fuso da loja (negativo quando já venceu).
+- `late` é `true` quando `nextDueAt` é anterior ao instante atual.
 
-Acesso owner. Request: `name`, `phone`, `commissionRate`; cria `ATIVA`. Validar nome e faixa configurada.
+#### `POST /sellers` ✅
 
-#### `GET /sellers/{sellerId}`
+Acesso owner; exige `Idempotency-Key`. Request: `name`, `phone`, `commissionRate`. Cria a vendedora como `ativa`, com `name` e `phone` sem espaços nas pontas. A comissão precisa respeitar a faixa e o passo de `settings`; se não respeitar, retorna `400 VALIDATION_ERROR` com `fields.commissionRate`. Response `201`: `SellerResponse`. Grava auditoria `SELLER_CREATED`.
 
-Retorna vendedor, taxa e status.
+#### `GET /sellers/{sellerId}` ✅
 
-#### `PATCH /sellers/{sellerId}`
+Acesso owner/staff. Retorna `SellerResponse`. Vendedora inexistente: `404 SELLER_NOT_FOUND`.
 
-Acesso owner. Aceita `name`, `phone`, `commissionRate`, `status`. A UI usa a mesma operação para editar e ativar/inativar.
+#### `PATCH /sellers/{sellerId}` ✅
 
-#### `GET /sellers/{sellerId}/stats`
+Acesso owner; exige `Idempotency-Key`. Aceita `name`, `phone`, `commissionRate` e `status` (`ativa`/`inativa`). A UI usa a mesma operação para editar e para ativar/inativar.
 
-Retorna `inHand`, `inHandValueCents`, `totalSoldCount`, `totalSoldValueCents` e `totalCommissionCents`.
+Regras:
 
-#### `GET /sellers/{sellerId}/commission?from=...&to=...`
+- É preciso enviar pelo menos um campo.
+- Nome vazio, status desconhecido ou comissão fora da faixa retornam `400 VALIDATION_ERROR`.
+- Inativar não apaga os lotes existentes.
+- Grava auditoria `SELLER_UPDATED`.
 
-Retorna `soldCount`, `soldValueCents` e `commissionCents`. Usar `commissionRateSnapshot` dos itens.
+#### `GET /sellers/{sellerId}/stats` ✅
 
-### 4. Consignações
+Acesso owner. Retorna `inHand`, `inHandValueCents`, `totalSoldCount`, `totalSoldValueCents` e `totalCommissionCents`.
 
-#### `GET /consignments`
+#### `GET /sellers/{sellerId}/commission?from=YYYY-MM-DD&to=YYYY-MM-DD` ✅
 
-Query: `status`, `sellerId`, `overdue`, paginação. Retornar seller, itens em posse, valor em posse, vencimento e status visual (`em_dia`, `atrasada`, `quitada`).
+Acesso owner. `from` e `to` são datas locais inclusivas no fuso da loja; o backend consulta o intervalo semiaberto `[from 00:00, to+1 00:00)`. Período inválido (`from > to`) retorna `400 VALIDATION_ERROR` com `fields.period`.
 
-#### `GET /consignments/{consignmentId}`
+Retorna `soldCount`, `soldValueCents` e `commissionCents`, calculados com o `commissionRateSnapshot` de cada item vendido, não com a taxa atual da vendedora.
+
+#### `GET /sellers/{sellerId}/consignments` ✅
+
+Acesso owner/staff. Histórico do mais recente para o mais antigo (`deliveredAt` desc). Aceita `status` (`aberta`/`quitada`, em qualquer caixa) e paginação. Os campos de `sort` aceitos são `code`, `deliveredAt`, `dueAt`, `status` e `createdAt`.
+
+Cada item retorna `ConsignmentResponse`: `id`, `code`, `sellerId`, `deliveredAt`, `dueAt`, `status`, `note`, `createdById` e `version`. Os itens do lote vêm de `GET /consignments/{id}`.
+
+### 4. Consignações ⏳ (BACK_08)
+
+Toda mutation exige `Idempotency-Key`. Novas consignações devem usar `SellerApplicationService.requireActiveForConsignment`, que retorna `422 SELLER_INACTIVE`. Pré-requisito da BACK_08: liberar `GET /settings` para `staff`, porque o wizard precisa do prazo padrão e dos termos de pagamento.
+
+O romaneio do lote continua sendo impresso pelo navegador (`window.print()`, com a opção "Salvar como PDF"). Não há PDF gerado no servidor.
+
+#### `GET /consignments` ⏳
+
+Query: `status`, `sellerId`, `overdue` e paginação. Retornar a vendedora, os itens em posse, o valor em posse, o vencimento e o status visual (`em_dia`, `atrasada`, `quitada`). O status "atrasada" é calculado a partir de `dueAt` e não é persistido.
+
+#### `GET /consignments/{consignmentId}` ⏳
 
 Retorna lote, vendedora e itens completos.
 
-#### `GET /sellers/{sellerId}/consignments`
-
-Histórico do mais recente para o mais antigo; aceitar `status` e paginação.
-
-#### `POST /consignments`
+#### `POST /consignments` ⏳
 
 Request:
 
@@ -459,34 +637,48 @@ Request:
 Implementar em um único `@Transactional` service:
 
 1. validar vendedora existente e `ATIVA`;
-2. validar lista não vazia, data futura e peças existentes;
-3. buscar peças com `@Lock(PESSIMISTIC_WRITE)` ou `FOR UPDATE`;
+2. validar lista não vazia, sem duplicatas, data futura e peças existentes;
+3. buscar peças com `@Lock(PESSIMISTIC_WRITE)` em ordem determinística;
 4. confirmar que todas ainda estão `ETIQUETADA`;
-5. reservar código `C-YYYY-NNN` em `code_sequences` com lock;
-6. criar lote e snapshots dos itens;
+5. reservar código `C-YYYY-NNN` em `code_sequences`;
+6. criar lote e snapshots dos itens, incluindo `commission_rate_snapshot` com a taxa da vendedora **no momento da entrega** (decidido);
 7. mover peças para `CONSIGNACAO`, atualizar localização e timestamp;
 8. criar evento `CONSIGNACAO` por peça;
 9. salvar auditoria.
 
 Se uma peça falhar, rollback integral. Retornar `SELLER_INACTIVE`, `PIECE_NOT_AVAILABLE`, `DUE_DATE_IN_PAST` ou `EMPTY_ITEMS`.
 
-#### `POST /consignments/{consignmentId}/items/{pieceId}/sold`
+#### `POST /consignments/{consignmentId}/items/{pieceId}/sold` ⏳
 
 Request opcional: `{ "soldAt": "2026-09-18T15:00:00Z", "note": "..." }`. Se ausente, usar `Clock` do servidor.
 
-Em transação e com lock: validar item `COM_VENDEDORA`, definir `VENDIDA`/`soldAt`, atualizar peça para `VENDIDA` e `Vendida`, criar evento e quitar lote se não restar item com vendedora. Segunda chamada deve ser idempotente ou retornar `409`, conforme convenção escolhida.
+Em transação e com lock:
 
-#### `POST /consignments/{consignmentId}/items/{pieceId}/returned`
+1. validar que o item está `COM_VENDEDORA`;
+2. definir o item como `VENDIDA` e preencher `soldAt`;
+3. atualizar a peça para `VENDIDA`, com localização `Vendida`;
+4. criar o evento;
+5. quitar o lote se não restar item com a vendedora.
+
+A repetição com a mesma `Idempotency-Key` devolve a resposta salva.
+
+#### `POST /consignments/{consignmentId}/items/{pieceId}/returned` ⏳
 
 Request opcional: `{ "returnedAt": "2026-09-18T15:00:00Z", "note": "..." }`.
 
-Validar `COM_VENDEDORA`, marcar item `DEVOLVIDA`, peça `ETIQUETADA`/`Estoque`, criar eventos `DEVOLVIDA` e `ETIQUETADA`, quitar lote se necessário e auditar.
+Passos:
 
-### 5. Dashboard
+1. validar que o item está `COM_VENDEDORA`;
+2. marcar o item como `DEVOLVIDA`;
+3. voltar a peça para `ETIQUETADA`, com localização `Estoque`;
+4. criar os eventos `DEVOLVIDA` e `ETIQUETADA`;
+5. quitar o lote se necessário e auditar.
 
-#### `GET /dashboard`
+### 5. Dashboard ⏳ (BACK_09)
 
-Acesso owner. Endpoint agregado recomendado:
+#### `GET /dashboard` ⏳
+
+Acesso owner. Endpoint agregado:
 
 ```json
 {
@@ -511,33 +703,53 @@ Acesso owner. Endpoint agregado recomendado:
 }
 ```
 
-Regras: itens `COM_VENDEDORA` em lotes abertos formam `activeInHand`; giro é média arredondada entre último evento de etiquetagem e venda; estoque parado é peça `ETIQUETADA` há pelo menos 60 dias; atraso é lote aberto com `dueAt` anterior ao instante atual.
+Regras:
 
-### 6. Relatórios
+- **Itens em posse (`activeInHand`):** itens `COM_VENDEDORA` em lotes abertos.
+- **Giro:** média arredondada entre o último evento de etiquetagem e a venda.
+- **Estoque parado:** peça `ETIQUETADA` há pelo menos 60 dias.
+- **Atraso:** lote aberto com `dueAt` anterior ao instante atual.
 
-Todos exigem `OWNER`. A exportação CSV atual é local no navegador; estes endpoints retornam JSON.
+As chaves de `stageCounts` são minúsculas porque o frontend (`DashboardResponse`) as indexa assim.
 
-#### `GET /reports/turnover?from=YYYY-MM-DD&to=YYYY-MM-DD`
+### 6. Relatórios ⏳ (BACK_09)
 
-Retorna itens vendidos no intervalo inclusivo: `code`, `type`, `valueCents`, `soldAt`, `sellerId`, `sellerName`, `daysToSell`, além de `summary.soldCount` e `summary.soldValueCents`.
+Todos exigem `OWNER`. A exportação CSV é local no navegador; estes endpoints retornam JSON. Datas `YYYY-MM-DD` são locais no fuso da loja e viram o intervalo semiaberto `[from, to+1d)`.
 
-#### `GET /reports/overdue`
+#### `GET /reports/turnover?from=YYYY-MM-DD&to=YYYY-MM-DD` ⏳
 
-Retorna por vendedora: `sellerId`, `sellerName`, `phone`, `lateLots`, `piecesInHand`, `valueAtRiskCents`, `maxOverdueDays`. Considerar lotes abertos vencidos e itens ainda com a vendedora.
+Retorna os itens vendidos no intervalo inclusivo:
 
-#### `GET /reports/stale-pieces?days=60`
+- por item: `code`, `type`, `valueCents`, `soldAt`, `sellerId`, `sellerName` e `daysToSell`;
+- no resumo: `summary.soldCount` e `summary.soldValueCents`.
 
-Retorna peças etiquetadas paradas há pelo menos `days`, com `id`, `code`, `type`, `valueCents`, `daysStopped`, e resumo de quantidade/valor.
+BACK_23: cada linha ganha `totalCostCents` e `marginCents` (preço − custo − comissão), ambos `null` quando a peça não tem custo informado. O resumo ganha `summary.marginCents`, somando só as peças com custo.
 
-### 7. Configurações
+#### `GET /reports/overdue` ⏳
 
-#### `GET /settings`
+Retorna, por vendedora: `sellerId`, `sellerName`, `phone`, `lateLots`, `piecesInHand`, `valueAtRiskCents` e `maxOverdueDays`. Considera lotes abertos vencidos e itens ainda com a vendedora.
 
-Acesso owner. Retorna faixa de comissão, taxa padrão, termos de pagamento, prazo padrão e timezone.
+#### `GET /reports/stale-pieces?days=60` ⏳
 
-#### `PATCH /settings`
+Retorna as peças etiquetadas paradas há pelo menos `days`, com `id`, `code`, `type`, `valueCents` e `daysStopped`, mais um resumo de quantidade e valor.
 
-Request:
+### 7. Configurações ✅
+
+#### `GET /settings` ✅
+
+Acesso owner (staff passa a ter leitura na BACK_08). Retorna:
+
+- `id`;
+- `commissionMin`, `commissionMax`, `commissionStep` e `defaultCommissionRate`;
+- `paymentTerms`;
+- `defaultConsignmentDays` e `timezone`;
+- `updatedAt` e `updatedById`.
+
+A faixa de comissão vem nesta resposta. Não existe rota separada `/settings/commission-ranges`.
+
+#### `PATCH /settings` ✅
+
+Acesso owner; exige `Idempotency-Key`. Request (**todos os campos obrigatórios**):
 
 ```json
 {
@@ -548,185 +760,297 @@ Request:
 }
 ```
 
-Validar taxa entre mínimo/máximo e no step; ao menos um termo permitido; prazo maior ou igual a 1; timezone válido.
+Validações (todas retornam `400 VALIDATION_ERROR` com o campo em `fields`):
 
-#### `GET /settings/commission-ranges`
+- `defaultCommissionRate`: entre o mínimo e o máximo, respeitando o passo.
+- `paymentTerms`: lista não vazia, sem repetição e só com valores de 30, 60 e 90. É salva ordenada.
+- `defaultConsignmentDays`: maior ou igual a 1.
+- `timezone`: um ID IANA válido.
 
-Opcional; pode ser incorporado ao `GET /settings`.
+A faixa de comissão (25 a 40, passo 5) e as opções de prazo (30/60/90) são fixas nesta versão. Response `200`: `SettingsResponse`. Grava auditoria `SETTINGS_UPDATED`.
 
-### 8. Fotos
+### 8. Fotos ⏳ (BACK_07)
 
-#### `POST /uploads/piece-photo`
+As fotos ficam no próprio PostgreSQL (tabela `piece_photos`, coluna `bytea`). O front já reduz cada imagem para 320 px, então cada foto tem de 20 a 40 KB.
 
-`multipart/form-data`, campo `file`. Validar MIME real, extensão, tamanho, dimensões e conteúdo; remover EXIF se necessário; armazenar no S3 e retornar URL ou chave.
+#### `POST /uploads/piece-photo` ⏳
+
+Acesso owner/staff; `multipart/form-data`, campo `file`; exige `Idempotency-Key`.
+
+- Aceitar só JPEG, PNG ou WebP, identificados pela assinatura dos bytes (não pela extensão nem pelo `Content-Type` enviado). Rejeitar SVG e outros formatos.
+- Tamanho máximo de 1 MB e dimensões máximas de 2000×2000 px.
+- Nunca usar o nome do arquivo enviado; o ID é um UUID aleatório.
+- Rate limit por usuário.
+
+Response `201`:
 
 ```json
 {
-  "photoUrl": "https://storage.example/pieces/uuid.jpg",
+  "photoId": "uuid",
+  "photoUrl": "/api/v1/photos/uuid",
   "width": 320,
   "height": 240
 }
 ```
 
-Se o bucket for privado, retornar URL pré-assinada na leitura. Impressão permanece local via `window.print()`; PDF só se virar requisito (`GET /consignments/{id}/pdf`).
+Erros: `400 VALIDATION_ERROR` (arquivo ausente, tipo, tamanho ou dimensões inválidos) e `429 RATE_LIMITED`.
+
+#### `GET /photos/{photoId}` ⏳
+
+Pública: uma tag `<img>` não envia o token. A segurança vem do ID aleatório, que ninguém consegue adivinhar. Devolve os bytes com:
+
+- o `Content-Type` salvo;
+- `Cache-Control: public, max-age=31536000, immutable`, porque uma foto nunca muda (foto nova = ID novo);
+- `X-Content-Type-Options: nosniff`.
+
+Foto inexistente: `404 NOT_FOUND`.
+
+### 9. Usuários ⏳ (BACK_19)
+
+Todas as rotas exigem `OWNER`, e as mutations exigem `Idempotency-Key`. Não há e-mail: o owner cria a conta com uma senha temporária e a entrega pessoalmente. Na primeira entrada, o sistema obriga a pessoa a trocar essa senha.
+
+A senha temporária é **digitada pelo owner** e nunca devolvida pela API. Assim ela não fica salva no corpo de resposta guardado pela idempotência.
+
+#### `GET /users` ⏳
+
+Lista paginada de `UserResponse` (`id`, `name`, `email`, `role`, `active`, `mustChangePassword`, `createdAt`, `updatedAt`). Query: `q` (nome ou e-mail), `role`, `active`.
+
+#### `POST /users` ⏳
+
+Request: `{ "name", "email", "role": "owner" | "staff", "temporaryPassword" }`. A senha temporária tem de 12 a 72 caracteres. Cria o usuário ativo e com `mustChangePassword = true`. Response `201`: `UserResponse`. Grava auditoria `USER_CREATED`.
+
+Erros: `409 EMAIL_ALREADY_USED` e `400 VALIDATION_ERROR`.
+
+#### `PATCH /users/{userId}` ⏳
+
+Aceita `name`, `role` e `active`. Desativar o usuário ou mudar o papel dele incrementa `authVersion` e revoga os refresh tokens, o que o desloga na hora. Grava auditoria `USER_UPDATED`.
+
+Erros:
+
+- `422 LAST_OWNER`: a operação deixaria a loja sem nenhum owner ativo.
+- `422 CANNOT_DEACTIVATE_SELF`: o owner tentou desativar a própria conta.
+- `404 USER_NOT_FOUND`.
+
+#### `POST /users/{userId}/reset-password` ⏳
+
+Request: `{ "temporaryPassword" }`. Grava a nova senha, liga `mustChangePassword`, incrementa `authVersion` e revoga os refresh tokens. Resposta `204`. Grava auditoria `USER_PASSWORD_RESET`.
 
 ## Regras transacionais e de domínio
 
-1. Código de peça `LU-XXXX`: sequence atômica; nunca contar registros.
-2. Código de lote `C-YYYY-NNN`: sequence por ano com lock; nunca contar registros.
+1. Código de peça `LU-XXXX`: sequence atômica (`code_sequences`, escopo `PIECE`); nunca contar registros.
+2. Código de lote `C-YYYY-NNN`: sequence por ano; nunca contar registros.
 3. Transições: `FABRICA -> BANHO_OURO -> ETIQUETADA -> CONSIGNACAO -> VENDIDA`.
 4. Devolução: `CONSIGNACAO -> DEVOLVIDA -> ETIQUETADA`.
 5. Eventos são imutáveis; toda mudança gera evento.
 6. Criação de consignação atualiza lote, itens, peças e eventos atomicamente.
 7. Venda/devolução atualiza item, peça e eventos atomicamente.
-8. Lote fica `QUITADA` quando não restar item `COM_VENDEDORA`.
+8. Lote fica `QUITADA` quando não restar item `COM_VENDEDORA`, inclusive quando todos foram devolvidos.
 9. Comissão histórica usa snapshot do item.
 10. Sem exclusão física na UI; usar inativação/arquivamento.
 11. Concorrência devolve `409`, com retry seguro via idempotência.
-12. Usar `Clock` injetado para testes e timezone oficial para vencimentos/relatórios.
+12. Usar `Clock` injetado (testável com `Clock.fixed`) e o timezone de `settings` para vencimentos/relatórios.
 
 ## Services e transações esperados
+
+Padrão das mutations já implementadas: o service envolve a operação em `IdempotencyService.execute` dentro da transação e devolve um `IdempotentResponse(status, body)`; o controller só repassa o status e o corpo.
 
 ```java
 @Service
 public class ConsignmentApplicationService {
 
     @Transactional
-    public ConsignmentResponse create(CreateConsignmentRequest request,
-                                      CurrentUser actor,
-                                      String idempotencyKey) {
-        // sellerRepository.findActive(...)
-        // pieceRepository.findAllForUpdate(...)
-        // validar todos como ETIQUETADA
-        // sequenceService.nextConsignmentCode(clock, lock)
-        // salvar lote, snapshots, peças, eventos e auditoria
+    @PreAuthorize("hasAnyRole('OWNER', 'STAFF')")
+    public IdempotentResponse create(UUID actorId, String idempotencyKey,
+                                     CreateConsignmentRequest request) {
+        return idempotencyService.execute(actorId, "consignments.create", idempotencyKey, request, () -> {
+            // sellerService.requireActiveForConsignment(...)
+            // pieceRepository.findAllForUpdate(...)
+            // validar todos como ETIQUETADA
+            // reservar código C-YYYY-NNN em code_sequences
+            // salvar lote, snapshots, peças, eventos e auditoria
+            return new IdempotentResponse(201, objectMapper.valueToTree(response));
+        });
     }
 
     @Transactional
-    public ConsignmentItemActionResponse markSold(UUID consignmentId,
-                                                  UUID pieceId,
-                                                  MarkSoldRequest request,
-                                                  CurrentUser actor) {
-        // lock item + peça; aplicar transição idempotente
+    public IdempotentResponse markSold(UUID actorId, String idempotencyKey,
+                                       UUID consignmentId, UUID pieceId, MarkSoldRequest request) {
+        // lock item + peça; aplicar transição; quitar lote se necessário
     }
 }
 ```
 
-Não colocar regras de negócio em controllers, entities ou repositories. Exemplo de repository com lock:
+Não colocar regras de negócio em controllers, entities ou repositories. Exemplo de repository com lock (já existe em `PieceRepository`):
 
 ```java
 @Lock(LockModeType.PESSIMISTIC_WRITE)
-@Query("select p from PieceEntity p where p.id in :ids")
+@Query("select piece from PieceEntity piece where piece.id in :ids")
 List<PieceEntity> findAllForUpdate(@Param("ids") Collection<UUID> ids);
 ```
 
-## Testes obrigatórios
+## Testes
 
-### Unitários
+**Decisão de 2026-10-30:** o backend usa apenas testes unitários com **JUnit 5 + Mockito**. Testcontainers não faz parte do projeto, e `./gradlew test` roda sem Docker nem PostgreSQL.
+
+### Unitários (services)
+
+Um arquivo de teste por service, no mesmo pacote do código (`src/test/java/br/com/luma/<domínio>/service`), com repositories mockados, `Clock.fixed` e `ObjectMapper` real. Cobrir:
 
 - transições válidas e inválidas de peça;
-- cálculo de atraso, giro, estoque parado e comissão;
+- cálculo de atraso, giro, estoque parado e comissão (limites de período e timezone);
 - validação de comissão, prazos e datas;
-- geração de códigos e timezone usando `Clock.fixed`.
+- formatação de códigos e ordem dos eventos;
+- login, refresh, logout e troca de senha (rotação, reuso, expiração, `authVersion`);
+- rate limit e validação do JWT;
+- idempotência: replay, payload diferente e chave em andamento;
+- rollback por exceção: nenhuma escrita depois de uma validação falhar;
+- upload: rejeitar arquivo inválido e chave com path traversal.
 
-### Integração com Testcontainers
+### Contexto e HTTP (MockMvc + H2)
 
-- migrations Flyway em PostgreSQL real;
-- login, refresh, logout e senha nunca exposta;
-- autorização owner/staff em todas as rotas;
-- consignação concorrente falha inteira sem efeitos parciais;
-- duas requisições simultâneas não geram código duplicado;
-- venda/devolução repetidas são idempotentes;
-- alteração da comissão não altera vendas históricas;
-- relatórios respeitam limites de data e timezone;
-- upload rejeita arquivo inválido e não permite path traversal.
+`LumaApplicationTests` sobe o contexto com o perfil `test` (H2 em memória, Flyway desligado) para validar:
 
-### Controller tests
+- rotas públicas e protegidas;
+- `ProblemDetail` e `X-Request-Id`;
+- erros de validação sem eco dos valores enviados;
+- documento OpenAPI.
 
-Usar `MockMvc` para status, payload, `ProblemDetail`, paginação e headers de autenticação. Gerar OpenAPI e validar o frontend contra o contrato.
+Esses testes não dependem do schema.
 
-## `application.yml` inicial
+### O que os testes automatizados não cobrem
+
+Constraints, triggers, índices parciais, migrations Flyway e concorrência real (código duplicado, mesma peça em dois lotes) dependem de PostgreSQL. Essas garantias ficam no próprio banco, via migrations, e precisam de validação manual em ambiente local antes de cada release (ver BACK_10).
+
+## `application.yml`
 
 ```yaml
 spring:
-  datasource:
-    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/luma}
-    username: ${DATABASE_USERNAME:luma}
-    password: ${DATABASE_PASSWORD:change-me}
+  application:
+    name: mimo-backend
+  profiles:
+    default: local
   jpa:
     open-in-view: false
     hibernate:
       ddl-auto: validate
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
   flyway:
     enabled: true
-  jackson:
-    time-zone: UTC
+app:
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
+  security:
+    jwt:
+      issuer: ${JWT_ISSUER:luma-api}
+      secret: ${JWT_SECRET:} # Base64, >= 32 bytes; obrigatório em prod
+      access-token-ttl: ${JWT_ACCESS_TOKEN_TTL:PT15M}
+      refresh-token-ttl: ${JWT_REFRESH_TOKEN_TTL:P30D}
+    bootstrap-owner:
+      enabled: ${BOOTSTRAP_OWNER_ENABLED:false}
+      name: ${BOOTSTRAP_OWNER_NAME:}
+      email: ${BOOTSTRAP_OWNER_EMAIL:}
+      password: ${BOOTSTRAP_OWNER_PASSWORD:}
+    login-rate-limit:
+      max-attempts: ${LOGIN_MAX_ATTEMPTS:5}
+      window: ${LOGIN_RATE_LIMIT_WINDOW:PT15M}
+  idempotency:
+    ttl: ${IDEMPOTENCY_TTL:P1D}
 
-luma:
-  timezone: ${LUMA_TIMEZONE:America/Sao_Paulo}
-  jwt:
-    issuer: ${JWT_ISSUER:luma-api}
-    access-token-minutes: 15
-  upload:
-    max-image-bytes: 5242880
-    bucket: ${S3_BUCKET:luma-pieces}
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
 ```
+
+O datasource fica nos perfis:
+
+- `application-local.yml`: `DB_URL`, `DB_USERNAME` e `DB_PASSWORD`, com padrões para o `compose.yaml`.
+- `application-prod.yml`: as mesmas variáveis, mais `CORS_ALLOWED_ORIGINS` e `JWT_SECRET`, todas sem valor padrão.
+
+No local e nos testes, sem `JWT_SECRET`, o backend gera uma chave efêmera. O timezone da loja vem de `settings.timezone`, não do YAML. A configuração de upload (tamanho e dimensões máximas) entra com a BACK_07; o cookie de sessão e `server.forward-headers-strategy: framework` entram com a BACK_21.
 
 Segredos devem vir de environment/secrets manager, nunca do repositório.
 
-## Integração com o frontend atual
+## Integração com o frontend
 
-Substituir `src/lib/db.ts` e chamadas diretas de `src/lib/domain.ts` por cliente HTTP, preferencialmente React Query, e:
+O frontend substitui `src/lib/db.ts` e as chamadas diretas a `src/lib/domain.ts` por `src/lib/api/*` (cliente HTTP + React Query). Estado em 2026-10-30:
 
-- carregar `GET /auth/me` no bootstrap;
-- tratar `401` renovando token ou redirecionando para login;
-- invalidar queries após cada mutation;
-- trocar `Piece.photo` base64 por `photoUrl`;
-- converter valores com um mapper único entre `valueCents` e o formato exibido;
-- usar `sourcePieceId` na etiquetagem;
-- enviar `Idempotency-Key` em recebimento, etiquetagem e consignação;
-- exibir conflitos `409` e validações `422`;
-- implementar paginação quando a base crescer;
-- não confiar em `next-code` para salvar uma peça.
+- [x] carregar `GET /auth/me` no bootstrap (FRONT_12);
+- [x] tratar `401` renovando token uma vez ou redirecionando para login (FRONT_11/12);
+- [x] invalidar queries após cada mutation (hooks em `src/lib/api/hooks.ts`);
+- [x] converter valores com um mapper único entre `valueCents` e o formato exibido (`src/lib/api/mappers.ts`);
+- [x] enviar `Idempotency-Key` automaticamente em toda mutation fora de `/auth/*` (`src/lib/api/http.ts`);
+- [ ] trocar `Piece.photo` base64 pelo upload (`photoId`) e exibir `photoUrl` (FRONT_13);
+- [ ] usar `sourcePieceId` na etiquetagem (FRONT_13);
+- [ ] exibir conflitos `409` e validações `400`/`422` nas telas (FRONT_13 a 16);
+- [ ] implementar paginação nas listagens (FRONT_13 a 15);
+- [ ] não confiar em `next-code` para salvar uma peça (FRONT_13);
+- [ ] usar `VITE_API_BASE_URL=/api/v1` com proxy na Vercel (`vercel.json`) e no Vite (`server.proxy`), com refresh por cookie (FRONT_22);
+- [ ] tela de troca obrigatória de senha e gestão de usuários (FRONT_20);
+- [ ] campos de custo e margem, visíveis só para owner (FRONT_24).
 
 ## Checklist de implementação
 
-- [ ] Criar projeto Spring Boot com Java 21, Gradle e dependências acima.
-- [ ] Criar PostgreSQL e migrations Flyway.
-- [ ] Implementar entidades, enums, repositories e índices.
-- [ ] Implementar login, JWT, refresh revogável, logout e `/auth/me`.
-- [ ] Implementar `ProblemDetail`, request ID, logs estruturados e auditoria.
-- [ ] Implementar peças, eventos e sequence atômica.
-- [ ] Resolver etiquetagem atualizando a peça existente do banho.
-- [ ] Implementar vendedores, configurações e validações server-side.
-- [ ] Implementar consignações com lock, snapshot e rollback integral.
-- [ ] Implementar venda/devolução idempotentes.
-- [ ] Implementar dashboard e relatórios com consultas agregadas.
-- [ ] Implementar upload S3 com validação.
-- [ ] Cobrir regras com unitários, MockMvc e Testcontainers.
-- [ ] Gerar OpenAPI e integrar o frontend ao contrato.
-- [ ] Configurar Actuator, métricas, backup e observabilidade.
+- [x] Criar projeto Spring Boot com Java 21, Gradle e dependências acima (BACK_01).
+- [x] Criar PostgreSQL e migrations Flyway (BACK_02).
+- [x] Implementar entidades, enums, repositories e índices (BACK_02).
+- [x] Implementar login, JWT, refresh revogável, logout e `/auth/me` (BACK_03).
+- [x] Implementar `ProblemDetail`, request ID, paginação e idempotência (BACK_04).
+- [ ] Implementar logs estruturados (JSON) e auditoria completa (BACK_10). Auditoria de login, vendedoras e settings já existe.
+- [x] Implementar peças, eventos e sequence atômica (BACK_05).
+- [x] Resolver etiquetagem atualizando a peça existente do banho (BACK_05).
+- [x] Implementar vendedores, configurações e validações server-side (BACK_06).
+- [ ] Implementar upload de fotos no PostgreSQL com validação (BACK_07).
+- [ ] Implementar consignações com lock, snapshot e rollback integral (BACK_08).
+- [ ] Implementar venda/devolução idempotentes (BACK_08).
+- [ ] Implementar dashboard e relatórios com consultas agregadas (BACK_09).
+- [ ] Implementar gestão de usuários e troca obrigatória de senha (BACK_19).
+- [ ] Migrar o refresh token para cookie `HttpOnly` e configurar forward headers (BACK_21).
+- [ ] Implementar custos das peças e margem (BACK_23).
+- [x] Cobrir as regras atuais com testes unitários (JUnit 5 + Mockito) e MockMvc. Manter a cobertura a cada nova task.
+- [ ] Integrar todas as telas do frontend ao contrato (FRONT_13 a 18).
+- [ ] Configurar métricas, tracing, backup e observabilidade (BACK_10).
 
-## Decisões de produto pendentes
+## Decisões de produto
 
-1. `staff` pode visualizar e movimentar lotes de qualquer vendedora?
-2. Qual timezone oficial? Sugestão: `America/Sao_Paulo`.
-3. Foto pública ou URL temporária protegida?
-4. Haverá convite, gerenciamento de usuários e recuperação de senha?
-5. O valor é preço de venda, custo, ou ambos? Se houver custo, adicionar `costCents`.
-6. A impressão local é suficiente ou será necessário PDF server-side?
-7. A comissão é a taxa no momento da entrega ou da venda? Recomenda-se snapshot na entrega.
+### Resolvidas
+
+1. **Papel `staff`:** pode usar estoque, etiquetagem e consignações, consultar vendedoras (lista, detalhe e histórico) e ler `GET /settings`. Não acessa dashboard, relatórios, usuários, custos, stats ou comissão, nem altera vendedoras ou configurações.
+2. **Timezone oficial:** `America/Sao_Paulo` por padrão, configurável em `settings.timezone`.
+3. **Etiquetagem:** atualiza a peça que voltou do banho e mantém o código.
+4. **Faixas de comissão e prazos:** fixas nesta versão (25 a 40% em passos de 5; 30/60/90 dias).
+5. **Comissão histórica:** usa o `commission_rate_snapshot` do item, capturado **na entrega** do lote. Mudar a taxa só afeta lotes novos.
+6. **Testes do backend:** apenas JUnit 5 + Mockito, sem Testcontainers.
+7. **Configurações para o staff:** `GET /settings` passa a aceitar `staff` (só leitura); `PATCH` continua exclusivo de owner. Feito como pré-requisito da BACK_08.
+8. **Fotos:** guardadas no PostgreSQL (`bytea`), servidas por `GET /photos/{photoId}` público com ID aleatório. Sem S3; o projeto é acadêmico e roda no Railway (BACK_07).
+9. **Usuários:** menos de 15 pessoas, com um ou mais owners. O owner cadastra os usuários e define uma senha temporária, que o sistema obriga a trocar no primeiro login. Sem convite nem recuperação por e-mail (BACK_19 + FRONT_20).
+10. **Sessão:** refresh token em cookie `HttpOnly` antes do primeiro deploy, com proxy da Vercel para manter front e API na mesma origem (BACK_21 + FRONT_22; explicação em `SESSAO_E_COOKIES.md`).
+11. **Valor e custo:** `valueCents` é o preço de venda. O custo é registrado separado em fábrica (`factoryCostCents`) e banho (`bathCostCents`), opcional e visível só para owner (BACK_23 + FRONT_24).
+12. **Romaneio:** impressão pelo navegador (`window.print()`, com "Salvar como PDF"). Sem PDF no servidor.
+
+### Pendentes
+
+Nenhuma no momento.
 
 ## Mapeamento frontend -> API
 
-| Tela/fluxo        | Endpoints                                                                                          |
-| ----------------- | -------------------------------------------------------------------------------------------------- |
-| Login             | `POST /auth/login`, `GET /auth/me`, `POST /auth/logout`                                            |
-| Dashboard         | `GET /dashboard`                                                                                   |
-| Estoque           | `GET /pieces`, `GET /pieces/{id}`, `GET /pieces/{id}/events`, `POST /pieces/receive`               |
-| Etiquetagem       | `POST /uploads/piece-photo`, `POST /pieces/label`                                                  |
-| Consignação       | `GET /sellers`, `POST /consignments`, `GET /sellers/{id}/consignments`                             |
-| Venda/devolução   | `POST /consignments/{id}/items/{pieceId}/sold`, `POST /consignments/{id}/items/{pieceId}/returned` |
-| Relatórios        | `GET /reports/turnover`, `GET /reports/overdue`, `GET /reports/stale-pieces`                       |
-| Configurações     | `GET /sellers`, `POST /sellers`, `PATCH /sellers/{id}`, `GET/PATCH /settings`                      |
-| Analytics técnico | endpoint de `VITE_ENTER_ANALYTICS_DEFINITIONS_ENDPOINT`, fora do domínio de negócio                |
+| Tela/fluxo        | Endpoints                                                                                                        |
+| ----------------- | ---------------------------------------------------------------------------------------------------------------- |
+| Login             | `POST /auth/login`, `POST /auth/refresh`, `GET /auth/me`, `POST /auth/logout`                                    |
+| Dashboard         | `GET /dashboard`                                                                                                 |
+| Estoque           | `GET /pieces`, `GET /pieces/{id}`, `GET /pieces/{id}/events`, `POST /pieces/receive`                             |
+| Etiquetagem       | `GET /pieces?status=BANHO_OURO`, `POST /uploads/piece-photo`, `POST /pieces/label`, `GET /photos/{id}`           |
+| Consignação       | `GET /sellers`, `GET /settings`, `GET /pieces?status=ETIQUETADA`, `POST /consignments`                           |
+| Detalhe vendedora | `GET /sellers/{id}`, `GET /sellers/{id}/consignments`, `GET /sellers/{id}/stats`, `GET /sellers/{id}/commission` |
+| Venda/devolução   | `POST /consignments/{id}/items/{pieceId}/sold`, `POST /consignments/{id}/items/{pieceId}/returned`               |
+| Relatórios        | `GET /reports/turnover`, `GET /reports/overdue`, `GET /reports/stale-pieces`                                     |
+| Configurações     | `GET /sellers`, `POST /sellers`, `PATCH /sellers/{id}`, `GET/PATCH /settings`, `/users`                          |
+| Troca de senha    | `POST /auth/change-password` (obrigatória quando `mustChangePassword`)                                           |
+| Analytics técnico | endpoint de `VITE_ENTER_ANALYTICS_DEFINITIONS_ENDPOINT`, fora do domínio de negócio                              |
