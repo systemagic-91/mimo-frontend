@@ -50,6 +50,7 @@ export interface ApiUser {
   email: string;
   role: "owner" | "staff";
   active?: boolean;
+  mustChangePassword?: boolean;
   createdAt?: string;
   updatedAt?: string;
 }
