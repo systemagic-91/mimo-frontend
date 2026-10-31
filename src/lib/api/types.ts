@@ -110,7 +110,7 @@ export interface LabelPieceRequest {
   sourcePieceId: string;
   type: string;
   valueCents: number;
-  photoUrl?: string;
+  photoId?: string;
   note?: string;
   backFromBath: boolean;
 }
@@ -284,6 +284,7 @@ export interface UpdateSettingsRequest {
 }
 
 export interface UploadPiecePhotoResponse {
+  photoId: string;
   photoUrl: string;
   width: number;
   height: number;
