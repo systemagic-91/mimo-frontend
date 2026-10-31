@@ -45,7 +45,7 @@ function normalizeEnum<T extends string>(
   return mapped;
 }
 
-export function toBackendPieceStage(value: PieceStage): Uppercase<PieceStage> {
+export function toBackendPieceStage<S extends PieceStage>(value: S): Uppercase<S> {
   const mappings: Record<PieceStage, Uppercase<PieceStage>> = {
     fabrica: "FABRICA",
     banho_ouro: "BANHO_OURO",
@@ -54,7 +54,7 @@ export function toBackendPieceStage(value: PieceStage): Uppercase<PieceStage> {
     vendida: "VENDIDA",
     devolvida: "DEVOLVIDA",
   };
-  return mappings[value];
+  return mappings[value] as Uppercase<S>;
 }
 
 export function fromBackendPieceStage(value: BackendPieceStage): PieceStage {

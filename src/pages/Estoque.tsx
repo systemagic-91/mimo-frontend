@@ -47,7 +47,7 @@ export default function Estoque() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [type, setType] = useState<string>("Brinco");
   const [value, setValue] = useState("");
-  const [stage, setStage] = useState<PieceStage>("fabrica");
+  const [stage, setStage] = useState<"fabrica" | "banho_ouro">("fabrica");
   const [note, setNote] = useState("");
 
   const filtered = useMemo(() => {
@@ -242,7 +242,7 @@ export default function Estoque() {
               <Label htmlFor="rec-stage">Onde chegou</Label>
               <Select
                 value={stage}
-                onValueChange={(v) => setStage(v as PieceStage)}
+                onValueChange={(v) => setStage(v as "fabrica" | "banho_ouro")}
               >
                 <SelectTrigger id="rec-stage">
                   <SelectValue />

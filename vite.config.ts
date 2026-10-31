@@ -1,4 +1,5 @@
-import { defineConfig, PluginOption } from "vitest/config";
+import type { PluginOption } from "vite";
+import { defineConfig } from "vitest/config";
 import { enterDevPlugin, enterProdPlugin } from "vite-plugin-enter-dev";
 import path from "path";
 
