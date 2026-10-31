@@ -150,11 +150,11 @@ Um `@RestControllerAdvice` (`ApiExceptionHandler`) converte exceções em `Probl
 |  `409` | Conflito de estado, concorrência ou idempotência                    | `CONFLICT` (lock otimista/integridade), `INVALID_PIECE_TRANSITION`, `PIECE_NOT_AVAILABLE`, `ITEM_NOT_WITH_SELLER`, `PIECE_STATE_INCONSISTENT`, `IDEMPOTENCY_KEY_REUSED`, `IDEMPOTENCY_IN_PROGRESS` |
 |  `413` | Arquivo maior que o limite                                          | `PHOTO_TOO_LARGE`                                                                                                                                                                                  |
 |  `415` | `Content-Type` não aceito pelo endpoint                             | `UNSUPPORTED_MEDIA_TYPE`                                                                                                                                                                           |
-|  `422` | Regra de negócio                                                    | `INVALID_INITIAL_STAGE`, `SELLER_INACTIVE`, `EMPTY_ITEMS`, `DUE_DATE_IN_PAST`                                                                                                                      |
+|  `422` | Regra de negócio                                                    | `INVALID_INITIAL_STAGE`, `SELLER_INACTIVE`, `EMPTY_ITEMS`, `DUE_DATE_IN_PAST`, `LAST_OWNER`, `CANNOT_DEACTIVATE_SELF`, `CANNOT_CHANGE_OWN_ROLE`, `CANNOT_RESET_OWN_PASSWORD`                     |
 |  `429` | Rate limit                                                          | `RATE_LIMITED`                                                                                                                                                                                     |
 |  `500` | Erro inesperado                                                     | `INTERNAL_ERROR`                                                                                                                                                                                   |
 
-Novos códigos previstos para as próximas tasks: `PASSWORD_CHANGE_REQUIRED`, `EMAIL_ALREADY_USED`, `LAST_OWNER`, `CANNOT_DEACTIVATE_SELF` e `USER_NOT_FOUND` (BACK_19).
+Códigos da BACK_19 fora da tabela: `403 PASSWORD_CHANGE_REQUIRED`, `409 EMAIL_ALREADY_USED` e `404 USER_NOT_FOUND`.
 
 ## Organização do projeto Java
 
@@ -194,10 +194,10 @@ Fluxo: `Controller -> ApplicationService -> Repository`. Controllers recebem DTO
 - Todas as outras rotas exigem JWT válido.
 - `owner`: dashboard, relatórios, configurações, usuários e custos das peças, além dos fluxos operacionais. Pode haver mais de um owner.
 - `staff`: estoque, etiquetagem, consignações, consulta de vendedoras (lista, detalhe e histórico) e **leitura** de `GET /settings`. Não acessa dashboard, relatórios, usuários, custos, mutations de vendedora/configurações nem stats/comissão.
-- Usuário com `mustChangePassword = true` só acessa `GET /auth/me`, `POST /auth/change-password` e `POST /auth/logout`; o resto retorna `403 PASSWORD_CHANGE_REQUIRED` (BACK_19).
+- Usuário com `mustChangePassword = true` só acessa `GET /auth/me`, `POST /auth/change-password` e `POST /auth/logout`; o resto retorna `403 PASSWORD_CHANGE_REQUIRED` (BACK_19). Login e refresh continuam funcionando, e o refresh mantém o bloqueio.
 - A autorização é repetida no service com `@PreAuthorize`, além das regras por rota.
 - Senha com BCrypt; nunca texto puro.
-- Access token JWT HS256 com 15 minutos por padrão. Claims: `sub` (id do usuário), `email`, `roles` e `authVersion`.
+- Access token JWT HS256 com 15 minutos por padrão. Claims: `sub` (id do usuário), `email`, `roles`, `authVersion` e `mustChangePassword`. Toda mudança de `mustChangePassword` incrementa o `authVersion`, então o claim nunca fica desatualizado; o bloqueio da troca obrigatória lê o claim, sem consulta extra ao banco.
   - O `AuthTokenValidator` rejeita o token se o usuário estiver inativo ou se `authVersion` não bater com o banco. Trocar a senha incrementa `authVersion` e invalida na hora todos os access tokens.
 - Refresh token opaco (32 bytes aleatórios), com validade de 30 dias e salvo apenas como hash SHA-256.
   - É rotacionado a cada uso.
@@ -244,9 +244,7 @@ SecurityFilterChain securityFilterChain(HttpSecurity http, ...) throws Exception
 
 ### `users`
 
-`id UUID PK`, `name`, `email` (único por `lower(email)`), `password_hash`, `role`, `active`, `auth_version`, `created_at`, `updated_at`.
-
-A BACK_19 adiciona `must_change_password BOOLEAN NOT NULL DEFAULT false`.
+`id UUID PK`, `name`, `email` (único por `lower(email)`), `password_hash`, `role`, `active`, `auth_version`, `must_change_password` (V6, `BOOLEAN NOT NULL DEFAULT false`), `created_at`, `updated_at`.
 
 ```java
 public enum Role { OWNER, STAFF }
@@ -414,7 +412,6 @@ O e-mail é normalizado (trim + minúsculas). Response `200`:
 
 **Mudanças decididas:**
 
-- **BACK_19:** `user` ganha `mustChangePassword`.
 - **BACK_21:** `refreshToken` sai do corpo. O backend passa a responder com `Set-Cookie: luma_refresh=...; HttpOnly; Secure; SameSite=Strict; Path=/api/v1/auth`.
 
 Erros:
@@ -442,7 +439,7 @@ Request:
 - `currentPassword`;
 - `newPassword`, com 12 a 72 caracteres e diferente da atual.
 
-Resposta `204`. Incrementa `authVersion` e revoga todos os refresh tokens, o que invalida as sessões anteriores na hora. Com a BACK_19, também zera `mustChangePassword`.
+Resposta `204`. Incrementa `authVersion`, revoga todos os refresh tokens (o que invalida as sessões anteriores na hora, inclusive a atual) e zera `mustChangePassword`. Depois da troca, o frontend manda a pessoa para o login, onde ela entra com a senha nova.
 
 Erros: `401 INVALID_CREDENTIALS` (senha atual errada) e `400 PASSWORD_UNCHANGED`.
 
@@ -876,35 +873,46 @@ Pública: uma tag `<img>` não envia o token. A segurança vem do ID aleatório,
 
 Foto inexistente: `404 PHOTO_NOT_FOUND`. ID que não é UUID: `400 INVALID_REQUEST`.
 
-### 9. Usuários ⏳ (BACK_19)
+### 9. Usuários ✅ (BACK_19)
 
-Todas as rotas exigem `OWNER`, e as mutations exigem `Idempotency-Key`. Não há e-mail: o owner cria a conta com uma senha temporária e a entrega pessoalmente. Na primeira entrada, o sistema obriga a pessoa a trocar essa senha.
+Todas as rotas exigem `OWNER` (staff `403`), e as mutations exigem `Idempotency-Key`. Não há e-mail: o owner cria a conta com uma senha temporária e a entrega pessoalmente. Na primeira entrada, o sistema obriga a pessoa a trocar essa senha. Não existe exclusão de usuário; contas saem de uso pela desativação.
 
-A senha temporária é **digitada pelo owner** e nunca devolvida pela API. Assim ela não fica salva no corpo de resposta guardado pela idempotência.
+A senha temporária é **digitada pelo owner** e nunca devolvida pela API, gravada na auditoria ou nos logs. Ela também fica fora do fingerprint da idempotência (um SHA-256 sem sal guardado no banco): repetir a mesma chave com outra senha devolve a primeira resposta, em vez de `409`.
 
-#### `GET /users` ⏳
+`UserResponse`: `id`, `name`, `email`, `role` (`owner` | `staff`), `active`, `mustChangePassword`, `createdAt`, `updatedAt`. O mesmo formato vale para `user` no login, no refresh e em `/auth/me`.
 
-Lista paginada de `UserResponse` (`id`, `name`, `email`, `role`, `active`, `mustChangePassword`, `createdAt`, `updatedAt`). Query: `q` (nome ou e-mail), `role`, `active`.
+#### `GET /users` ✅
 
-#### `POST /users` ⏳
+Lista paginada (`PageEnvelope<UserResponse>`). Query: `q` (parte do nome ou do e-mail, sem diferenciar maiúsculas, até 120 caracteres), `role` (`owner` | `staff`), `active` (`true` | `false`), `page`, `pageSize`, `sort` (`name`, `email`, `role`, `active`, `createdAt`, `updatedAt`). `role` inválido: `400 VALIDATION_ERROR`.
 
-Request: `{ "name", "email", "role": "owner" | "staff", "temporaryPassword" }`. A senha temporária tem de 12 a 72 caracteres. Cria o usuário ativo e com `mustChangePassword = true`. Response `201`: `UserResponse`. Grava auditoria `USER_CREATED`.
+#### `POST /users` ✅
 
-Erros: `409 EMAIL_ALREADY_USED` e `400 VALIDATION_ERROR`.
+Request: `{ "name", "email", "role": "owner" | "staff", "temporaryPassword" }`. O e-mail é gravado em minúsculas e a senha temporária tem de 12 a 72 caracteres. Cria o usuário ativo e com `mustChangePassword = true`. Response `201`: `UserResponse`. Grava auditoria `USER_CREATED`.
 
-#### `PATCH /users/{userId}` ⏳
+Erros: `409 EMAIL_ALREADY_USED` (sem diferenciar maiúsculas) e `400 VALIDATION_ERROR`.
 
-Aceita `name`, `role` e `active`. Desativar o usuário ou mudar o papel dele incrementa `authVersion` e revoga os refresh tokens, o que o desloga na hora. Grava auditoria `USER_UPDATED`.
+#### `PATCH /users/{userId}` ✅
+
+Aceita `name`, `email`, `role` e `active` (ao menos um). Response `200`: `UserResponse`. Grava auditoria `USER_UPDATED`.
+
+- Desativar o usuário ou mudar o papel dele incrementa `authVersion` e revoga os refresh tokens: ele é deslogado na hora.
+- Mudar nome ou e-mail não desloga. Reativar também não (a pessoa entra de novo pelo login).
+- O owner pode editar o próprio nome e e-mail, mas não o próprio papel nem desativar a própria conta.
 
 Erros:
 
-- `422 LAST_OWNER`: a operação deixaria a loja sem nenhum owner ativo.
+- `422 LAST_OWNER`: a operação deixaria a loja sem nenhum owner ativo. Os owners ativos são travados (`FOR UPDATE`) antes da contagem, então dois owners desativando um ao outro ao mesmo tempo não zeram a loja.
 - `422 CANNOT_DEACTIVATE_SELF`: o owner tentou desativar a própria conta.
+- `422 CANNOT_CHANGE_OWN_ROLE`: o owner tentou mudar o próprio papel.
+- `409 EMAIL_ALREADY_USED`.
 - `404 USER_NOT_FOUND`.
+- `400 VALIDATION_ERROR` (nenhum campo, nome vazio, e-mail inválido).
 
-#### `POST /users/{userId}/reset-password` ⏳
+#### `POST /users/{userId}/reset-password` ✅
 
-Request: `{ "temporaryPassword" }`. Grava a nova senha, liga `mustChangePassword`, incrementa `authVersion` e revoga os refresh tokens. Resposta `204`. Grava auditoria `USER_PASSWORD_RESET`.
+Request: `{ "temporaryPassword" }` (12 a 72 caracteres). Grava a nova senha, liga `mustChangePassword`, incrementa `authVersion` e revoga os refresh tokens. Response `200`: `UserResponse` atualizado (sem a senha). Grava auditoria `USER_PASSWORD_RESET`. Funciona também para usuário inativo, que continua inativo.
+
+Erros: `422 CANNOT_RESET_OWN_PASSWORD` (o owner deve usar `POST /auth/change-password`) e `404 USER_NOT_FOUND`.
 
 ## Regras transacionais e de domínio
 
@@ -1114,7 +1122,7 @@ O frontend substitui `src/lib/db.ts` e as chamadas diretas a `src/lib/domain.ts`
 - [x] Implementar consignações com lock, snapshot e rollback integral (BACK_08).
 - [x] Implementar venda/devolução idempotentes (BACK_08).
 - [x] Implementar dashboard e relatórios com consultas agregadas (BACK_09).
-- [ ] Implementar gestão de usuários e troca obrigatória de senha (BACK_19).
+- [x] Implementar gestão de usuários e troca obrigatória de senha (BACK_19).
 - [ ] Migrar o refresh token para cookie `HttpOnly` e configurar forward headers (BACK_21).
 - [ ] Implementar custos das peças e margem (BACK_23).
 - [x] Cobrir as regras atuais com testes unitários (JUnit 5 + Mockito) e MockMvc. Manter a cobertura a cada nova task.
