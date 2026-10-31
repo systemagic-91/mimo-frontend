@@ -266,9 +266,7 @@ public enum Role { OWNER, STAFF }
 
 A V5 (BACK_07) trocou a antiga `photo_url` por `photo_id`. Uma mesma foto pode ser ligada a mais de uma peça.
 
-Mudanças decididas:
-
-- **BACK_23:** custos opcionais, visíveis só para owner: `factory_cost_cents BIGINT NULL CHECK (>= 0)` (custo da fábrica) e `bath_cost_cents BIGINT NULL CHECK (>= 0)` (custo do banho). O custo total é a soma dos dois e não é persistido.
+A V7 (BACK_23) adicionou os custos opcionais, visíveis só para owner: `factory_cost_cents BIGINT NULL CHECK (>= 0)` (custo da fábrica) e `bath_cost_cents BIGINT NULL CHECK (>= 0)` (custo do banho). O custo total é a soma dos dois e não é persistido.
 
 `value_cents` continua sendo o **preço de venda**: é a base da comissão e do valor em posse.
 
@@ -363,12 +361,12 @@ public record PieceResponse(
     String currentLocation,
     String photoUrl,          // derivado de photo_id -> "/api/v1/photos/{photoId}"; null sem foto
     String note,
+    Long factoryCostCents,    // null para staff ou não informado
+    Long bathCostCents,       // null para staff ou não informado
+    Long totalCostCents,      // soma dos informados; null para staff ou quando nenhum foi informado
     Instant createdAt,
     Instant updatedAt,
-    long version,
-    Long factoryCostCents,    // BACK_23: null para staff
-    Long bathCostCents,       // BACK_23: null para staff
-    Long totalCostCents       // BACK_23: null para staff ou sem custo informado
+    long version
 ) {}
 ```
 
@@ -444,7 +442,7 @@ Erros: `401 INVALID_CREDENTIALS` (senha atual errada) e `400 PASSWORD_UNCHANGED`
 
 ### 2. Peças e estoque ✅
 
-Acesso owner/staff em todas as rotas. Campos de custo só aparecem e só podem ser enviados por owner (BACK_23).
+Acesso owner/staff em todas as rotas. Campos de custo só aparecem e só podem ser enviados por owner (BACK_23): para staff, `factoryCostCents`, `bathCostCents` e `totalCostCents` vêm sempre `null` na lista, no detalhe e nas respostas de recebimento e etiquetagem.
 
 #### `GET /pieces` ✅
 
@@ -493,7 +491,7 @@ Regras:
 
 Response `201`: `{ "piece": { ... }, "events": [ ... ] }`.
 
-BACK_23: aceita `factoryCostCents` opcional. Se um staff enviar esse campo, a resposta é `403 FORBIDDEN`.
+Aceita `factoryCostCents` opcional (centavos, `>= 0`; negativo é `400 VALIDATION_ERROR`). Se um staff enviar esse campo com valor, a resposta é `403 FORBIDDEN` e nada é salvo; `null` equivale a não enviar. Custo informado grava auditoria `PIECE_COSTS_UPDATED`.
 
 #### `POST /pieces/label` ✅
 
@@ -511,7 +509,7 @@ Exige `Idempotency-Key`. Request:
 }
 ```
 
-`photoId` é opcional e é o ID devolvido por `POST /uploads/piece-photo`: só fotos enviadas ao próprio backend podem ser ligadas à peça (o antigo `photoUrl` de texto livre não existe mais). `bathCostCents` é opcional e só para owner (BACK_23).
+`photoId` é opcional e é o ID devolvido por `POST /uploads/piece-photo`: só fotos enviadas ao próprio backend podem ser ligadas à peça (o antigo `photoUrl` de texto livre não existe mais). `bathCostCents` é opcional e só para owner (BACK_23), com as mesmas regras do `factoryCostCents` no recebimento. Sem `bathCostCents`, os custos já gravados na peça são mantidos, inclusive quando quem etiqueta é staff.
 
 **Decisão implementada:** `sourcePieceId` aponta para uma peça existente em `BANHO_OURO`. O service trava essa peça e a atualiza:
 
@@ -531,9 +529,15 @@ Erros:
 
 O frontend ainda cria uma peça nova localmente e precisa migrar para este fluxo na FRONT_13. Nunca deixar duas peças independentes para o mesmo item físico.
 
-#### `PATCH /pieces/{pieceId}/costs` ⏳ (BACK_23)
+#### `PATCH /pieces/{pieceId}/costs` ✅ (BACK_23)
 
-Acesso owner; exige `Idempotency-Key`. Request: `{ "factoryCostCents": 3000, "bathCostCents": 1200 }`. Os dois campos são opcionais e aceitam `null` para limpar o valor. Serve para informar ou corrigir custos depois do recebimento. Response `200`: `PieceResponse`. Grava auditoria `PIECE_COSTS_UPDATED`.
+Acesso owner (staff `403`); exige `Idempotency-Key`. Request: `{ "factoryCostCents": 3000, "bathCostCents": 1200 }`. Serve para informar ou corrigir custos a qualquer momento.
+
+- Campo **ausente** não muda o custo; campo com `null` limpa. Ex.: `{ "bathCostCents": 1500 }` mantém o custo da fábrica.
+- É preciso enviar ao menos um dos dois campos. Valor negativo, não inteiro, texto ou campo desconhecido: `400 VALIDATION_ERROR`.
+- Peça inexistente: `404 PIECE_NOT_FOUND`.
+- Response `200`: `PieceResponse` com os custos.
+- Grava auditoria `PIECE_COSTS_UPDATED` com os dois custos antes (`before_state`) e depois (`after_state`), só quando algo muda.
 
 ### 3. Vendedoras ✅
 
@@ -780,8 +784,11 @@ Vendas no intervalo, em ordem de venda. O período tem no máximo 366 dias; `fro
 - Por item: `code`, `type`, `valueCents` (snapshot do lote), `soldAt`, `sellerId`, `sellerName` e `daysToSell`.
 - `daysToSell` conta a partir da **etiquetagem mais recente antes da venda**: uma peça devolvida e vendida de novo conta a partir da volta ao estoque, não da primeira etiquetagem.
 - Resumo: `summary.soldCount` e `summary.soldValueCents`.
-
-BACK_23: cada linha ganha `totalCostCents` e `marginCents` (preço − custo − comissão), ambos `null` quando a peça não tem custo informado. O resumo ganha `summary.marginCents`, somando só as peças com custo.
+- Custos e margem (BACK_23), por linha:
+  - `commissionCents`: comissão do item, `ROUND(valueCents × commissionRateSnapshot / 100)`;
+  - `totalCostCents`: soma dos custos informados da peça; `null` quando nenhum foi informado;
+  - `marginCents`: `valueCents − custo da fábrica − custo do banho − commissionCents`. Só é calculada quando **os dois** custos estão informados; com custo parcial ou ausente fica `null`, para não mostrar uma margem maior do que a real. Pode ser negativa.
+- No resumo, `summary.marginCents` soma só as peças com os dois custos (`null` se nenhuma tiver), e `summary.piecesWithoutFullCost` diz quantas vendas ficaram de fora.
 
 #### `GET /reports/overdue` ✅
 
@@ -1127,7 +1134,7 @@ O frontend substitui `src/lib/db.ts` e as chamadas diretas a `src/lib/domain.ts`
 - [x] Implementar dashboard e relatórios com consultas agregadas (BACK_09).
 - [x] Implementar gestão de usuários e troca obrigatória de senha (BACK_19).
 - [x] Migrar o refresh token para cookie `HttpOnly` e configurar forward headers (BACK_21).
-- [ ] Implementar custos das peças e margem (BACK_23).
+- [x] Implementar custos das peças e margem (BACK_23).
 - [x] Cobrir as regras atuais com testes unitários (JUnit 5 + Mockito) e MockMvc. Manter a cobertura a cada nova task.
 - [ ] Integrar todas as telas do frontend ao contrato (FRONT_13 a 18).
 - [x] Configurar métricas (owner), tracing (IDs nos logs), CI com validação de migrations, limpeza de chaves de idempotência, backup manual e runbook (BACK_10).
