@@ -30,13 +30,14 @@ Criar uma camada tipada e compartilhada de comunicação com o backend, sem acop
 
 ## Critérios de aceite
 
-- [ ] Todos os requests de domínio passam por um cliente comum, com URL e auth configuráveis.
-- [ ] Erros RFC 7807 preservam código/status e podem ser apresentados em mensagens amigáveis.
-- [ ] Query keys são estáveis e mutations invalidam os dados relacionados.
-- [ ] Conversão dinheiro e enums tem testes unitários para valores de borda.
+- [x] Todos os requests de domínio passam por um cliente comum, com URL e auth configuráveis.
+- [x] Erros RFC 7807 preservam código/status e podem ser apresentados em mensagens amigáveis.
+- [x] Query keys são estáveis e mutations invalidam os dados relacionados.
+- [x] Conversão dinheiro e enums tem testes unitários para valores de borda.
 - [ ] Runner frontend executa testes de hooks/componentes em CI sem exigir backend real.
-- [ ] Mocks permitem testar fluxo sem backend iniciado.
-- [ ] Tela demonstra loading, erro/retry e estado sem resultados com componentes acessíveis.
+  - Parcial: `npm test` (Vitest + MSW) roda sem backend, mas o frontend ainda não tem pipeline de CI configurado.
+- [x] Mocks permitem testar fluxo sem backend iniciado.
+- [x] Tela demonstra loading, erro/retry e estado sem resultados com componentes acessíveis.
 
 ## Observações de dependência
 
