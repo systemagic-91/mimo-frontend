@@ -4,32 +4,33 @@ As tarefas estão numeradas por prioridade global. A numeração indica priorida
 
 ## Tarefas
 
-| Prioridade | Arquivo | Escopo | Status |
-| ---------: | ------- | ------ | ------ |
-| 1 | [BACK_01_FUNDACAO_SPRING_BOOT_GRADLE.md](BACK_01_FUNDACAO_SPRING_BOOT_GRADLE.md) | Projeto Java/Spring Boot, Gradle, dependências e ambientes | ✅ Concluída |
-| 2 | [BACK_02_MODELO_DE_DADOS_E_MIGRACOES.md](BACK_02_MODELO_DE_DADOS_E_MIGRACOES.md) | Schema PostgreSQL, JPA e Flyway | ✅ Concluída |
-| 3 | [BACK_03_AUTENTICACAO_E_AUTORIZACAO.md](BACK_03_AUTENTICACAO_E_AUTORIZACAO.md) | JWT, sessões, papéis e segurança | ✅ Concluída |
-| 4 | [BACK_04_CONTRATOS_HTTP_OPENAPI_E_ERROS.md](BACK_04_CONTRATOS_HTTP_OPENAPI_E_ERROS.md) | Erros, paginação, OpenAPI, request ID e idempotência | ✅ Concluída |
-| 5 | [BACK_05_GESTAO_DE_PECAS_E_HISTORICO.md](BACK_05_GESTAO_DE_PECAS_E_HISTORICO.md) | Estoque, estados e timeline | ✅ Concluída |
-| 6 | [BACK_06_VENDEDORAS_E_CONFIGURACOES.md](BACK_06_VENDEDORAS_E_CONFIGURACOES.md) | Cadastro de vendedoras, parâmetros e comissões | ✅ Concluída |
-| 7 | [BACK_07_UPLOAD_E_ARMAZENAMENTO_DE_FOTOS.md](BACK_07_UPLOAD_E_ARMAZENAMENTO_DE_FOTOS.md) | Upload seguro e fotos no PostgreSQL | ✅ Concluída |
-| 8 | [BACK_08_CONSIGNACOES_VENDAS_E_DEVOLUCOES.md](BACK_08_CONSIGNACOES_VENDAS_E_DEVOLUCOES.md) | Lotes e movimentações transacionais | ✅ Concluída |
-| 9 | [BACK_09_DASHBOARD_E_RELATORIOS.md](BACK_09_DASHBOARD_E_RELATORIOS.md) | Agregados, KPIs e relatórios | ✅ Concluída |
-| 10 | [BACK_10_AUDITORIA_OPERACAO_E_TESTES_INTEGRADOS.md](BACK_10_AUDITORIA_OPERACAO_E_TESTES_INTEGRADOS.md) | Auditoria, CI, observabilidade e aceite integrado | ⏳ Pendente |
-| 11 | [FRONT_11_CLIENTE_HTTP_E_ESTADO_REMOTO.md](FRONT_11_CLIENTE_HTTP_E_ESTADO_REMOTO.md) | Cliente API, React Query, erros e DTOs | ✅ Concluída¹ |
-| 12 | [FRONT_12_LOGIN_SESSAO_E_GUARDS.md](FRONT_12_LOGIN_SESSAO_E_GUARDS.md) | Login e sessão remotos | ✅ Concluída |
-| 13 | [FRONT_13_ESTOQUE_ETIQUETAGEM_E_FOTOS.md](FRONT_13_ESTOQUE_ETIQUETAGEM_E_FOTOS.md) | Estoque, recebimento, etiquetagem e fotos | ⏳ Pendente |
-| 14 | [FRONT_14_VENDEDORAS_E_CONFIGURACOES.md](FRONT_14_VENDEDORAS_E_CONFIGURACOES.md) | Administração de vendedores e parâmetros | ⏳ Pendente |
-| 15 | [FRONT_15_CONSIGNACOES_E_PRESTACAO_DE_CONTAS.md](FRONT_15_CONSIGNACOES_E_PRESTACAO_DE_CONTAS.md) | Wizard, histórico, venda e devolução | ⏳ Pendente |
-| 16 | [FRONT_16_DASHBOARD_E_RELATORIOS.md](FRONT_16_DASHBOARD_E_RELATORIOS.md) | KPIs, relatórios e exportação | ⏳ Pendente |
-| 17 | [FRONT_17_I18N_E_CONTEUDO_DOS_IDIOMAS.md](FRONT_17_I18N_E_CONTEUDO_DOS_IDIOMAS.md) | Traduções e seletor de idioma funcional | ⏳ Pendente |
-| 18 | [FRONT_18_REMOVER_PERSISTENCIA_LOCAL_E_VALIDAR_FLUXOS.md](FRONT_18_REMOVER_PERSISTENCIA_LOCAL_E_VALIDAR_FLUXOS.md) | Remoção do banco local e validação ponta a ponta | ⏳ Pendente |
-| 19 | [BACK_19_GESTAO_DE_USUARIOS.md](BACK_19_GESTAO_DE_USUARIOS.md) | Cadastro de usuários pelo owner e troca obrigatória de senha | ⏳ Pendente |
-| 20 | [FRONT_20_GESTAO_DE_USUARIOS.md](FRONT_20_GESTAO_DE_USUARIOS.md) | Tela de usuários e de troca de senha | ⏳ Pendente |
-| 21 | [BACK_21_REFRESH_TOKEN_EM_COOKIE.md](BACK_21_REFRESH_TOKEN_EM_COOKIE.md) | Refresh token em cookie HttpOnly e IP real atrás de proxy | ⏳ Pendente |
-| 22 | [FRONT_22_SESSAO_COM_COOKIE_E_PROXY_VERCEL.md](FRONT_22_SESSAO_COM_COOKIE_E_PROXY_VERCEL.md) | Sessão por cookie e proxy `/api` na Vercel e no Vite | ⏳ Pendente |
-| 23 | [BACK_23_CUSTO_DAS_PECAS.md](BACK_23_CUSTO_DAS_PECAS.md) | Custos de fábrica e banho, e margem | ⏳ Pendente |
-| 24 | [FRONT_24_CUSTO_DAS_PECAS.md](FRONT_24_CUSTO_DAS_PECAS.md) | Campos de custo e margem para owner | ⏳ Pendente |
+| Prioridade | Arquivo                                                                                                            | Escopo                                                                                  | Status        |
+| ---------: | ------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------- | ------------- |
+|          1 | [BACK_01_FUNDACAO_SPRING_BOOT_GRADLE.md](BACK_01_FUNDACAO_SPRING_BOOT_GRADLE.md)                                   | Projeto Java/Spring Boot, Gradle, dependências e ambientes                              | ✅ Concluída  |
+|          2 | [BACK_02_MODELO_DE_DADOS_E_MIGRACOES.md](BACK_02_MODELO_DE_DADOS_E_MIGRACOES.md)                                   | Schema PostgreSQL, JPA e Flyway                                                         | ✅ Concluída  |
+|          3 | [BACK_03_AUTENTICACAO_E_AUTORIZACAO.md](BACK_03_AUTENTICACAO_E_AUTORIZACAO.md)                                     | JWT, sessões, papéis e segurança                                                        | ✅ Concluída  |
+|          4 | [BACK_04_CONTRATOS_HTTP_OPENAPI_E_ERROS.md](BACK_04_CONTRATOS_HTTP_OPENAPI_E_ERROS.md)                             | Erros, paginação, OpenAPI, request ID e idempotência                                    | ✅ Concluída  |
+|          5 | [BACK_05_GESTAO_DE_PECAS_E_HISTORICO.md](BACK_05_GESTAO_DE_PECAS_E_HISTORICO.md)                                   | Estoque, estados e timeline                                                             | ✅ Concluída  |
+|          6 | [BACK_06_VENDEDORAS_E_CONFIGURACOES.md](BACK_06_VENDEDORAS_E_CONFIGURACOES.md)                                     | Cadastro de vendedoras, parâmetros e comissões                                          | ✅ Concluída  |
+|          7 | [BACK_07_UPLOAD_E_ARMAZENAMENTO_DE_FOTOS.md](BACK_07_UPLOAD_E_ARMAZENAMENTO_DE_FOTOS.md)                           | Upload seguro e fotos no PostgreSQL                                                     | ✅ Concluída  |
+|          8 | [BACK_08_CONSIGNACOES_VENDAS_E_DEVOLUCOES.md](BACK_08_CONSIGNACOES_VENDAS_E_DEVOLUCOES.md)                         | Lotes e movimentações transacionais                                                     | ✅ Concluída  |
+|          9 | [BACK_09_DASHBOARD_E_RELATORIOS.md](BACK_09_DASHBOARD_E_RELATORIOS.md)                                             | Agregados, KPIs e relatórios                                                            | ✅ Concluída  |
+|         10 | [BACK_10_AUDITORIA_OPERACAO_E_OBSERVABILIDADE.md](BACK_10_AUDITORIA_OPERACAO_E_OBSERVABILIDADE.md)                 | Auditoria, métricas, tracing, CI e runbook                                              | ✅ Concluída  |
+|         11 | [FRONT_11_CLIENTE_HTTP_E_ESTADO_REMOTO.md](FRONT_11_CLIENTE_HTTP_E_ESTADO_REMOTO.md)                               | Cliente API, React Query, erros e DTOs                                                  | ✅ Concluída¹ |
+|         12 | [FRONT_12_LOGIN_SESSAO_E_GUARDS.md](FRONT_12_LOGIN_SESSAO_E_GUARDS.md)                                             | Login e sessão remotos                                                                  | ✅ Concluída  |
+|         13 | [FRONT_13_ESTOQUE_ETIQUETAGEM_E_FOTOS.md](FRONT_13_ESTOQUE_ETIQUETAGEM_E_FOTOS.md)                                 | Estoque, recebimento, etiquetagem e fotos                                               | ⏳ Pendente   |
+|         14 | [FRONT_14_VENDEDORAS_E_CONFIGURACOES.md](FRONT_14_VENDEDORAS_E_CONFIGURACOES.md)                                   | Administração de vendedores e parâmetros                                                | ⏳ Pendente   |
+|         15 | [FRONT_15_CONSIGNACOES_E_PRESTACAO_DE_CONTAS.md](FRONT_15_CONSIGNACOES_E_PRESTACAO_DE_CONTAS.md)                   | Wizard, histórico, venda e devolução                                                    | ⏳ Pendente   |
+|         16 | [FRONT_16_DASHBOARD_E_RELATORIOS.md](FRONT_16_DASHBOARD_E_RELATORIOS.md)                                           | KPIs, relatórios e exportação                                                           | ⏳ Pendente   |
+|         17 | [FRONT_17_I18N_E_CONTEUDO_DOS_IDIOMAS.md](FRONT_17_I18N_E_CONTEUDO_DOS_IDIOMAS.md)                                 | Traduções e seletor de idioma funcional                                                 | ⏳ Pendente   |
+|         18 | [FRONT_18_REMOVER_PERSISTENCIA_LOCAL_E_VALIDAR_FLUXOS.md](FRONT_18_REMOVER_PERSISTENCIA_LOCAL_E_VALIDAR_FLUXOS.md) | Remoção do banco local e validação ponta a ponta                                        | ⏳ Pendente   |
+|         19 | [BACK_19_GESTAO_DE_USUARIOS.md](BACK_19_GESTAO_DE_USUARIOS.md)                                                     | Cadastro de usuários pelo owner e troca obrigatória de senha                            | ⏳ Pendente   |
+|         20 | [FRONT_20_GESTAO_DE_USUARIOS.md](FRONT_20_GESTAO_DE_USUARIOS.md)                                                   | Tela de usuários e de troca de senha                                                    | ⏳ Pendente   |
+|         21 | [BACK_21_REFRESH_TOKEN_EM_COOKIE.md](BACK_21_REFRESH_TOKEN_EM_COOKIE.md)                                           | Refresh token em cookie HttpOnly e IP real atrás de proxy                               | ⏳ Pendente   |
+|         22 | [FRONT_22_SESSAO_COM_COOKIE_E_PROXY_VERCEL.md](FRONT_22_SESSAO_COM_COOKIE_E_PROXY_VERCEL.md)                       | Sessão por cookie e proxy `/api` na Vercel e no Vite                                    | ⏳ Pendente   |
+|         23 | [BACK_23_CUSTO_DAS_PECAS.md](BACK_23_CUSTO_DAS_PECAS.md)                                                           | Custos de fábrica e banho, e margem                                                     | ⏳ Pendente   |
+|         24 | [FRONT_24_CUSTO_DAS_PECAS.md](FRONT_24_CUSTO_DAS_PECAS.md)                                                         | Campos de custo e margem para owner                                                     | ⏳ Pendente   |
+|         25 | [BACK_25_TESTES_DE_INTEGRACAO_COM_POSTGRESQL.md](BACK_25_TESTES_DE_INTEGRACAO_COM_POSTGRESQL.md)                   | Testes de integração (Spring Boot Test + JUnit 5) contra PostgreSQL, sem Testcontainers | 💤 Opcional   |
 
 ## Ondas sugeridas
 
@@ -37,18 +38,20 @@ As tarefas estão numeradas por prioridade global. A numeração indica priorida
 2. **Persistência e padrões:** após BACK_01, executar BACK_02 e BACK_04; BACK_03 pode começar junto e fechar após tabelas de usuário/sessão.
 3. **Domínios paralelos:** após schema/padrões, BACK_05, BACK_06 e BACK_07 podem avançar em paralelo.
 4. **Consignação:** BACK_08 depende de BACK_05 e BACK_06; FRONT_13/14/15/16 podem ser implementadas sobre FRONT_11 e mocks sem esperar backend pronto.
-5. **Agregados e hardening:** BACK_09 depende dos domínios de peça, vendedor e consignação; BACK_10 fecha a integração e operação.
+5. **Agregados e hardening:** BACK_09 depende dos domínios de peça, vendedor e consignação; BACK_10 fecha a operação (auditoria, observabilidade, CI e runbook).
 6. **Frontend em paralelo:** FRONT_12 a FRONT_16 dependem de FRONT_11 e podem ser divididas por fluxo. FRONT_17 deve aguardar essas telas para evitar conflitos de edição.
 7. **Fechamento:** FRONT_18 é a última etapa: remover o estado legado somente quando todas as telas usarem API e os testes integrados passarem.
 8. **Antes do primeiro deploy (Vercel + Railway):** BACK_19/FRONT_20 (sem elas não há como criar usuários staff) e BACK_21/FRONT_22 (sessão por cookie e proxy), com o deploy das duas pontas feito junto.
 9. **Evolução:** BACK_23/FRONT_24 (custos e margem) depois de BACK_09/FRONT_13/FRONT_16.
+10. **Opcional:** BACK_25 (testes de integração contra PostgreSQL) a qualquer momento depois da BACK_10, se o time decidir fazer. Nenhuma task depende dela.
 
 ¹ Falta apenas o critério de CI: os testes rodam sem backend (`npm test`), mas o frontend ainda não tem pipeline de CI.
 
-## Estado atual (atualizado em 2026-10-30)
+## Estado atual (atualizado em 2026-10-31)
 
-- **Backend:** autenticação, contratos HTTP, peças/timeline, vendedoras e configurações estão implementados. Os pacotes `upload`, `dashboard` e `report` ainda estão vazios; `consignment` tem apenas entidades, repositories e mappers.
-- **Testes do backend:** apenas testes unitários com JUnit 5 + Mockito (e testes de contexto com H2). Os testes com Testcontainers foram removidos; não é preciso Docker para rodar `./gradlew test`.
+- **Backend:** BACK_01 a BACK_10 implementadas: autenticação, contratos HTTP, peças/timeline, vendedoras e configurações, fotos no PostgreSQL, consignações com venda e devolução, dashboard e relatórios. A BACK_10 (auditoria, métricas, tracing, CI e runbook) também está pronta. Faltam as tasks de antes do deploy (BACK_19, BACK_21) e as de evolução (BACK_23 e a opcional BACK_25).
+- **Testes do backend:** apenas testes unitários com JUnit 5 + Mockito (e testes de contexto com H2). Não há Testcontainers nem testes integrados automatizados; não é preciso Docker para rodar `./gradlew test`. As migrations são validadas no CI contra um PostgreSQL limpo (BACK_10). Testes de integração contra PostgreSQL, sem Testcontainers, estão descritos na BACK_25, que é opcional.
+- **Observabilidade (BACK_10):** tracing só com IDs nos logs, métricas protegidas para owner, logs em JSON só em produção e backup manual com `pg_dump`.
 - **Frontend:** cliente HTTP, hooks React Query (`src/lib/api/hooks.ts`) e login remoto prontos. Já existem hooks para todos os endpoints do contrato, mas as telas, exceto o Login, ainda leem/escrevem o banco local (`useDb` em `src/lib/db.ts`, regras em `src/lib/domain.ts`).
 - **Testes do frontend:** Vitest + Testing Library + MSW configurados (`npm test`); `npm run check` roda lint e verificação de tipos. Detalhes dos scripts em `SCRIPTS_NPM.md`.
 - **i18n:** i18next está inicializado, mas as páginas não usam `useTranslation`; arquivos `en` e `zh-CN` têm conteúdo placeholder e o fallback é `en` (escopo da FRONT_17).

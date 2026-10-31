@@ -25,8 +25,8 @@ Legenda usada nos endpoints: ✅ implementado · ⏳ pendente (task indicada).
 - Spring Security OAuth2 Resource Server + JWT (HS256) para access token.
 - Refresh tokens opacos, persistidos como hash e revogáveis no banco.
 - Bean Validation (`jakarta.validation`).
-- Spring Boot Actuator (somente `health` exposto). Micrometer e OpenTelemetry ficam para a BACK_10.
-- **Testes:** JUnit 5 + Mockito para testes unitários; testes de contexto com MockMvc usam H2 em memória. **O projeto não usa Testcontainers**, e os testes não exigem Docker nem PostgreSQL.
+- Spring Boot Actuator: `health` público e sem detalhes; `metrics` e `prometheus` só para owner (Micrometer, com métricas de negócio `luma.*`). Tracing com Micrometer Tracing + bridge OpenTelemetry, sem exportador: `traceId`/`spanId` em toda linha de log e `X-Trace-Id` em toda resposta. Logs em JSON no perfil `prod`. Detalhes em `TRACING.md`, `METRICAS.md` e `RUNBOOK.md` no backend (BACK_10).
+- **Testes:** JUnit 5 + Mockito para testes unitários; testes de contexto com MockMvc usam H2 em memória. **O projeto não usa Testcontainers nem testes integrados automatizados**, e os testes não exigem Docker nem PostgreSQL. As migrations são validadas no CI contra um PostgreSQL limpo (BACK_10).
 - Fotos das peças guardadas no próprio PostgreSQL (`bytea`) e servidas pelo backend (BACK_07). Sem S3 ou outro storage externo.
 - Hospedagem: frontend na Vercel; backend e PostgreSQL no Railway. A Vercel faz proxy de `/api/*` para o Railway, então o navegador enxerga front e API na mesma origem.
 - Valores monetários persistidos em `long` centavos. A API usa `valueCents`.
@@ -113,6 +113,7 @@ Lombok, MapStruct e Springdoc fazem parte da stack obrigatória. Configure os ma
   - `role` e `status` de vendedora: minúsculos (`owner`, `staff`, `ativa`, `inativa`). Na entrada, aceitam qualquer caixa.
   - `PieceStage`, `ConsignmentStatus` e `ConsignmentItemStatus`: maiúsculos (`FABRICA`, `BANHO_OURO`, `ABERTA`, `COM_VENDEDORA`...). O frontend converte em `src/lib/api/mappers.ts`.
 - Toda resposta inclui `X-Request-Id`. O cliente pode enviar o próprio valor (1 a 64 caracteres: letras, dígitos, `.`, `_`, `-`); valores inválidos são substituídos por `req_<uuid>`. O ID também vai para o MDC de logging.
+- Toda resposta inclui também `X-Trace-Id` (32 caracteres hexadecimais, gerado pelo tracing). Ele aparece em toda linha de log da requisição e serve para encontrá-la nos logs do Railway.
 - O servidor é a fonte de verdade para códigos, timestamps, status e cálculos.
 - Nunca registrar tokens, senhas ou conteúdo de fotos nos logs.
 
@@ -189,6 +190,7 @@ Fluxo: `Controller -> ApplicationService -> Repository`. Controllers recebem DTO
 ### Regras
 
 - Públicos: `POST /api/v1/auth/login`, `POST /api/v1/auth/refresh`, `GET /api/v1/photos/{photoId}`, `/actuator/health`, `/v3/api-docs/**` e Swagger UI. Com a BACK_21 entra também `POST /api/v1/auth/logout`.
+- `/actuator/metrics/**` e `/actuator/prometheus`: só owner (staff `403`, anônimo `401`).
 - Todas as outras rotas exigem JWT válido.
 - `owner`: dashboard, relatórios, configurações, usuários e custos das peças, além dos fluxos operacionais. Pode haver mais de um owner.
 - `staff`: estoque, etiquetagem, consignações, consulta de vendedoras (lista, detalhe e histórico) e **leitura** de `GET /settings`. Não acessa dashboard, relatórios, usuários, custos, mutations de vendedora/configurações nem stats/comissão.
@@ -205,7 +207,7 @@ Fluxo: `Controller -> ApplicationService -> Repository`. Controllers recebem DTO
   - Atrás da Vercel e do Railway, o IP de `getRemoteAddr()` é o do proxy. Em produção é obrigatório usar `server.forward-headers-strategy: framework` para ler o IP real de `X-Forwarded-For`; sem isso, o rate limit trava todos os usuários juntos (BACK_21).
 - CORS restrito às origens de `CORS_ALLOWED_ORIGINS` (padrão local `http://localhost:5173`). Com o proxy da Vercel em produção e o proxy do Vite em desenvolvimento (FRONT_22), o navegador não faz chamadas cross-origin; o CORS fica só como proteção para acessos diretos.
   - Headers permitidos: `Authorization`, `Content-Type`, `Idempotency-Key` e `X-Request-Id`.
-  - Headers expostos: `Location` e `X-Request-Id`.
+  - Headers expostos: `Location`, `X-Request-Id` e `X-Trace-Id`.
 - **Sessão hoje:** os dois tokens vêm no corpo da resposta. O frontend guarda o access token em memória e o refresh token em `sessionStorage`. É um compromisso de desenvolvimento.
 - **Sessão decidida (BACK_21 + FRONT_22, antes do primeiro deploy):**
   - o refresh token sai do corpo da resposta e passa a viajar só no cookie `luma_refresh` (`HttpOnly; Secure; SameSite=Strict; Path=/api/v1/auth; Max-Age` = validade do token);
@@ -699,7 +701,7 @@ Erros:
 - `409 PIECE_NOT_AVAILABLE`: alguma peça não está `ETIQUETADA` (a mensagem cita os códigos; `fields.pieceIds` lista os IDs);
 - `409 PIECE_STATE_INCONSISTENT`: peça em estoque mas ainda ativa em outro lote.
 
-Duas criações simultâneas com a mesma peça: uma recebe `201` e a outra `409 PIECE_NOT_AVAILABLE` (verificado contra PostgreSQL real).
+Duas criações simultâneas com a mesma peça: uma recebe `201` e a outra `409 PIECE_NOT_AVAILABLE` (verificado manualmente contra PostgreSQL real durante a BACK_08).
 
 #### `POST /consignments/{consignmentId}/items/{pieceId}/sold` ✅
 
@@ -957,7 +959,7 @@ List<PieceEntity> findAllForUpdate(@Param("ids") Collection<UUID> ids);
 
 ## Testes
 
-**Decisão de 2026-10-30:** o backend usa apenas testes unitários com **JUnit 5 + Mockito**. Testcontainers não faz parte do projeto, e `./gradlew test` roda sem Docker nem PostgreSQL.
+**Decisão de 2026-10-30, confirmada em 2026-10-31:** o backend usa apenas testes unitários com **JUnit 5 + Mockito** e testes de contexto com H2. Não há Testcontainers nem testes integrados automatizados (API → banco, concorrência), e `./gradlew test` roda sem Docker nem PostgreSQL.
 
 ### Unitários (services)
 
@@ -986,11 +988,14 @@ Esses testes não dependem do schema.
 
 ### O que os testes automatizados não cobrem
 
-Constraints, triggers, índices parciais, migrations Flyway e concorrência real (código duplicado, mesma peça em dois lotes) dependem de PostgreSQL. Essas garantias ficam no próprio banco, via migrations, e precisam de validação manual em ambiente local antes de cada release (ver BACK_10).
+Constraints, triggers, índices parciais, migrations Flyway e concorrência real (código duplicado, mesma peça em dois lotes) dependem de PostgreSQL. Essas garantias ficam no próprio banco, via migrations. Desde a BACK_10, o CI aplica todas as migrations num PostgreSQL limpo (_service container_ do GitHub Actions, que não é Testcontainers) e falha se alguma for inválida. A concorrência real foi verificada manualmente nas BACK_07 a BACK_09 e não tem teste automatizado.
 
 ## `application.yml`
 
 ```yaml
+server:
+  port: ${PORT:8080}
+
 spring:
   application:
     name: mimo-backend
@@ -1029,6 +1034,10 @@ app:
       window: ${LOGIN_RATE_LIMIT_WINDOW:PT15M}
   idempotency:
     ttl: ${IDEMPOTENCY_TTL:P1D}
+    retention-after-expiry: ${IDEMPOTENCY_RETENTION:P7D}
+    cleanup:
+      cron: ${IDEMPOTENCY_CLEANUP_CRON:0 30 3 * * *}
+      zone: ${IDEMPOTENCY_CLEANUP_ZONE:America/Sao_Paulo}
   uploads:
     rate-limit:
       max-uploads: ${UPLOAD_MAX_PER_WINDOW:30}
@@ -1041,16 +1050,32 @@ management:
   endpoints:
     web:
       exposure:
-        include: health
+        include: health,metrics,prometheus
   endpoint:
     health:
       show-details: never
+  metrics:
+    tags:
+      application: ${spring.application.name}
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+  tracing:
+    sampling:
+      probability: ${TRACING_SAMPLING_PROBABILITY:1.0}
+
+logging:
+  pattern:
+    correlation: ""
+    level: "%5p [requestId:%X{requestId:-} traceId:%X{traceId:-} spanId:%X{spanId:-}]"
 ```
 
 O datasource fica nos perfis:
 
 - `application-local.yml`: `DB_URL`, `DB_USERNAME` e `DB_PASSWORD`, com padrões para o `compose.yaml`.
-- `application-prod.yml`: as mesmas variáveis, mais `CORS_ALLOWED_ORIGINS` e `JWT_SECRET`, todas sem valor padrão.
+- `application-prod.yml`: as mesmas variáveis, mais `CORS_ALLOWED_ORIGINS` e `JWT_SECRET`, todas sem valor padrão, e `logging.structured.format.console: logstash` (logs em JSON).
+
+A lista completa de variáveis de ambiente está no `RUNBOOK.md` do backend.
 
 No local e nos testes, sem `JWT_SECRET`, o backend gera uma chave efêmera. O timezone da loja vem de `settings.timezone`, não do YAML. A configuração de upload (tamanho e dimensões máximas) entra com a BACK_07; o cookie de sessão e `server.forward-headers-strategy: framework` entram com a BACK_21.
 
@@ -1081,20 +1106,20 @@ O frontend substitui `src/lib/db.ts` e as chamadas diretas a `src/lib/domain.ts`
 - [x] Implementar entidades, enums, repositories e índices (BACK_02).
 - [x] Implementar login, JWT, refresh revogável, logout e `/auth/me` (BACK_03).
 - [x] Implementar `ProblemDetail`, request ID, paginação e idempotência (BACK_04).
-- [ ] Implementar logs estruturados (JSON) e auditoria completa (BACK_10). Auditoria de login, vendedoras e settings já existe.
+- [x] Implementar logs estruturados (JSON em produção) e auditoria completa (BACK_10): login, troca de senha, vendedoras, settings, recebimento e etiquetagem de peças, upload, consignação, venda e devolução.
 - [x] Implementar peças, eventos e sequence atômica (BACK_05).
 - [x] Resolver etiquetagem atualizando a peça existente do banho (BACK_05).
 - [x] Implementar vendedores, configurações e validações server-side (BACK_06).
-- [ ] Implementar upload de fotos no PostgreSQL com validação (BACK_07).
-- [ ] Implementar consignações com lock, snapshot e rollback integral (BACK_08).
-- [ ] Implementar venda/devolução idempotentes (BACK_08).
-- [ ] Implementar dashboard e relatórios com consultas agregadas (BACK_09).
+- [x] Implementar upload de fotos no PostgreSQL com validação (BACK_07).
+- [x] Implementar consignações com lock, snapshot e rollback integral (BACK_08).
+- [x] Implementar venda/devolução idempotentes (BACK_08).
+- [x] Implementar dashboard e relatórios com consultas agregadas (BACK_09).
 - [ ] Implementar gestão de usuários e troca obrigatória de senha (BACK_19).
 - [ ] Migrar o refresh token para cookie `HttpOnly` e configurar forward headers (BACK_21).
 - [ ] Implementar custos das peças e margem (BACK_23).
 - [x] Cobrir as regras atuais com testes unitários (JUnit 5 + Mockito) e MockMvc. Manter a cobertura a cada nova task.
 - [ ] Integrar todas as telas do frontend ao contrato (FRONT_13 a 18).
-- [ ] Configurar métricas, tracing, backup e observabilidade (BACK_10).
+- [x] Configurar métricas (owner), tracing (IDs nos logs), CI com validação de migrations, limpeza de chaves de idempotência, backup manual e runbook (BACK_10).
 
 ## Decisões de produto
 
@@ -1112,6 +1137,9 @@ O frontend substitui `src/lib/db.ts` e as chamadas diretas a `src/lib/domain.ts`
 10. **Sessão:** refresh token em cookie `HttpOnly` antes do primeiro deploy, com proxy da Vercel para manter front e API na mesma origem (BACK_21 + FRONT_22; explicação em `SESSAO_E_COOKIES.md`).
 11. **Valor e custo:** `valueCents` é o preço de venda. O custo é registrado separado em fábrica (`factoryCostCents`) e banho (`bathCostCents`), opcional e visível só para owner (BACK_23 + FRONT_24).
 12. **Romaneio:** impressão pelo navegador (`window.print()`, com "Salvar como PDF"). Sem PDF no servidor.
+13. **Testes integrados:** não haverá testes integrados automatizados nem Testcontainers. Migrations são validadas no CI com um PostgreSQL _service container_ (BACK_10).
+14. **Observabilidade:** tracing só com `traceId`/`spanId` nos logs e na resposta, sem serviço externo; métricas em `/actuator/metrics` e `/actuator/prometheus` só para owner; logs em JSON só no perfil `prod` (BACK_10; explicações em `TRACING.md` e `METRICAS.md` no backend).
+15. **Backup:** manual com `pg_dump`/`pg_restore`, documentado no runbook com teste de restauração. Chaves de idempotência vencidas há mais de 7 dias são apagadas por um job diário (BACK_10).
 
 ### Pendentes
 
