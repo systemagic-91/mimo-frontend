@@ -197,6 +197,7 @@ export interface ConsignmentListItem
 }
 
 export interface ConsignmentDetailsDto extends ConsignmentDto {
+  late: boolean;
   seller: SellerDto;
   items: ConsignmentItemDto[];
 }
@@ -204,7 +205,7 @@ export interface ConsignmentDetailsDto extends ConsignmentDto {
 export interface CreateConsignmentRequest {
   sellerId: string;
   pieceIds: string[];
-  dueAt: string;
+  dueDate: string;
   note?: string;
 }
 

@@ -59,14 +59,14 @@ export const consignmentsApi = {
   },
 
   markSold(consignmentId: string, pieceId: string, note?: string) {
-    return apiRequest<ConsignmentDto>(
+    return apiRequest<ConsignmentDetailsDto>(
       `/consignments/${encodeURIComponent(consignmentId)}/items/${encodeURIComponent(pieceId)}/sold`,
       { method: "POST", body: note ? { note } : {} },
     );
   },
 
   markReturned(consignmentId: string, pieceId: string, note?: string) {
-    return apiRequest<ConsignmentDto>(
+    return apiRequest<ConsignmentDetailsDto>(
       `/consignments/${encodeURIComponent(consignmentId)}/items/${encodeURIComponent(pieceId)}/returned`,
       { method: "POST", body: note ? { note } : {} },
     );
