@@ -145,8 +145,10 @@ Um `@RestControllerAdvice` (`ApiExceptionHandler`) converte exceções em `Probl
 |  `400` | JSON inválido, Bean Validation, paginação, idempotência mal formada | `INVALID_REQUEST`, `VALIDATION_ERROR`, `INVALID_PAGINATION`, `INVALID_IDEMPOTENCY_KEY`, `INVALID_IDEMPOTENCY_SCOPE`, `INVALID_IDEMPOTENCY_PAYLOAD`, `PASSWORD_UNCHANGED` |
 |  `401` | Não autenticado ou credencial inválida                              | `UNAUTHENTICATED`, `INVALID_CREDENTIALS`, `INVALID_REFRESH_TOKEN`, `INVALID_ACCESS_TOKEN`                                                                                |
 |  `403` | Sem permissão ou usuário inativo                                    | `FORBIDDEN`, `USER_INACTIVE`                                                                                                                                             |
-|  `404` | Recurso inexistente                                                 | `NOT_FOUND`, `PIECE_NOT_FOUND`, `SELLER_NOT_FOUND`                                                                                                                       |
+|  `404` | Recurso inexistente                                                 | `NOT_FOUND`, `PIECE_NOT_FOUND`, `SELLER_NOT_FOUND`, `PHOTO_NOT_FOUND`                                                                                                    |
 |  `409` | Conflito de estado, concorrência ou idempotência                    | `CONFLICT` (lock otimista/integridade), `INVALID_PIECE_TRANSITION`, `IDEMPOTENCY_KEY_REUSED`, `IDEMPOTENCY_IN_PROGRESS`                                                  |
+|  `413` | Arquivo maior que o limite                                          | `PHOTO_TOO_LARGE`                                                                                                                                                        |
+|  `415` | `Content-Type` não aceito pelo endpoint                             | `UNSUPPORTED_MEDIA_TYPE`                                                                                                                                                 |
 |  `422` | Regra de negócio                                                    | `INVALID_INITIAL_STAGE`, `SELLER_INACTIVE`                                                                                                                               |
 |  `429` | Rate limit                                                          | `RATE_LIMITED`                                                                                                                                                           |
 |  `500` | Erro inesperado                                                     | `INTERNAL_ERROR`                                                                                                                                                         |
@@ -167,7 +169,7 @@ src/main/java/br/com/luma/
   consignment/            # entidades, repositories e mappers (service/controller na BACK_08)
   dashboard/              # BACK_09
   report/                 # BACK_09
-  upload/                 # BACK_07
+  upload/                 # fotos das peças (BACK_07)
 src/main/resources/
   application.yml
   application-local.yml
@@ -177,6 +179,7 @@ src/main/resources/
   db/migration/V2__add_user_auth_version.sql
   db/migration/V3__seed_default_store_settings.sql
   db/migration/V4__require_active_seller_for_consignment.sql
+  db/migration/V5__store_piece_photos.sql
 ```
 
 Fluxo: `Controller -> ApplicationService -> Repository`. Controllers recebem DTOs, services aplicam regras/transações e entities não são serializadas diretamente.
@@ -185,7 +188,7 @@ Fluxo: `Controller -> ApplicationService -> Repository`. Controllers recebem DTO
 
 ### Regras
 
-- Públicos: `POST /api/v1/auth/login`, `POST /api/v1/auth/refresh`, `/actuator/health`, `/v3/api-docs/**` e Swagger UI. Com as próximas tasks entram também `POST /api/v1/auth/logout` (BACK_21) e `GET /api/v1/photos/{photoId}` (BACK_07).
+- Públicos: `POST /api/v1/auth/login`, `POST /api/v1/auth/refresh`, `GET /api/v1/photos/{photoId}`, `/actuator/health`, `/v3/api-docs/**` e Swagger UI. Com a BACK_21 entra também `POST /api/v1/auth/logout`.
 - Todas as outras rotas exigem JWT válido.
 - `owner`: dashboard, relatórios, configurações, usuários e custos das peças, além dos fluxos operacionais. Pode haver mais de um owner.
 - `staff`: estoque, etiquetagem, consignações, consulta de vendedoras (lista, detalhe e histórico) e **leitura** de `GET /settings`. Não acessa dashboard, relatórios, usuários, custos, mutations de vendedora/configurações nem stats/comissão.
@@ -198,7 +201,7 @@ Fluxo: `Controller -> ApplicationService -> Repository`. Controllers recebem DTO
   - É rotacionado a cada uso.
   - É revogado no logout e na troca de senha.
   - Reutilizar um token já revogado revoga todas as sessões ativas do usuário.
-- Rate limit de login por IP: 5 tentativas a cada 15 minutos (`LOGIN_MAX_ATTEMPTS`, `LOGIN_RATE_LIMIT_WINDOW`). O rate limit de upload fica para a BACK_07.
+- Rate limit de login por IP: 5 tentativas a cada 15 minutos (`LOGIN_MAX_ATTEMPTS`, `LOGIN_RATE_LIMIT_WINDOW`). Rate limit de upload de foto por usuário: 30 a cada minuto (`UPLOAD_MAX_PER_WINDOW`, `UPLOAD_RATE_LIMIT_WINDOW`).
   - Atrás da Vercel e do Railway, o IP de `getRemoteAddr()` é o do proxy. Em produção é obrigatório usar `server.forward-headers-strategy: framework` para ler o IP real de `X-Forwarded-For`; sem isso, o rate limit trava todos os usuários juntos (BACK_21).
 - CORS restrito às origens de `CORS_ALLOWED_ORIGINS` (padrão local `http://localhost:5173`). Com o proxy da Vercel em produção e o proxy do Vite em desenvolvimento (FRONT_22), o navegador não faz chamadas cross-origin; o CORS fica só como proteção para acessos diretos.
   - Headers permitidos: `Authorization`, `Content-Type`, `Idempotency-Key` e `X-Request-Id`.
@@ -259,11 +262,12 @@ public enum Role { OWNER, STAFF }
 
 ### `pieces`
 
-`id UUID PK`, `code UNIQUE`, `type`, `value_cents BIGINT > 0`, `status`, `current_location`, `photo_url`, `note`, `created_at`, `updated_at`, `version BIGINT`.
+`id UUID PK`, `code UNIQUE`, `type`, `value_cents BIGINT > 0`, `status`, `current_location`, `photo_id UUID NULL FK -> piece_photos(id)`, `note`, `created_at`, `updated_at`, `version BIGINT`.
+
+A V5 (BACK_07) trocou a antiga `photo_url` por `photo_id`. Uma mesma foto pode ser ligada a mais de uma peça.
 
 Mudanças decididas:
 
-- **BACK_07:** `photo_url` é substituída por `photo_id UUID NULL FK -> piece_photos(id)`.
 - **BACK_23:** custos opcionais, visíveis só para owner: `factory_cost_cents BIGINT NULL CHECK (>= 0)` (custo da fábrica) e `bath_cost_cents BIGINT NULL CHECK (>= 0)` (custo do banho). O custo total é a soma dos dois e não é persistido.
 
 `value_cents` continua sendo o **preço de venda**: é a base da comissão e do valor em posse.
@@ -306,7 +310,7 @@ A migration V3 cria os valores padrão:
 - `code_sequences(scope, sequence_year, next_value)` com chave única `(scope, sequence_year)`, para geração atômica via `INSERT ... ON CONFLICT DO UPDATE ... RETURNING`. Peças usam `scope = 'PIECE'` e `sequence_year = 0`; lotes devem usar um escopo próprio, com o ano corrente.
 - `audit_logs` com ator, ação, `entity_type`, `entity_id`, `before_state`/`after_state` (JSON), IP e timestamp.
 - `idempotency_keys` com usuário, chave escopada (`operação:chave`), fingerprint SHA-256, status e corpo da resposta, `created_at` e `expires_at`.
-- `piece_photos` (BACK_07): `id UUID PK`, `content BYTEA`, `content_type`, `width`, `height`, `size_bytes`, `created_by FK`, `created_at`. Fotos sem peça ligada há mais de 24 horas são apagadas por um job agendado.
+- `piece_photos` (V5): `id UUID PK`, `content BYTEA`, `content_type` (`image/jpeg`, `image/png` ou `image/webp`), `width` e `height` (1 a 2000), `size_bytes` (até 1 MB), `created_by FK`, `created_at`. Todo dia às 4h (horário de Brasília) um job apaga as fotos criadas há mais de 24 horas que nenhuma peça usa (`PHOTO_CLEANUP_CRON`, `PHOTO_CLEANUP_ZONE`).
 
 ### Índices e constraints
 
@@ -357,7 +361,7 @@ public record PieceResponse(
     long valueCents,
     PieceStage status,
     String currentLocation,
-    String photoUrl,          // BACK_07: derivado de photo_id -> "/api/v1/photos/{photoId}"
+    String photoUrl,          // derivado de photo_id -> "/api/v1/photos/{photoId}"; null sem foto
     String note,
     Instant createdAt,
     Instant updatedAt,
@@ -509,7 +513,7 @@ Exige `Idempotency-Key`. Request:
 }
 ```
 
-Hoje o campo de foto é `photoUrl` (texto livre). A BACK_07 troca por `photoId`, o ID devolvido pelo upload, para que só fotos enviadas ao próprio backend possam ser ligadas à peça. `bathCostCents` é opcional e só para owner (BACK_23).
+`photoId` é opcional e é o ID devolvido por `POST /uploads/piece-photo`: só fotos enviadas ao próprio backend podem ser ligadas à peça (o antigo `photoUrl` de texto livre não existe mais). `bathCostCents` é opcional e só para owner (BACK_23).
 
 **Decisão implementada:** `sourcePieceId` aponta para uma peça existente em `BANHO_OURO`. O service trava essa peça e a atualiza:
 
@@ -525,6 +529,7 @@ Erros:
 
 - `backFromBath: false` ou peça fora de `BANHO_OURO`: `409 INVALID_PIECE_TRANSITION`.
 - Peça inexistente: `404 PIECE_NOT_FOUND`.
+- `photoId` inexistente: `404 PHOTO_NOT_FOUND` (a peça não é alterada).
 
 O frontend ainda cria uma peça nova localmente e precisa migrar para este fluxo na FRONT_13. Nunca deixar duas peças independentes para o mesmo item físico.
 
@@ -769,18 +774,19 @@ Validações (todas retornam `400 VALIDATION_ERROR` com o campo em `fields`):
 
 A faixa de comissão (25 a 40, passo 5) e as opções de prazo (30/60/90) são fixas nesta versão. Response `200`: `SettingsResponse`. Grava auditoria `SETTINGS_UPDATED`.
 
-### 8. Fotos ⏳ (BACK_07)
+### 8. Fotos ✅ (BACK_07)
 
 As fotos ficam no próprio PostgreSQL (tabela `piece_photos`, coluna `bytea`). O front já reduz cada imagem para 320 px, então cada foto tem de 20 a 40 KB.
 
-#### `POST /uploads/piece-photo` ⏳
+#### `POST /uploads/piece-photo` ✅
 
 Acesso owner/staff; `multipart/form-data`, campo `file`; exige `Idempotency-Key`.
 
 - Aceitar só JPEG, PNG ou WebP, identificados pela assinatura dos bytes (não pela extensão nem pelo `Content-Type` enviado). Rejeitar SVG e outros formatos.
 - Tamanho máximo de 1 MB e dimensões máximas de 2000×2000 px.
 - Nunca usar o nome do arquivo enviado; o ID é um UUID aleatório.
-- Rate limit por usuário.
+- Rate limit por usuário: 30 envios por minuto.
+- A idempotência compara o hash SHA-256 do arquivo: repetir a chave com o mesmo arquivo devolve a mesma resposta; com outro arquivo, `409 IDEMPOTENCY_KEY_REUSED`.
 
 Response `201`:
 
@@ -793,9 +799,15 @@ Response `201`:
 }
 ```
 
-Erros: `400 VALIDATION_ERROR` (arquivo ausente, tipo, tamanho ou dimensões inválidos) e `429 RATE_LIMITED`.
+Erros:
 
-#### `GET /photos/{photoId}` ⏳
+- `400 VALIDATION_ERROR` com `fields.file`: arquivo vazio, formato não suportado ou dimensões acima de 2000×2000 px;
+- `400 INVALID_REQUEST`: campo `file` ausente ou multipart malformado;
+- `413 PHOTO_TOO_LARGE`: arquivo acima de 1 MB;
+- `415 UNSUPPORTED_MEDIA_TYPE`: corpo que não é `multipart/form-data`;
+- `429 RATE_LIMITED`.
+
+#### `GET /photos/{photoId}` ✅
 
 Pública: uma tag `<img>` não envia o token. A segurança vem do ID aleatório, que ninguém consegue adivinhar. Devolve os bytes com:
 
@@ -803,7 +815,7 @@ Pública: uma tag `<img>` não envia o token. A segurança vem do ID aleatório,
 - `Cache-Control: public, max-age=31536000, immutable`, porque uma foto nunca muda (foto nova = ID novo);
 - `X-Content-Type-Options: nosniff`.
 
-Foto inexistente: `404 NOT_FOUND`.
+Foto inexistente: `404 PHOTO_NOT_FOUND`. ID que não é UUID: `400 INVALID_REQUEST`.
 
 ### 9. Usuários ⏳ (BACK_19)
 
@@ -939,6 +951,10 @@ spring:
           time_zone: UTC
   flyway:
     enabled: true
+  servlet:
+    multipart:
+      max-file-size: 1MB
+      max-request-size: 2MB
 app:
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
@@ -958,6 +974,13 @@ app:
       window: ${LOGIN_RATE_LIMIT_WINDOW:PT15M}
   idempotency:
     ttl: ${IDEMPOTENCY_TTL:P1D}
+  uploads:
+    rate-limit:
+      max-uploads: ${UPLOAD_MAX_PER_WINDOW:30}
+      window: ${UPLOAD_RATE_LIMIT_WINDOW:PT1M}
+    orphan-cleanup:
+      cron: ${PHOTO_CLEANUP_CRON:0 0 4 * * *}
+      zone: ${PHOTO_CLEANUP_ZONE:America/Sao_Paulo}
 
 management:
   endpoints:

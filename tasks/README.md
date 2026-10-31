@@ -12,7 +12,7 @@ As tarefas estão numeradas por prioridade global. A numeração indica priorida
 | 4 | [BACK_04_CONTRATOS_HTTP_OPENAPI_E_ERROS.md](BACK_04_CONTRATOS_HTTP_OPENAPI_E_ERROS.md) | Erros, paginação, OpenAPI, request ID e idempotência | ✅ Concluída |
 | 5 | [BACK_05_GESTAO_DE_PECAS_E_HISTORICO.md](BACK_05_GESTAO_DE_PECAS_E_HISTORICO.md) | Estoque, estados e timeline | ✅ Concluída |
 | 6 | [BACK_06_VENDEDORAS_E_CONFIGURACOES.md](BACK_06_VENDEDORAS_E_CONFIGURACOES.md) | Cadastro de vendedoras, parâmetros e comissões | ✅ Concluída |
-| 7 | [BACK_07_UPLOAD_E_ARMAZENAMENTO_DE_FOTOS.md](BACK_07_UPLOAD_E_ARMAZENAMENTO_DE_FOTOS.md) | Upload seguro e fotos no PostgreSQL | ⏳ Pendente |
+| 7 | [BACK_07_UPLOAD_E_ARMAZENAMENTO_DE_FOTOS.md](BACK_07_UPLOAD_E_ARMAZENAMENTO_DE_FOTOS.md) | Upload seguro e fotos no PostgreSQL | ✅ Concluída |
 | 8 | [BACK_08_CONSIGNACOES_VENDAS_E_DEVOLUCOES.md](BACK_08_CONSIGNACOES_VENDAS_E_DEVOLUCOES.md) | Lotes e movimentações transacionais | ⏳ Pendente |
 | 9 | [BACK_09_DASHBOARD_E_RELATORIOS.md](BACK_09_DASHBOARD_E_RELATORIOS.md) | Agregados, KPIs e relatórios | ⏳ Pendente |
 | 10 | [BACK_10_AUDITORIA_OPERACAO_E_TESTES_INTEGRADOS.md](BACK_10_AUDITORIA_OPERACAO_E_TESTES_INTEGRADOS.md) | Auditoria, CI, observabilidade e aceite integrado | ⏳ Pendente |
