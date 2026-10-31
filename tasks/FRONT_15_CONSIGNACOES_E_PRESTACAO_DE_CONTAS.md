@@ -47,6 +47,7 @@ Detalhes nas seções 3 e 4 do `BACKEND_API_CONTRACT.md`. Consignações aceitam
 - **Wizard:**
   - vendedoras ativas (`status: "ativa"`) e peças etiquetadas (`usePiecesQuery({ status: "etiquetada" })`), com busca e paginação e seleção estável por UUID;
   - vencimento sugerido = hoje no fuso da loja + `defaultConsignmentDays`, enviado como `YYYY-MM-DD`;
+  - prazo de pagamento obrigatório entre as opções de `settings.paymentTerms` (`paymentTermDays`, BACK_27);
   - gerar a `Idempotency-Key` uma vez por confirmação e reutilizá-la no retry (`consignmentsApi.create` já aceita a chave);
   - só confirmar e navegar depois do `201`.
 - **Romaneio:** imprimir com `window.print()` a partir do `ConsignmentDetails` devolvido, usando os snapshots.
@@ -61,13 +62,21 @@ Detalhes nas seções 3 e 4 do `BACKEND_API_CONTRACT.md`. Consignações aceitam
   - períodos da comissão ("mês atual" etc.) calculados no fuso da loja.
 - Em conflito de peça indisponível, destacar as peças de `fields.pieceIds`, recarregar a lista e pedir nova seleção.
 
-## Decisões a tomar no início da task
+## Decisões (2026-10-31)
 
-- **Card "Prazos de pagamento" da página da vendedora:**
-  - hoje ele soma, para cada prazo (30/60/90), as vendas do período e calcula uma data com fórmula local;
-  - o backend **não** tem esse dado, e o lote não guarda prazo de pagamento (`POST /consignments` não recebe prazo);
-  - opções: remover o card, mantê-lo só como estimativa calculada no front a partir das vendas do período (deixando isso claro na tela) ou criar uma task de backend para registrar o prazo de pagamento no lote.
-- **Data retroativa de venda/devolução:** o backend aceita `soldAt`/`returnedAt` entre a entrega e agora, mas `consignmentsApi.markSold`/`markReturned` hoje só enviam `note`. Decidir se a tela oferece a data (por exemplo, para registrar uma venda de ontem) e, se sim, acrescentar o parâmetro.
+1. **Prazo de pagamento no lote (BACK_27):**
+   - o wizard ganha o campo obrigatório "Prazo de pagamento", com as opções de `settings.paymentTerms`;
+   - o card "Prazos de pagamento" da vendedora passa a usar `GET /sellers/{id}/payment-schedule` (só owner) e mostra, por prazo, quantas vendas houve no período, quanto a vendedora deve repassar (venda − comissão) e as datas de vencimento;
+   - o detalhe do lote mostra o prazo e, nos itens vendidos, a data de vencimento do pagamento e o valor devido;
+   - lotes antigos aparecem como "prazo não informado". Não há controle de pagamento recebido;
+   - **a fórmula local atual do card deve ser removida.** Até a BACK_27 ficar pronta, o card fica escondido.
+2. **Data opcional na venda e na devolução:**
+   - o botão continua registrando o momento atual, mas há um campo opcional de data para prestações de contas atrasadas;
+   - a data fica entre o dia da entrega do lote e hoje (no fuso da loja);
+   - **hoje:** não enviar data (o servidor usa o horário atual);
+   - **dia anterior:** enviar `soldAt`/`returnedAt` como 23:59:59 daquele dia no fuso da loja, que sempre fica entre a entrega e agora;
+   - acrescentar o parâmetro de data em `consignmentsApi.markSold`/`markReturned` (hoje só enviam `note`);
+   - erro `400 VALIDATION_ERROR` em `fields.soldAt`/`fields.returnedAt` aparece junto ao campo.
 
 ## Pontos de atenção
 
@@ -80,7 +89,8 @@ Detalhes nas seções 3 e 4 do `BACKEND_API_CONTRACT.md`. Consignações aceitam
 
 - [ ] O wizard valida vendedora, ao menos uma peça e data antes do envio.
 - [ ] O lote criado tem código, snapshots, vencimento e itens iguais aos devolvidos pelo servidor; o retry não cria lote duplicado.
-- [ ] Venda e devolução aguardam o resultado, evitam double-submit e refletem os estados persistidos.
+- [ ] Venda e devolução aguardam o resultado, evitam double-submit e refletem os estados persistidos; a data opcional registra prestações de contas atrasadas no dia certo.
+- [ ] O lote guarda o prazo de pagamento escolhido e o card da vendedora mostra os valores e vencimentos da API, sem cálculo local.
 - [ ] Conflitos `409` recuperam a seleção ou a lista; `401`/`403` e falha de rede recebem o tratamento padrão.
 - [ ] Staff usa lista, wizard, histórico e ações, sem ver nem chamar stats/comissão.
 - [ ] Dashboard, lista de vendedoras e detalhe atualizam sem reload depois das ações.
@@ -89,4 +99,4 @@ Detalhes nas seções 3 e 4 do `BACKEND_API_CONTRACT.md`. Consignações aceitam
 
 ## Observações de dependência
 
-Depende de FRONT_11 e dos endpoints BACK_05, BACK_06 e BACK_08 (prontos). Pode ser feita em paralelo com FRONT_13, FRONT_14 e FRONT_16.
+Depende de FRONT_11 e dos endpoints BACK_05, BACK_06 e BACK_08 (prontos). O prazo de pagamento (campo do wizard, detalhe do lote e card da vendedora) depende da BACK_27; o resto da tela não precisa esperar. Pode ser feita em paralelo com FRONT_13, FRONT_14 e FRONT_16.

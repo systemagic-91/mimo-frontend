@@ -12,6 +12,10 @@ O backend (BACK_05 e BACK_07) está pronto, e o cliente também: `piecesApi` e o
 
 Migrar inventário, detalhe, busca, recebimento e etiquetagem para os endpoints do backend, sem duplicar a mesma peça física.
 
+## Decisões (2026-10-31)
+
+1. **Valor total do estoque vem da API:** a BACK_26 adiciona `summary.totalValueCents` em `GET /pieces`, com a soma de todas as peças filtradas.
+
 ## Contrato da API (estado em 2026-10-31)
 
 Detalhes nas seções 2 e 8 do `BACKEND_API_CONTRACT.md`. Todas as rotas aceitam owner e staff.
@@ -19,7 +23,7 @@ Detalhes nas seções 2 e 8 do `BACKEND_API_CONTRACT.md`. Todas as rotas aceitam
 - `GET /pieces`:
   - query `q` (código ou tipo, até 120 caracteres), `status` (`PieceStage` em maiúsculas; usar `toBackendPieceStage`), `page` (base 1), `pageSize` (padrão 50, máximo 200) e `sort` (`campo,asc|desc`; campos `code`, `type`, `valueCents`, `status`, `currentLocation`, `createdAt`, `updatedAt`);
   - resposta `{ items, pagination: { page, pageSize, total, totalPages } }`;
-  - **não** devolve o valor total das peças filtradas.
+  - com a BACK_26, também `summary.totalValueCents`: a soma do preço de **todas** as peças filtradas, não só da página.
 - `GET /pieces/{id}` e `GET /pieces/{id}/events` (lista completa, em ordem crescente de `occurredAt`). Peça inexistente: `404 PIECE_NOT_FOUND`.
 - `GET /pieces/next-code`: só uma **prévia** do próximo código; o código definitivo vem na resposta do recebimento.
 - `POST /pieces/receive`:
@@ -44,8 +48,7 @@ Detalhes nas seções 2 e 8 do `BACKEND_API_CONTRACT.md`. Todas as rotas aceitam
 
 - **Lista do estoque:**
   - usar `usePiecesQuery` com busca (com debounce), filtro de status, ordenação e paginação, todos enviados à API;
-  - mostrar `pagination.total` como quantidade de peças;
-  - decidir o card de **valor total**: a API não devolve a soma das peças filtradas. Ou o card mostra só a quantidade, ou se pede um `totalValueCents` em `GET /pieces` (pequena mudança no backend).
+  - card de resumo com a quantidade (`pagination.total`) e o **valor total** (`summary.totalValueCents`, da BACK_26). Nunca somar os itens da página.
 - **Detalhe (drawer):** `usePieceQuery` + `usePieceEventsQuery`, com estados de carregamento e erro e foto por `photoUrl`.
 - **Recebimento:**
   - `useReceivePieceMutation` com `moneyToCents`;
@@ -81,4 +84,4 @@ Detalhes nas seções 2 e 8 do `BACKEND_API_CONTRACT.md`. Todas as rotas aceitam
 
 ## Observações de dependência
 
-Depende de FRONT_11 e dos contratos BACK_05/BACK_07 (prontos). Os campos de custo ficam para a FRONT_24. Pode ser feita em paralelo a FRONT_14, FRONT_15 e FRONT_16.
+Depende de FRONT_11 e dos contratos BACK_05/BACK_07 (prontos). O card de valor total depende da BACK_26; o resto da tela não precisa esperar. Os campos de custo ficam para a FRONT_24. Pode ser feita em paralelo a FRONT_14, FRONT_15 e FRONT_16.

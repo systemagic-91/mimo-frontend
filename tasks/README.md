@@ -31,6 +31,8 @@ As tarefas estão numeradas por prioridade global. A numeração indica priorida
 |         23 | [BACK_23_CUSTO_DAS_PECAS.md](BACK_23_CUSTO_DAS_PECAS.md)                                                           | Custos de fábrica e banho, e margem                                                     | ✅ Concluída  |
 |         24 | [FRONT_24_CUSTO_DAS_PECAS.md](FRONT_24_CUSTO_DAS_PECAS.md)                                                         | Campos de custo e margem para owner                                                     | ⏳ Pendente   |
 |         25 | [BACK_25_TESTES_DE_INTEGRACAO_COM_POSTGRESQL.md](BACK_25_TESTES_DE_INTEGRACAO_COM_POSTGRESQL.md)                   | Testes de integração (Spring Boot Test + JUnit 5) contra PostgreSQL, sem Testcontainers | 💤 Opcional   |
+|         26 | [BACK_26_VALOR_TOTAL_DO_ESTOQUE_FILTRADO.md](BACK_26_VALOR_TOTAL_DO_ESTOQUE_FILTRADO.md)                           | Soma do valor das peças filtradas em `GET /pieces`                                      | ⏳ Pendente   |
+|         27 | [BACK_27_PRAZO_DE_PAGAMENTO_NO_LOTE.md](BACK_27_PRAZO_DE_PAGAMENTO_NO_LOTE.md)                                     | Prazo de pagamento guardado no lote e agenda de repasses da vendedora                   | ⏳ Pendente   |
 
 ## Ondas sugeridas
 
@@ -43,13 +45,14 @@ As tarefas estão numeradas por prioridade global. A numeração indica priorida
 7. **Fechamento:** FRONT_18 é a última etapa: remover o estado legado somente quando todas as telas usarem API e os testes integrados passarem.
 8. **Antes do primeiro deploy (Vercel + Railway):** BACK_19/FRONT_20 (sem elas não há como criar usuários staff) e BACK_21/FRONT_22 (sessão por cookie e proxy), com o deploy das duas pontas feito junto.
 9. **Evolução:** BACK_23/FRONT_24 (custos e margem) depois de BACK_09/FRONT_13/FRONT_16.
-10. **Opcional:** BACK_25 (testes de integração contra PostgreSQL) a qualquer momento depois da BACK_10, se o time decidir fazer. Nenhuma task depende dela.
+10. **Ajustes pedidos pelas telas:** BACK_26 (valor total do estoque, para a FRONT_13) e BACK_27 (prazo de pagamento no lote, para a FRONT_15). As duas telas podem começar antes; só os cards dependem delas.
+11. **Opcional:** BACK_25 (testes de integração contra PostgreSQL) a qualquer momento depois da BACK_10, se o time decidir fazer. Nenhuma task depende dela.
 
 ¹ Falta apenas o critério de CI: os testes rodam sem backend (`npm test`), mas o frontend ainda não tem pipeline de CI.
 
 ## Estado atual (atualizado em 2026-10-31)
 
-- **Backend:** BACK_01 a BACK_10 implementadas: autenticação, contratos HTTP, peças/timeline, vendedoras e configurações, fotos no PostgreSQL, consignações com venda e devolução, dashboard e relatórios. Também estão prontas a BACK_10 (auditoria, métricas, tracing, CI e runbook), a BACK_19 (gestão de usuários e troca obrigatória de senha) e a BACK_21 (refresh token em cookie `HttpOnly`). A BACK_23 (custo das peças e margem) também está pronta; resta só a opcional BACK_25. A FRONT_22 (sessão por cookie no front) também está implementada; falta conferir num navegador de verdade e na Vercel.
+- **Backend:** BACK_01 a BACK_10 implementadas: autenticação, contratos HTTP, peças/timeline, vendedoras e configurações, fotos no PostgreSQL, consignações com venda e devolução, dashboard e relatórios. Também estão prontas a BACK_10 (auditoria, métricas, tracing, CI e runbook), a BACK_19 (gestão de usuários e troca obrigatória de senha) e a BACK_21 (refresh token em cookie `HttpOnly`). A BACK_23 (custo das peças e margem) também está pronta. Faltam a BACK_26 e a BACK_27, criadas na revisão das tasks do front, e a opcional BACK_25. A FRONT_22 (sessão por cookie no front) também está implementada; falta conferir num navegador de verdade e na Vercel.
 - **Testes do backend:** apenas testes unitários com JUnit 5 + Mockito (e testes de contexto com H2). Não há Testcontainers nem testes integrados automatizados; não é preciso Docker para rodar `./gradlew test`. As migrations são validadas no CI contra um PostgreSQL limpo (BACK_10). Testes de integração contra PostgreSQL, sem Testcontainers, estão descritos na BACK_25, que é opcional.
 - **Observabilidade (BACK_10):** tracing só com IDs nos logs, métricas protegidas para owner, logs em JSON só em produção e backup manual com `pg_dump`.
 - **Frontend:** cliente HTTP, hooks React Query (`src/lib/api/hooks.ts`) e login remoto prontos. Já existem hooks para todos os endpoints do contrato, mas as telas, exceto o Login, ainda leem/escrevem o banco local (`useDb` em `src/lib/db.ts`, regras em `src/lib/domain.ts`).
@@ -68,5 +71,8 @@ Todas as decisões de produto foram tomadas em 2026-10-30 e estão registradas e
 - **Sessão:** refresh token em cookie `HttpOnly` com proxy da Vercel (BACK_21/FRONT_22); ver `SESSAO_E_COOKIES.md`.
 - **Custos:** fábrica + banho, opcionais e só para owner (BACK_23/FRONT_24).
 - **Romaneio:** impressão pelo navegador.
+- **Valor do estoque:** a soma das peças filtradas vem da API (BACK_26).
+- **Prazo de pagamento:** guardado no lote; cada venda vence em data da venda + prazo, e a vendedora deve venda − comissão; sem controle de pagamento recebido por enquanto (BACK_27/FRONT_15).
+- **Venda/devolução com data:** a tela oferece uma data opcional para prestações de contas atrasadas (FRONT_15).
 - **Testes do backend:** apenas JUnit 5 + Mockito.
 - **Ainda em aberto (sem bloqueio):** idiomas suportados (FRONT_17).
