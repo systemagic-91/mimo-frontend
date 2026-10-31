@@ -24,7 +24,7 @@ Eliminar o banco de demonstração do caminho de produção e comprovar, com tes
 - Não apagar dados locais do usuário sem decidir se é necessário importar; informar e versionar a estratégia.
 - `localStorage` ainda pode guardar preferências não sensíveis (idioma), mas não o banco de domínio nem senha.
 - A remoção depende da migração de todas as telas e da conclusão de decisões sobre sessão, fotos e contratos.
-- Testes E2E requerem backend efêmero, banco Testcontainers e storage fake; não podem depender de credenciais reais.
+- Testes E2E requerem backend efêmero, banco descartável e storage fake; não podem depender de credenciais reais.
 
 ## Critérios de aceite
 

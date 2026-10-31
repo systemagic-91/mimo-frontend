@@ -15,7 +15,7 @@ Migrar inventário, detalhe, busca, recebimento e etiquetagem para os endpoints 
 - Migrar listagem para `GET /pieces` com busca/status/paginação server-side e query total filtrado quando necessário.
 - Migrar drawer para `GET /pieces/{id}` e `/events`; tratar carregamento/erro e URL de foto.
 - Migrar recebimento para `POST /pieces/receive`, converter reais para centavos e atualizar cache após sucesso.
-- Ajustar fluxo de etiquetagem: listar peças no banho, selecionar origem/código, enviar foto em `multipart/form-data`, receber `photoUrl` e chamar `POST /pieces/label` com `sourcePieceId`.
+- Ajustar fluxo de etiquetagem: listar peças no banho, selecionar origem/código, enviar foto em `multipart/form-data` para `POST /uploads/piece-photo`, receber `photoId` e chamar `POST /pieces/label` com `sourcePieceId` e `photoId`. Exibir a imagem por `photoUrl` (`/api/v1/photos/{id}`), que é servida pelo backend a partir do PostgreSQL.
 - Remover geração autoritativa de código local; exibir preview não garantido ou código final devolvido pelo servidor.
 - Aplicar loading, disabled, retry, erro de conflito e feedback de sucesso; evitar sucesso otimista antes da resposta.
 
@@ -37,4 +37,4 @@ Migrar inventário, detalhe, busca, recebimento e etiquetagem para os endpoints 
 
 ## Observações de dependência
 
-Depende de FRONT_11 e contratos BACK_05/BACK_07. Pode ser implementada em paralelo a FRONT_12, FRONT_14, FRONT_15 e FRONT_16; integração de origem/foto exige endpoints correspondentes.
+Depende de FRONT_11 e contratos BACK_05/BACK_07. Os campos de custo (fábrica e banho) ficam para a FRONT_24. Pode ser implementada em paralelo a FRONT_12, FRONT_14, FRONT_15 e FRONT_16; integração de origem/foto exige endpoints correspondentes.
