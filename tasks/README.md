@@ -22,7 +22,7 @@ As tarefas estão numeradas por prioridade global. A numeração indica priorida
 |         14 | [FRONT_14_VENDEDORAS_E_CONFIGURACOES.md](FRONT_14_VENDEDORAS_E_CONFIGURACOES.md)                                   | Administração de vendedores e parâmetros                                                | ⏳ Pendente   |
 |         15 | [FRONT_15_CONSIGNACOES_E_PRESTACAO_DE_CONTAS.md](FRONT_15_CONSIGNACOES_E_PRESTACAO_DE_CONTAS.md)                   | Wizard, histórico, venda e devolução                                                    | ⏳ Pendente   |
 |         16 | [FRONT_16_DASHBOARD_E_RELATORIOS.md](FRONT_16_DASHBOARD_E_RELATORIOS.md)                                           | KPIs, relatórios e exportação                                                           | ⏳ Pendente   |
-|         17 | [FRONT_17_I18N_E_CONTEUDO_DOS_IDIOMAS.md](FRONT_17_I18N_E_CONTEUDO_DOS_IDIOMAS.md)                                 | Traduções e seletor de idioma funcional                                                 | ⏳ Pendente   |
+|         17 | [FRONT_17_I18N_E_CONTEUDO_DOS_IDIOMAS.md](FRONT_17_I18N_E_CONTEUDO_DOS_IDIOMAS.md)                                 | Textos em pt-BR pelo i18n; remove o seletor de idioma                                   | ⏳ Pendente   |
 |         18 | [FRONT_18_REMOVER_PERSISTENCIA_LOCAL_E_VALIDAR_FLUXOS.md](FRONT_18_REMOVER_PERSISTENCIA_LOCAL_E_VALIDAR_FLUXOS.md) | Remoção do banco local e validação ponta a ponta                                        | ⏳ Pendente   |
 |         19 | [BACK_19_GESTAO_DE_USUARIOS.md](BACK_19_GESTAO_DE_USUARIOS.md)                                                     | Cadastro de usuários pelo owner e troca obrigatória de senha                            | ✅ Concluída   |
 |         20 | [FRONT_20_GESTAO_DE_USUARIOS.md](FRONT_20_GESTAO_DE_USUARIOS.md)                                                   | Tela de usuários e de troca de senha                                                    | ⏳ Pendente   |
@@ -33,20 +33,22 @@ As tarefas estão numeradas por prioridade global. A numeração indica priorida
 |         26 | [BACK_26_VALOR_TOTAL_DO_ESTOQUE_FILTRADO.md](BACK_26_VALOR_TOTAL_DO_ESTOQUE_FILTRADO.md)                           | Soma do valor das peças filtradas em `GET /pieces`                                      | ✅ Concluída  |
 |         27 | [BACK_27_PRAZO_DE_PAGAMENTO_NO_LOTE.md](BACK_27_PRAZO_DE_PAGAMENTO_NO_LOTE.md)                                     | Prazo de pagamento guardado no lote e agenda de repasses da vendedora                   | ✅ Concluída  |
 
-## Ondas sugeridas
+## Ordem de execução do frontend (2026-10-31)
 
-1. **Base paralela:** BACK_01 e refinamento do desenho de FRONT_11; FRONT_11 pode começar contra MSW usando o contrato atual.
-2. **Persistência e padrões:** após BACK_01, executar BACK_02 e BACK_04; BACK_03 pode começar junto e fechar após tabelas de usuário/sessão.
-3. **Domínios paralelos:** após schema/padrões, BACK_05, BACK_06 e BACK_07 podem avançar em paralelo.
-4. **Consignação:** BACK_08 depende de BACK_05 e BACK_06; FRONT_13/14/15/16 podem ser implementadas sobre FRONT_11 e mocks sem esperar backend pronto.
-5. **Agregados e hardening:** BACK_09 depende dos domínios de peça, vendedor e consignação; BACK_10 fecha a operação (auditoria, observabilidade, CI e runbook).
-6. **Frontend em paralelo:** FRONT_12 a FRONT_16 dependem de FRONT_11 e podem ser divididas por fluxo. FRONT_17 deve aguardar essas telas para evitar conflitos de edição.
-7. **Fechamento:** FRONT_18 é a última etapa: remover o estado legado somente quando todas as telas usarem API e os testes integrados passarem.
-8. **Antes do primeiro deploy (Vercel + Railway):** BACK_19/FRONT_20 (sem elas não há como criar usuários staff) e BACK_21/FRONT_22 (sessão por cookie e proxy), com o deploy das duas pontas feito junto.
-9. **Evolução:** BACK_23/FRONT_24 (custos e margem) depois de BACK_09/FRONT_13/FRONT_16.
-10. **Ajustes pedidos pelas telas:** BACK_26 (valor total do estoque, para a FRONT_13) e BACK_27 (prazo de pagamento no lote, para a FRONT_15). As duas telas podem começar antes; só os cards dependem delas.
+Todo o backend está pronto. A FRONT_11 e a FRONT_12 estão concluídas, e a FRONT_22 só espera a verificação em navegador real, que entra nos E2E da FRONT_18.
 
-¹ Falta apenas o critério de CI: os testes rodam sem backend (`npm test`), mas o frontend ainda não tem pipeline de CI.
+1. **FRONT_20 – Usuários e troca de senha.** Sem ela, ninguém além do primeiro owner consegue usar o sistema: todo usuário criado nasce com troca obrigatória de senha. Ela também ajusta o cliente HTTP (tratamento do `403 PASSWORD_CHANGE_REQUIRED` e do `401` de senha atual errada) antes que as outras telas dependam dele, e cria as abas da página de Configurações.
+2. **FRONT_13 – Estoque, etiquetagem e fotos.** Cria as peças que todas as outras telas usam.
+3. **FRONT_14 – Vendedoras e configurações.** Curta; cria as vendedoras e os prazos de que a consignação precisa. Vem depois da 20 porque as duas mexem na mesma página.
+4. **FRONT_15 – Consignações.** O fluxo principal; precisa de peças etiquetadas e vendedoras para ser testado de verdade.
+5. **FRONT_16 – Dashboard e relatórios.** Só mostra números com sentido quando já existem lotes e vendas.
+6. **FRONT_24 – Custos e margem.** Acrescenta campos às telas das FRONT_13 e 16.
+7. **FRONT_17 – Textos em português pelo i18n.** Mexe no texto de todas as telas; antes disso, conflitaria com cada migração.
+8. **FRONT_18 – Remover o banco local, E2E e CI do front.** O fechamento: apaga o legado, cria o CI e roda os E2E nos três navegadores (fechando a FRONT_22).
+
+**Em paralelo (se houver mais de uma pessoa):** a 13 e a 14 podem andar juntas depois da 20; a 16 pode começar com MSW enquanto a 15 é feita.
+
+**Deploy:** o primeiro deploy útil é logo depois da FRONT_16, quando a loja já opera de ponta a ponta pela API. As FRONT_24, 17 e 18 entram nos deploys seguintes.
 
 ## Estado atual (atualizado em 2026-10-31)
 
@@ -55,7 +57,7 @@ As tarefas estão numeradas por prioridade global. A numeração indica priorida
 - **Observabilidade (BACK_10):** tracing só com IDs nos logs, métricas protegidas para owner, logs em JSON só em produção e backup manual com `pg_dump`.
 - **Frontend:** cliente HTTP, hooks React Query (`src/lib/api/hooks.ts`) e login remoto prontos. Já existem hooks para todos os endpoints do contrato, mas as telas, exceto o Login, ainda leem/escrevem o banco local (`useDb` em `src/lib/db.ts`, regras em `src/lib/domain.ts`).
 - **Testes do frontend:** Vitest + Testing Library + MSW configurados (`npm test`); `npm run check` roda lint e verificação de tipos. Detalhes dos scripts em `SCRIPTS_NPM.md`.
-- **i18n:** i18next está inicializado, mas as páginas não usam `useTranslation`; arquivos `en` e `zh-CN` têm conteúdo placeholder e o fallback é `en` (escopo da FRONT_17).
+- **i18n:** i18next está inicializado, mas as páginas não usam `useTranslation`; arquivos `en` e `zh-CN` têm conteúdo placeholder e o fallback é `en`. Decisão: ficar só com `pt-BR` (FRONT_17).
 
 ## Decisões de produto
 
@@ -72,5 +74,8 @@ Todas as decisões de produto foram tomadas em 2026-10-30 e estão registradas e
 - **Valor do estoque:** a soma das peças filtradas vem da API (BACK_26).
 - **Prazo de pagamento:** guardado no lote; cada venda vence em data da venda + prazo, e a vendedora deve venda − comissão; sem controle de pagamento recebido por enquanto (BACK_27/FRONT_15).
 - **Venda/devolução com data:** a tela oferece uma data opcional para prestações de contas atrasadas (FRONT_15).
+- **Idioma:** só português (`pt-BR`); sem seletor de idioma. Moeda e datas sempre no padrão brasileiro (FRONT_17).
+- **Dados de demonstração:** o banco local (`luma_db_v1`) é descartado, sem importação (FRONT_18).
+- **CI do front:** criado na FRONT_18 (lint, typecheck, testes unitários e E2E).
 - **Testes do backend:** apenas JUnit 5 + Mockito.
 - **Ainda em aberto (sem bloqueio):** idiomas suportados (FRONT_17).

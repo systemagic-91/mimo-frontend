@@ -6,7 +6,7 @@
 
 As telas de consignação usam `db.sellers`, `db.pieces` e `db.consignments` em memória. A criação seleciona peças etiquetadas e a confirmação é síncrona; venda e devolução não aguardam o servidor nem tratam conflito. A tela da vendedora também calcula estatísticas, comissões e vencimentos no navegador.
 
-O backend (BACK_06 e BACK_08) está pronto e os hooks já existem: `useConsignmentsQuery`, `useConsignmentQuery`, `useSellerConsignmentsQuery`, `useCreateConsignmentMutation`, `useMarkItemSoldMutation`, `useMarkItemReturnedMutation`, `useSellerQuery`, `useSellerStatsQuery` e `useSellerCommissionQuery`.
+O backend (BACK_06, BACK_08 e BACK_27) está pronto e os hooks já existem: `useConsignmentsQuery`, `useConsignmentQuery`, `useSellerConsignmentsQuery`, `useCreateConsignmentMutation`, `useMarkItemSoldMutation`, `useMarkItemReturnedMutation`, `useSellerQuery`, `useSellerStatsQuery` e `useSellerCommissionQuery`. Falta criar o cliente e o hook da agenda de repasses (`sellersApi.paymentSchedule` / `useSellerPaymentScheduleQuery`).
 
 ## Objetivo
 
@@ -18,16 +18,17 @@ Detalhes nas seções 3 e 4 do `BACKEND_API_CONTRACT.md`. Consignações aceitam
 
 - `GET /consignments`:
   - query `status` (`aberta`/`quitada`), `sellerId`, `overdue` (`true`/`false`), paginação e `sort` (`code`, `deliveredAt`, `dueAt`, `status`, `createdAt`; padrão `deliveredAt,desc`);
-  - cada item traz o **status visual** (`em_dia`, `atrasada` ou `quitada`), `dueInDays` (0 = vence hoje, negativo = atrasado), `seller`, `piecesInHand` e `valueInHandCents`.
+  - cada item traz o **status visual** (`em_dia`, `atrasada` ou `quitada`), `dueInDays` (0 = vence hoje, negativo = atrasado), `paymentTermDays`, `seller`, `piecesInHand` e `valueInHandCents`.
 - `GET /consignments/{id}`:
-  - lote com `status` persistido (`ABERTA`/`QUITADA`), `late`, `seller` e `items`;
-  - cada item: `codeSnapshot`, `typeSnapshot`, `valueCentsSnapshot`, `commissionRateSnapshot`, `status` (`COM_VENDEDORA`/`VENDIDA`/`DEVOLVIDA`), `soldAt` e `returnedAt`.
+  - lote com `status` persistido (`ABERTA`/`QUITADA`), `late`, `paymentTermDays` (`null` em lotes antigos), `seller` e `items`;
+  - cada item: `codeSnapshot`, `typeSnapshot`, `valueCentsSnapshot`, `commissionRateSnapshot`, `status` (`COM_VENDEDORA`/`VENDIDA`/`DEVOLVIDA`), `soldAt`, `returnedAt`, `paymentDueDate` e `amountDueCents`;
+  - `paymentDueDate` (dia da venda + prazo, no fuso da loja) e `amountDueCents` (venda − comissão) só existem em itens vendidos de lotes com prazo. **Para staff, `amountDueCents` vem sempre `null`.**
 - `POST /consignments`:
-  - corpo `{ sellerId, pieceIds, dueDate, note? }`. `dueDate` é uma **data local da loja** (`YYYY-MM-DD`), entre hoje e hoje + 365 dias; `pieceIds` tem de 1 a 200 peças, sem repetição;
+  - corpo `{ sellerId, pieceIds, dueDate, paymentTermDays, note? }`. `dueDate` é uma **data local da loja** (`YYYY-MM-DD`), entre hoje e hoje + 365 dias; `pieceIds` tem de 1 a 200 peças, sem repetição; `paymentTermDays` é **obrigatório** e precisa ser um dos `settings.paymentTerms`;
   - resposta `201 ConsignmentDetails`, com o código oficial `C-AAAA-NNN`;
   - erros:
     - `422 EMPTY_ITEMS`, `422 DUE_DATE_IN_PAST` e `422 SELLER_INACTIVE`;
-    - `400 VALIDATION_ERROR` (`fields.pieceIds` ou `fields.dueDate`);
+    - `400 VALIDATION_ERROR` (`fields.pieceIds`, `fields.dueDate` ou `fields.paymentTermDays`);
     - `404 SELLER_NOT_FOUND` e `404 PIECE_NOT_FOUND` (`fields.pieceIds`);
     - `409 PIECE_NOT_AVAILABLE`: a mensagem cita os códigos e `fields.pieceIds` lista os IDs;
     - `409 PIECE_STATE_INCONSISTENT`.
@@ -38,8 +39,9 @@ Detalhes nas seções 3 e 4 do `BACKEND_API_CONTRACT.md`. Consignações aceitam
 - Vendedora:
   - `GET /sellers/{id}` e `GET /sellers/{id}/consignments` aceitam owner e staff. O histórico vem **sem os itens**; os itens de cada lote vêm de `GET /consignments/{id}`;
   - `GET /sellers/{id}/stats` e `GET /sellers/{id}/commission?from&to` são **só para owner** (staff recebe `403`);
-  - a comissão usa `from`/`to` como datas locais da loja e o snapshot de comissão de cada item.
-- `GET /settings` (owner e staff): `defaultConsignmentDays` para sugerir o vencimento e `timezone` da loja.
+  - a comissão usa `from`/`to` como datas locais da loja e o snapshot de comissão de cada item;
+  - `GET /sellers/{id}/payment-schedule?from&to` (**só owner**): vendas do período (pela data da venda) agrupadas pelo prazo do lote, `{ groups: [{ paymentTermDays, soldCount, amountDueCents, firstDueDate, lastDueDate }], totalDueCents }`. Vendas de lotes sem prazo vêm no grupo `paymentTermDays: null`, sempre o último.
+- `GET /settings` (owner e staff): `defaultConsignmentDays` para sugerir o vencimento, `paymentTerms` para as opções de prazo de pagamento e `timezone` da loja.
 
 ## Proposta de solução
 
@@ -58,7 +60,7 @@ Detalhes nas seções 3 e 4 do `BACKEND_API_CONTRACT.md`. Consignações aceitam
 - **Página da vendedora:**
   - histórico com `useSellerConsignmentsQuery`;
   - itens carregados ao expandir o lote (`useConsignmentQuery`);
-  - cards de estatística e comissão só para owner. Para staff, não fazer as chamadas de `stats`/`commission` e esconder os cards;
+  - cards de estatística, comissão e prazos de pagamento só para owner. Para staff, não fazer as chamadas de `stats`/`commission`/`payment-schedule` e esconder os cards;
   - períodos da comissão ("mês atual" etc.) calculados no fuso da loja.
 - Em conflito de peça indisponível, destacar as peças de `fields.pieceIds`, recarregar a lista e pedir nova seleção.
 
@@ -88,12 +90,12 @@ Detalhes nas seções 3 e 4 do `BACKEND_API_CONTRACT.md`. Consignações aceitam
 
 ## Critérios de aceite
 
-- [ ] O wizard valida vendedora, ao menos uma peça e data antes do envio.
+- [ ] O wizard valida vendedora, ao menos uma peça, data e prazo de pagamento antes do envio.
 - [ ] O lote criado tem código, snapshots, vencimento e itens iguais aos devolvidos pelo servidor; o retry não cria lote duplicado.
 - [ ] Venda e devolução aguardam o resultado, evitam double-submit e refletem os estados persistidos; a data opcional registra prestações de contas atrasadas no dia certo.
 - [ ] O lote guarda o prazo de pagamento escolhido e o card da vendedora mostra os valores e vencimentos da API, sem cálculo local.
 - [ ] Conflitos `409` recuperam a seleção ou a lista; `401`/`403` e falha de rede recebem o tratamento padrão.
-- [ ] Staff usa lista, wizard, histórico e ações, sem ver nem chamar stats/comissão.
+- [ ] Staff usa lista, wizard, histórico e ações, sem ver nem chamar stats, comissão e agenda de repasses, e sem ver valores devidos.
 - [ ] Dashboard, lista de vendedoras e detalhe atualizam sem reload depois das ações.
 - [ ] A impressão gera o romaneio do lote efetivamente criado.
 - [ ] Testes cobrem criação, retry, ação de item, conflito e invalidação de cache.

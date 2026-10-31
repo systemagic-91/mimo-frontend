@@ -15,14 +15,15 @@ Eliminar o banco de demonstração do caminho de produção e comprovar, com tes
 - Buscar referências restantes a `useDb`, `getDb`, `setDb`, funções de `domain.ts`, `seedDb`, `luma_db_v1`, usuários/senhas seed e adaptar/remover somente após migrações completas.
 - Remover seed demo de produção; se necessário, manter fixture isolada exclusivamente para testes/MSW.
 - Atualizar `src/lib/types.ts` para DTOs/tipos remotos ou remover interfaces `Db` obsoletas, sem deixar duas fontes de verdade.
-- Decidir se deve haver migração pontual de dados locais existentes; se sim, desenhar import idempotente e seguro, sem enviar credenciais.
+- **Dados locais existentes são descartados** (decisão de 2026-10-31): são dados de demonstração. Na primeira carga depois da atualização, o app apaga a chave `luma_db_v1` do `localStorage`, sem importar nada para o backend.
 - Adicionar testes de integração de interface (Playwright ou equivalente) para login, troca obrigatória de senha, recebimento, etiquetagem, consignação, venda/devolução, configuração, usuários e relatórios contra um backend de teste.
 - Rodar os E2E pelo proxy do Vite (`/api` → backend), como em produção, nos motores Chromium, Firefox e WebKit. Isso também cobre a verificação em navegador que ficou pendente na FRONT_22 (cookie de sessão, reload, duas abas e logout).
+- **Criar o CI do front** (GitHub Actions), decisão de 2026-10-31: `npm ci`, `npm run check` (lint + typecheck) e `npm test` em todo push e pull request, e os E2E contra um backend de teste (PostgreSQL descartável e o `.jar` do backend). Isso fecha o critério de CI que ficou pendente na FRONT_11.
 - Conferir o `README.md` e o `.env.example` (já usam `VITE_API_BASE_URL=/api/v1` e o proxy desde a FRONT_22) e documentar a execução integrada e o comportamento com a API indisponível.
 
 ## Pontos de atenção
 
-- Não apagar dados locais do usuário sem decidir se é necessário importar; informar e versionar a estratégia.
+- Apagar só a chave do banco de demonstração (`luma_db_v1`); preferências legítimas que continuarem existindo no `localStorage` ficam.
 - `localStorage` ainda pode guardar preferências não sensíveis (idioma), mas não o banco de domínio nem senha.
 - A remoção depende da migração de todas as telas e da conclusão de decisões sobre sessão, fotos e contratos.
 - Testes E2E requerem backend efêmero, banco descartável e storage fake; não podem depender de credenciais reais. Como subir o backend de teste:
@@ -41,7 +42,8 @@ Eliminar o banco de demonstração do caminho de produção e comprovar, com tes
 - [ ] Testes E2E verificam sucesso e erro de rede/validação/conflito por fluxo.
 - [ ] Preferências legítimas permanecem separadas do estado de domínio.
 - [ ] README e `.env.example` documentam URL da API e execução integrada sem segredos.
-- [ ] Lint, typecheck, unit tests e E2E passam no CI.
+- [ ] O CI do front (GitHub Actions) roda lint, typecheck, testes unitários e E2E a cada push, e todos passam.
+- [ ] A chave `luma_db_v1` é apagada na primeira carga, sem afetar outras preferências.
 
 ## Observações de dependência
 

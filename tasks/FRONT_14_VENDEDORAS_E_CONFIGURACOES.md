@@ -54,6 +54,7 @@ Detalhes nas seções 3 e 7 do `BACKEND_API_CONTRACT.md`.
 
 - Avisar na tela que mudar a comissão de uma vendedora só vale para **lotes novos**: o backend guarda a taxa no item no momento da entrega.
 - Mudar `timezone` muda o que conta como "hoje" para vencimentos e relatórios. Pedir confirmação.
+- `paymentTerms` define os prazos de pagamento aceitos **nos lotes novos** (BACK_27): tirar um prazo faz o wizard deixar de oferecê-lo, mas não muda o prazo dos lotes já criados. Explicar isso na tela.
 - Não inicializar formulários a partir do seed/`localStorage`.
 - Loading/erro de leitura e estado de salvamento precisam ser distintos.
 - A aba "Usuários" (FRONT_20) fica nesta mesma página; combinar a estrutura de abas.
