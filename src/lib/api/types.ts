@@ -190,6 +190,7 @@ export interface ConsignmentDto {
 
 export interface ConsignmentListItem
   extends Omit<ConsignmentDto, "status"> {
+  dueInDays: number;
   seller: SellerDto;
   piecesInHand: number;
   valueInHandCents: number;
@@ -230,7 +231,7 @@ export interface TurnoverReportRow {
   soldAt: string;
   sellerId: string;
   sellerName: string;
-  daysToSell: number | null;
+  daysToSell: number;
 }
 
 export interface TurnoverReportResponse {
