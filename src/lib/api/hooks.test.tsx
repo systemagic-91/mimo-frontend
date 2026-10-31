@@ -25,6 +25,7 @@ describe("domain query hooks", () => {
     vi.mocked(piecesApi.list).mockResolvedValue({
       items: [],
       pagination: { page: 1, pageSize: 50, total: 0, totalPages: 0 },
+      summary: { totalValueCents: 0 },
     });
     vi.mocked(piecesApi.receive).mockResolvedValue({
       piece: {

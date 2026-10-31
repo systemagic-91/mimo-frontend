@@ -2,7 +2,7 @@ import { apiRequest, buildQueryString } from "./http";
 import { toBackendPieceStage } from "./mappers";
 import type {
   BackendPieceStage,
-  PageEnvelope,
+  PieceListResponse,
   PageRequest,
   PieceDto,
   PieceEventDto,
@@ -20,7 +20,7 @@ export interface PieceListParams extends PageRequest {
 
 export const piecesApi = {
   list(params: PieceListParams = {}, signal?: AbortSignal) {
-    return apiRequest<PageEnvelope<PieceDto> & { totalValueCents?: number }>(
+    return apiRequest<PieceListResponse>(
       `/pieces${buildQueryString({
         ...params,
         status: params.status ? toBackendPieceStage(params.status) : undefined,

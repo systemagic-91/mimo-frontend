@@ -98,6 +98,11 @@ export interface PieceDto {
   version?: number;
 }
 
+/** `GET /pieces`: `summary.totalValueCents` soma o preço de todas as peças filtradas, não só as da página (BACK_26). */
+export interface PieceListResponse extends PageEnvelope<PieceDto> {
+  summary: { totalValueCents: number };
+}
+
 export interface ReceivePieceRequest {
   type: string;
   valueCents: number;

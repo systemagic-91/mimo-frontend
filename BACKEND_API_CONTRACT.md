@@ -452,9 +452,17 @@ Query:
 - `status`: um `PieceStage` em maiúsculas.
 - `page`, `pageSize` e `sort`. O `sort` aceita apenas `code`, `type`, `valueCents`, `status`, `currentLocation`, `createdAt` e `updatedAt`.
 
-Retorna `items` (`PieceResponse`) e `pagination`.
+Retorna `items` (`PieceResponse`), `pagination` e `summary.totalValueCents` (BACK_26):
 
-A resposta **não** inclui o valor total filtrado (`totalValueCents`). Se a tela de estoque precisar dele, adicionar ao endpoint junto com a FRONT_13.
+```json
+{
+  "items": [],
+  "pagination": { "page": 1, "pageSize": 50, "total": 5, "totalPages": 1 },
+  "summary": { "totalValueCents": 26234 }
+}
+```
+
+`summary.totalValueCents` é a soma do **preço de venda** de **todas** as peças que batem com `q` e `status`, independentemente da página e do `pageSize` (`0` quando não há peças). A soma usa exatamente o mesmo filtro da lista, então quantidade (`pagination.total`) e valor nunca divergem. Owner e staff veem a soma; custo não entra.
 
 #### `GET /pieces/{pieceId}` ✅
 
@@ -1159,7 +1167,7 @@ O frontend substitui `src/lib/db.ts` e as chamadas diretas a `src/lib/domain.ts`
 14. **Observabilidade:** tracing só com `traceId`/`spanId` nos logs e na resposta, sem serviço externo; métricas em `/actuator/metrics` e `/actuator/prometheus` só para owner; logs em JSON só no perfil `prod` (BACK_10; explicações em `TRACING.md` e `METRICAS.md` no backend).
 15. **Backup:** manual com `pg_dump`/`pg_restore`, documentado no runbook com teste de restauração. Chaves de idempotência vencidas há mais de 7 dias são apagadas por um job diário (BACK_10).
 
-16. **Valor do estoque:** `GET /pieces` passa a devolver `summary.totalValueCents`, a soma das peças filtradas (BACK_26, pendente).
+16. **Valor do estoque:** `GET /pieces` devolve `summary.totalValueCents`, a soma das peças filtradas (BACK_26).
 17. **Prazo de pagamento:** o lote guarda o prazo combinado (30/60/90); cada peça vendida vence em data da venda + prazo, e o valor devido é venda − comissão (snapshot). Sem controle de pagamento recebido por enquanto (BACK_27, pendente).
 18. **Data na venda e na devolução:** a tela oferece uma data opcional, usando o `soldAt`/`returnedAt` que o backend já aceita (FRONT_15).
 

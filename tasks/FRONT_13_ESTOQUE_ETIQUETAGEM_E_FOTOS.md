@@ -23,7 +23,7 @@ Detalhes nas seções 2 e 8 do `BACKEND_API_CONTRACT.md`. Todas as rotas aceitam
 - `GET /pieces`:
   - query `q` (código ou tipo, até 120 caracteres), `status` (`PieceStage` em maiúsculas; usar `toBackendPieceStage`), `page` (base 1), `pageSize` (padrão 50, máximo 200) e `sort` (`campo,asc|desc`; campos `code`, `type`, `valueCents`, `status`, `currentLocation`, `createdAt`, `updatedAt`);
   - resposta `{ items, pagination: { page, pageSize, total, totalPages } }`;
-  - com a BACK_26, também `summary.totalValueCents`: a soma do preço de **todas** as peças filtradas, não só da página.
+  - e `summary.totalValueCents` (BACK_26, pronta): a soma do preço de **todas** as peças filtradas, não só da página. Tipo `PieceListResponse`.
 - `GET /pieces/{id}` e `GET /pieces/{id}/events` (lista completa, em ordem crescente de `occurredAt`). Peça inexistente: `404 PIECE_NOT_FOUND`.
 - `GET /pieces/next-code`: só uma **prévia** do próximo código; o código definitivo vem na resposta do recebimento.
 - `POST /pieces/receive`:
@@ -84,4 +84,4 @@ Detalhes nas seções 2 e 8 do `BACKEND_API_CONTRACT.md`. Todas as rotas aceitam
 
 ## Observações de dependência
 
-Depende de FRONT_11 e dos contratos BACK_05/BACK_07 (prontos). O card de valor total depende da BACK_26; o resto da tela não precisa esperar. Os campos de custo ficam para a FRONT_24. Pode ser feita em paralelo a FRONT_14, FRONT_15 e FRONT_16.
+Depende de FRONT_11 e dos contratos BACK_05/BACK_07 (prontos). O card de valor total usa a BACK_26 (pronta). Os campos de custo ficam para a FRONT_24. Pode ser feita em paralelo a FRONT_14, FRONT_15 e FRONT_16.
