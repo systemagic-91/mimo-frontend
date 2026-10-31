@@ -105,7 +105,7 @@ Lombok, MapStruct e Springdoc fazem parte da stack obrigatória. Configure os ma
 - IDs: UUID (`UUID` em Java), nunca IDs sequenciais expostos.
 - Respostas de lista: `items` e `pagination` (`page`, `pageSize`, `total`, `totalPages`).
 - Paginação: `page` começa em 1; `pageSize` padrão 50, mínimo 1 e máximo 200. Valores fora disso retornam `400 INVALID_PAGINATION`.
-- Ordenação: `sort=campo,asc` ou `sort=campo,desc`, podendo repetir o parâmetro. Somente campos permitidos por endpoint; campo desconhecido ou repetido retorna `400 INVALID_PAGINATION`.
+- Ordenação: `sort=campo,asc` ou `sort=campo,desc`, podendo repetir o parâmetro. Somente campos permitidos por endpoint; campo desconhecido ou repetido retorna `400 INVALID_PAGINATION`. Um único `sort=campo,desc` funciona normalmente (até a BACK_08 ele retornava 400 por engano).
 - **`Idempotency-Key` é obrigatório** em toda mutation de domínio (peças, vendedoras, configurações, usuários e, quando implementadas, consignações e uploads). Chave ausente, vazia ou com mais de 160 caracteres retorna `400`. Rotas `/auth/*` não usam a chave.
   - A chave é escopada por usuário e operação. Repetir a mesma chave com o mesmo payload (JSON canônico) devolve o status e o corpo salvos, por 24 horas (`IDEMPOTENCY_TTL`).
   - Mesma chave com payload diferente: `409 IDEMPOTENCY_KEY_REUSED`. Requisição concorrente com a mesma chave ainda em execução: `409 IDEMPOTENCY_IN_PROGRESS`.
@@ -125,7 +125,7 @@ Um `@RestControllerAdvice` (`ApiExceptionHandler`) converte exceções em `Probl
   "type": "https://api.luma.com.br/problems/piece-not-available",
   "title": "Conflict",
   "status": 409,
-  "detail": "Uma ou mais peças já foram movimentadas.",
+  "detail": "Estas peças não estão disponíveis no estoque: LU-0003.",
   "instance": "/api/v1/consignments",
   "code": "PIECE_NOT_AVAILABLE",
   "fields": {
@@ -140,20 +140,20 @@ Um `@RestControllerAdvice` (`ApiExceptionHandler`) converte exceções em `Probl
 - `fields` só aparece em erros de campo e nunca ecoa o valor enviado.
 - Erros internos nunca incluem stack trace, mensagem de exceção ou senha.
 
-| Status | Uso                                                                 | Códigos em uso                                                                                                                                                           |
-| -----: | ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-|  `400` | JSON inválido, Bean Validation, paginação, idempotência mal formada | `INVALID_REQUEST`, `VALIDATION_ERROR`, `INVALID_PAGINATION`, `INVALID_IDEMPOTENCY_KEY`, `INVALID_IDEMPOTENCY_SCOPE`, `INVALID_IDEMPOTENCY_PAYLOAD`, `PASSWORD_UNCHANGED` |
-|  `401` | Não autenticado ou credencial inválida                              | `UNAUTHENTICATED`, `INVALID_CREDENTIALS`, `INVALID_REFRESH_TOKEN`, `INVALID_ACCESS_TOKEN`                                                                                |
-|  `403` | Sem permissão ou usuário inativo                                    | `FORBIDDEN`, `USER_INACTIVE`                                                                                                                                             |
-|  `404` | Recurso inexistente                                                 | `NOT_FOUND`, `PIECE_NOT_FOUND`, `SELLER_NOT_FOUND`, `PHOTO_NOT_FOUND`                                                                                                    |
-|  `409` | Conflito de estado, concorrência ou idempotência                    | `CONFLICT` (lock otimista/integridade), `INVALID_PIECE_TRANSITION`, `IDEMPOTENCY_KEY_REUSED`, `IDEMPOTENCY_IN_PROGRESS`                                                  |
-|  `413` | Arquivo maior que o limite                                          | `PHOTO_TOO_LARGE`                                                                                                                                                        |
-|  `415` | `Content-Type` não aceito pelo endpoint                             | `UNSUPPORTED_MEDIA_TYPE`                                                                                                                                                 |
-|  `422` | Regra de negócio                                                    | `INVALID_INITIAL_STAGE`, `SELLER_INACTIVE`                                                                                                                               |
-|  `429` | Rate limit                                                          | `RATE_LIMITED`                                                                                                                                                           |
-|  `500` | Erro inesperado                                                     | `INTERNAL_ERROR`                                                                                                                                                         |
+| Status | Uso                                                                 | Códigos em uso                                                                                                                                                                                     |
+| -----: | ------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+|  `400` | JSON inválido, Bean Validation, paginação, idempotência mal formada | `INVALID_REQUEST`, `VALIDATION_ERROR`, `INVALID_PAGINATION`, `INVALID_IDEMPOTENCY_KEY`, `INVALID_IDEMPOTENCY_SCOPE`, `INVALID_IDEMPOTENCY_PAYLOAD`, `PASSWORD_UNCHANGED`                           |
+|  `401` | Não autenticado ou credencial inválida                              | `UNAUTHENTICATED`, `INVALID_CREDENTIALS`, `INVALID_REFRESH_TOKEN`, `INVALID_ACCESS_TOKEN`                                                                                                          |
+|  `403` | Sem permissão ou usuário inativo                                    | `FORBIDDEN`, `USER_INACTIVE`                                                                                                                                                                       |
+|  `404` | Recurso inexistente                                                 | `NOT_FOUND`, `PIECE_NOT_FOUND`, `SELLER_NOT_FOUND`, `PHOTO_NOT_FOUND`, `CONSIGNMENT_NOT_FOUND`, `CONSIGNMENT_ITEM_NOT_FOUND`                                                                       |
+|  `409` | Conflito de estado, concorrência ou idempotência                    | `CONFLICT` (lock otimista/integridade), `INVALID_PIECE_TRANSITION`, `PIECE_NOT_AVAILABLE`, `ITEM_NOT_WITH_SELLER`, `PIECE_STATE_INCONSISTENT`, `IDEMPOTENCY_KEY_REUSED`, `IDEMPOTENCY_IN_PROGRESS` |
+|  `413` | Arquivo maior que o limite                                          | `PHOTO_TOO_LARGE`                                                                                                                                                                                  |
+|  `415` | `Content-Type` não aceito pelo endpoint                             | `UNSUPPORTED_MEDIA_TYPE`                                                                                                                                                                           |
+|  `422` | Regra de negócio                                                    | `INVALID_INITIAL_STAGE`, `SELLER_INACTIVE`, `EMPTY_ITEMS`, `DUE_DATE_IN_PAST`                                                                                                                      |
+|  `429` | Rate limit                                                          | `RATE_LIMITED`                                                                                                                                                                                     |
+|  `500` | Erro inesperado                                                     | `INTERNAL_ERROR`                                                                                                                                                                                   |
 
-Novos códigos previstos para as próximas tasks: `PIECE_NOT_AVAILABLE`, `DUE_DATE_IN_PAST` e `EMPTY_ITEMS` (BACK_08); `PASSWORD_CHANGE_REQUIRED`, `EMAIL_ALREADY_USED`, `LAST_OWNER`, `CANNOT_DEACTIVATE_SELF` e `USER_NOT_FOUND` (BACK_19).
+Novos códigos previstos para as próximas tasks: `PASSWORD_CHANGE_REQUIRED`, `EMAIL_ALREADY_USED`, `LAST_OWNER`, `CANNOT_DEACTIVATE_SELF` e `USER_NOT_FOUND` (BACK_19).
 
 ## Organização do projeto Java
 
@@ -307,7 +307,7 @@ A migration V3 cria os valores padrão:
 
 ### Tabelas auxiliares
 
-- `code_sequences(scope, sequence_year, next_value)` com chave única `(scope, sequence_year)`, para geração atômica via `INSERT ... ON CONFLICT DO UPDATE ... RETURNING`. Peças usam `scope = 'PIECE'` e `sequence_year = 0`; lotes devem usar um escopo próprio, com o ano corrente.
+- `code_sequences(scope, sequence_year, next_value)` com chave única `(scope, sequence_year)`, para geração atômica via `INSERT ... ON CONFLICT DO UPDATE ... RETURNING`. Peças usam `scope = 'PIECE'` e `sequence_year = 0`; lotes usam `scope = 'CONSIGNMENT'` com o ano corrente no fuso da loja (o contador recomeça a cada ano).
 - `audit_logs` com ator, ação, `entity_type`, `entity_id`, `before_state`/`after_state` (JSON), IP e timestamp.
 - `idempotency_keys` com usuário, chave escopada (`operação:chave`), fingerprint SHA-256, status e corpo da resposta, `created_at` e `expires_at`.
 - `piece_photos` (V5): `id UUID PK`, `content BYTEA`, `content_type` (`image/jpeg`, `image/png` ou `image/webp`), `width` e `height` (1 a 2000), `size_bytes` (até 1 MB), `created_by FK`, `created_at`. Todo dia às 4h (horário de Brasília) um job apaga as fotos criadas há mais de 24 horas que nenhuma peça usa (`PHOTO_CLEANUP_CRON`, `PHOTO_CLEANUP_ZONE`).
@@ -612,21 +612,57 @@ Acesso owner/staff. Histórico do mais recente para o mais antigo (`deliveredAt`
 
 Cada item retorna `ConsignmentResponse`: `id`, `code`, `sellerId`, `deliveredAt`, `dueAt`, `status`, `note`, `createdById` e `version`. Os itens do lote vêm de `GET /consignments/{id}`.
 
-### 4. Consignações ⏳ (BACK_08)
+### 4. Consignações ✅ (BACK_08)
 
-Toda mutation exige `Idempotency-Key`. Novas consignações devem usar `SellerApplicationService.requireActiveForConsignment`, que retorna `422 SELLER_INACTIVE`. Pré-requisito da BACK_08: liberar `GET /settings` para `staff`, porque o wizard precisa do prazo padrão e dos termos de pagamento.
+Acesso owner/staff em todas as rotas. Toda mutation exige `Idempotency-Key`: repetir a mesma chave com o mesmo payload devolve a resposta salva, sem duplicar lote, evento ou comissão.
 
 O romaneio do lote continua sendo impresso pelo navegador (`window.print()`, com a opção "Salvar como PDF"). Não há PDF gerado no servidor.
 
-#### `GET /consignments` ⏳
+**Vencimento:** o request envia `dueDate`, uma data local da loja (`YYYY-MM-DD`). O backend grava `dueAt` como o último instante desse dia no fuso de `settings.timezone` (ex.: `2026-11-30` em `America/Sao_Paulo` vira `2026-12-01T02:59:59.999999Z`). O lote só fica **atrasado** a partir do dia seguinte. Vencer hoje é permitido; vencer no passado não.
 
-Query: `status`, `sellerId`, `overdue` e paginação. Retornar a vendedora, os itens em posse, o valor em posse, o vencimento e o status visual (`em_dia`, `atrasada`, `quitada`). O status "atrasada" é calculado a partir de `dueAt` e não é persistido.
+**Atraso** é calculado na leitura (`status = ABERTA` e agora `> dueAt`); nunca é persistido.
 
-#### `GET /consignments/{consignmentId}` ⏳
+#### `GET /consignments` ✅
 
-Retorna lote, vendedora e itens completos.
+Query opcional:
 
-#### `POST /consignments` ⏳
+- `status`: `aberta` ou `quitada` (qualquer caixa);
+- `sellerId`;
+- `overdue`: `true` só os atrasados, `false` só os não atrasados;
+- paginação; `sort` aceita `code`, `deliveredAt`, `dueAt`, `status` e `createdAt` (padrão `deliveredAt,desc`).
+
+Cada item (`ConsignmentListItem` no front):
+
+```json
+{
+  "id": "uuid",
+  "code": "C-2026-001",
+  "sellerId": "uuid",
+  "deliveredAt": "2026-10-30T15:00:00Z",
+  "dueAt": "2026-12-01T02:59:59.999999Z",
+  "status": "em_dia",
+  "note": "Lote de outubro",
+  "createdById": "uuid",
+  "version": 0,
+  "seller": {
+    "id": "uuid",
+    "name": "Ana",
+    "phone": "...",
+    "commissionRate": 30,
+    "status": "ativa"
+  },
+  "piecesInHand": 2,
+  "valueInHandCents": 20000
+}
+```
+
+Aqui `status` é o **status visual**: `em_dia`, `atrasada` ou `quitada`.
+
+#### `GET /consignments/{consignmentId}` ✅
+
+Retorna `ConsignmentDetails`: os campos do lote com `status` persistido (`ABERTA`/`QUITADA`), `late` (boolean), `seller` e `items` (ordenados por código). Cada item tem `id`, `consignmentId`, `pieceId`, `codeSnapshot`, `typeSnapshot`, `valueCentsSnapshot`, `commissionRateSnapshot`, `status` (`COM_VENDEDORA`/`VENDIDA`/`DEVOLVIDA`), `soldAt`, `returnedAt` e `version`. Lote inexistente: `404 CONSIGNMENT_NOT_FOUND`.
+
+#### `POST /consignments` ✅
 
 Request:
 
@@ -634,50 +670,61 @@ Request:
 {
   "sellerId": "uuid",
   "pieceIds": ["uuid", "uuid"],
-  "dueAt": "2026-10-18T12:00:00Z",
+  "dueDate": "2026-11-30",
   "note": "Condições do lote"
 }
 ```
 
-Implementar em um único `@Transactional` service:
+`pieceIds` aceita até 200 peças. Tudo acontece em uma única transação:
 
-1. validar vendedora existente e `ATIVA`;
-2. validar lista não vazia, sem duplicatas, data futura e peças existentes;
-3. buscar peças com `@Lock(PESSIMISTIC_WRITE)` em ordem determinística;
-4. confirmar que todas ainda estão `ETIQUETADA`;
-5. reservar código `C-YYYY-NNN` em `code_sequences`;
-6. criar lote e snapshots dos itens, incluindo `commission_rate_snapshot` com a taxa da vendedora **no momento da entrega** (decidido);
-7. mover peças para `CONSIGNACAO`, atualizar localização e timestamp;
-8. criar evento `CONSIGNACAO` por peça;
-9. salvar auditoria.
+1. valida a lista (não vazia, sem repetição) e o vencimento (hoje ou depois, no máximo 365 dias);
+2. trava a vendedora (`FOR UPDATE`) e exige `ATIVA`;
+3. trava as peças em ordem de ID (evita deadlock) e exige que todas existam e estejam `ETIQUETADA`;
+4. confere que nenhuma delas tem item `COM_VENDEDORA` em outro lote (se tiver, os dados estão corrompidos: nada é alterado e o caso é logado);
+5. reserva o código `C-YYYY-NNN` em `code_sequences`;
+6. cria o lote `ABERTA` e um item por peça com snapshot de código, tipo, preço e **comissão da vendedora no momento da entrega**;
+7. move as peças para `CONSIGNACAO`, com localização `Com: {nome da vendedora}`;
+8. cria um evento `CONSIGNACAO` por peça e a auditoria `CONSIGNMENT_CREATED`.
 
-Se uma peça falhar, rollback integral. Retornar `SELLER_INACTIVE`, `PIECE_NOT_AVAILABLE`, `DUE_DATE_IN_PAST` ou `EMPTY_ITEMS`.
+Response `201`: `ConsignmentDetails`. Qualquer falha desfaz tudo.
 
-#### `POST /consignments/{consignmentId}/items/{pieceId}/sold` ⏳
+Erros:
 
-Request opcional: `{ "soldAt": "2026-09-18T15:00:00Z", "note": "..." }`. Se ausente, usar `Clock` do servidor.
+- `422 EMPTY_ITEMS`: lista vazia;
+- `400 VALIDATION_ERROR`: peça repetida (`fields.pieceIds`) ou vencimento acima de 365 dias (`fields.dueDate`);
+- `422 DUE_DATE_IN_PAST`: vencimento antes de hoje;
+- `404 SELLER_NOT_FOUND` e `422 SELLER_INACTIVE`;
+- `404 PIECE_NOT_FOUND`: alguma peça não existe (`fields.pieceIds` lista as ausentes);
+- `409 PIECE_NOT_AVAILABLE`: alguma peça não está `ETIQUETADA` (a mensagem cita os códigos; `fields.pieceIds` lista os IDs);
+- `409 PIECE_STATE_INCONSISTENT`: peça em estoque mas ainda ativa em outro lote.
 
-Em transação e com lock:
+Duas criações simultâneas com a mesma peça: uma recebe `201` e a outra `409 PIECE_NOT_AVAILABLE` (verificado contra PostgreSQL real).
 
-1. validar que o item está `COM_VENDEDORA`;
-2. definir o item como `VENDIDA` e preencher `soldAt`;
-3. atualizar a peça para `VENDIDA`, com localização `Vendida`;
-4. criar o evento;
-5. quitar o lote se não restar item com a vendedora.
+#### `POST /consignments/{consignmentId}/items/{pieceId}/sold` ✅
 
-A repetição com a mesma `Idempotency-Key` devolve a resposta salva.
+Body opcional: `{ "soldAt": "2026-10-29T15:00:00Z", "note": "Pix" }`. Sem `soldAt`, usa o horário do servidor. Uma data informada precisa estar entre a entrega do lote e agora; caso contrário, `400 VALIDATION_ERROR` com `fields.soldAt`.
 
-#### `POST /consignments/{consignmentId}/items/{pieceId}/returned` ⏳
+Em transação, trava lote, item e peça e:
 
-Request opcional: `{ "returnedAt": "2026-09-18T15:00:00Z", "note": "..." }`.
+1. exige o item `COM_VENDEDORA`;
+2. marca o item `VENDIDA` com `soldAt`;
+3. move a peça para `VENDIDA`, com localização `Vendida`;
+4. cria o evento `VENDIDA` (com `note`, se enviada);
+5. quita o lote se não restar item com a vendedora;
+6. audita `CONSIGNMENT_ITEM_SOLD`.
 
-Passos:
+Response `200`: `ConsignmentDetails` atualizado.
 
-1. validar que o item está `COM_VENDEDORA`;
-2. marcar o item como `DEVOLVIDA`;
-3. voltar a peça para `ETIQUETADA`, com localização `Estoque`;
-4. criar os eventos `DEVOLVIDA` e `ETIQUETADA`;
-5. quitar o lote se necessário e auditar.
+#### `POST /consignments/{consignmentId}/items/{pieceId}/returned` ✅
+
+Body opcional: `{ "returnedAt": "...", "note": "..." }`, com as mesmas regras de data. Marca o item `DEVOLVIDA`, volta a peça para `ETIQUETADA` em `Estoque`, cria os eventos `DEVOLVIDA` e `ETIQUETADA` (nessa ordem), quita o lote se necessário e audita `CONSIGNMENT_ITEM_RETURNED`. Response `200`: `ConsignmentDetails`.
+
+Erros das duas ações:
+
+- `404 CONSIGNMENT_NOT_FOUND`: lote inexistente;
+- `404 CONSIGNMENT_ITEM_NOT_FOUND`: a peça não faz parte do lote;
+- `409 ITEM_NOT_WITH_SELLER`: o item já foi vendido ou devolvido (ex.: duas pessoas clicando ao mesmo tempo); a mensagem diz qual. O front deve avisar e recarregar o lote;
+- `409 PIECE_STATE_INCONSISTENT`: item com a vendedora, mas peça fora de `CONSIGNACAO`.
 
 ### 5. Dashboard ⏳ (BACK_09)
 
@@ -742,7 +789,7 @@ Retorna as peças etiquetadas paradas há pelo menos `days`, com `id`, `code`, `
 
 #### `GET /settings` ✅
 
-Acesso owner (staff passa a ter leitura na BACK_08). Retorna:
+Acesso owner e staff (staff só lê; o wizard de consignação precisa do prazo padrão e dos termos de pagamento). Retorna:
 
 - `id`;
 - `commissionMin`, `commissionMax`, `commissionStep` e `defaultCommissionRate`;
@@ -871,13 +918,11 @@ Padrão das mutations já implementadas: o service envolve a operação em `Idem
 public class ConsignmentApplicationService {
 
     @Transactional
-    @PreAuthorize("hasAnyRole('OWNER', 'STAFF')")
     public IdempotentResponse create(UUID actorId, String idempotencyKey,
-                                     CreateConsignmentRequest request) {
+                                     CreateConsignmentRequest request, String ipAddress) {
         return idempotencyService.execute(actorId, "consignments.create", idempotencyKey, request, () -> {
-            // sellerService.requireActiveForConsignment(...)
-            // pieceRepository.findAllForUpdate(...)
-            // validar todos como ETIQUETADA
+            // sellerRepository.findByIdForUpdate(...) e exigir ATIVA
+            // pieceRepository.findAllForUpdate(...) (order by id) e exigir ETIQUETADA
             // reservar código C-YYYY-NNN em code_sequences
             // salvar lote, snapshots, peças, eventos e auditoria
             return new IdempotentResponse(201, objectMapper.valueToTree(response));
@@ -885,9 +930,9 @@ public class ConsignmentApplicationService {
     }
 
     @Transactional
-    public IdempotentResponse markSold(UUID actorId, String idempotencyKey,
-                                       UUID consignmentId, UUID pieceId, MarkSoldRequest request) {
-        // lock item + peça; aplicar transição; quitar lote se necessário
+    public IdempotentResponse markSold(UUID actorId, String idempotencyKey, UUID consignmentId,
+                                       UUID pieceId, MarkItemSoldRequest request, String ipAddress) {
+        // lock lote + item + peça; aplicar transição; quitar lote se necessário
     }
 }
 ```
@@ -896,7 +941,7 @@ Não colocar regras de negócio em controllers, entities ou repositories. Exempl
 
 ```java
 @Lock(LockModeType.PESSIMISTIC_WRITE)
-@Query("select piece from PieceEntity piece where piece.id in :ids")
+@Query("select piece from PieceEntity piece where piece.id in :ids order by piece.id")
 List<PieceEntity> findAllForUpdate(@Param("ids") Collection<UUID> ids);
 ```
 
