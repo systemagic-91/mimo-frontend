@@ -1,6 +1,8 @@
 # Sessão, tokens e cookies: o que vamos mudar e por quê
 
-Este documento explica, sem jargão, como o login funciona hoje, qual é o risco e o que as tasks **BACK_21** e **FRONT_22** vão fazer.
+Este documento explica, sem jargão, como o login funcionava, qual era o risco e o que as tasks **BACK_21** e **FRONT_22** fizeram.
+
+> **Situação em 2026-10-31:** as duas tasks estão implementadas. O refresh token já viaja só no cookie, e o front usa o proxy do Vite e o da Vercel.
 
 ---
 
@@ -115,6 +117,9 @@ Não. O proxy da Vercel resolve sem domínio próprio. Se no futuro vocês tiver
 
 **"E o access token? Ele também pode ser roubado?"**
 Em tese, sim, porque está na memória da página. Mas ele vale só 15 minutos e some ao recarregar. Esse é o equilíbrio recomendado pelo mercado.
+
+**"E se eu abrir o sistema em duas abas?"**
+Funciona. As abas dividem o mesmo cookie, então dividem a sessão. Só existe um cuidado: se as duas tentassem renovar a sessão no mesmo instante, a segunda mandaria um token que acabou de ser trocado, e o backend acharia que ele foi roubado e derrubaria todas as sessões. Para evitar isso, o front usa uma "fila" do navegador (`navigator.locks`): uma aba renova de cada vez, e a segunda já manda o cookie novo.
 
 **"Como testar no meu computador?"**
 Do mesmo jeito de hoje: suba o backend (`gradlew bootRun`) e o front (`npm run dev`) e acesse `http://localhost:5173`. O proxy do Vite cuida do resto.
