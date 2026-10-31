@@ -13,6 +13,10 @@ export default defineConfig(({ mode }) => {
     server: {
       host: "::",
       port: 5173,
+      // Mesmo papel do rewrite da Vercel: front e API na mesma origem, para o cookie de sessão funcionar.
+      proxy: {
+        "/api": process.env.API_PROXY_TARGET || "http://localhost:8080",
+      },
     },
     plugins: plugins.filter(Boolean) as PluginOption[],
     resolve: {
@@ -29,6 +33,7 @@ export default defineConfig(({ mode }) => {
       setupFiles: ["./src/test/setup.ts"],
       restoreMocks: true,
       clearMocks: true,
+      env: { VITE_API_BASE_URL: "http://localhost:8080/api/v1" },
     },
   };
 });

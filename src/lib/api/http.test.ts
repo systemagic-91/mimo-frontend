@@ -7,6 +7,7 @@ import {
   authTokenStore,
   ApiError,
   buildQueryString,
+  refreshSession,
 } from "./http";
 import { server } from "@/test/server";
 
@@ -20,7 +21,7 @@ describe("shared API client", () => {
   });
 
   it("serializes JSON and attaches the in-memory bearer token", async () => {
-    authTokenStore.set({ accessToken: "access-1", refreshToken: "refresh-1" });
+    authTokenStore.set({ accessToken: "access-1" });
     server.use(
       http.post(`${api}/pieces/receive`, async ({ request }) => {
         expect(request.headers.get("Authorization")).toBe("Bearer access-1");
@@ -86,7 +87,7 @@ describe("shared API client", () => {
   });
 
   it("refreshes once after 401 and retries with the new access token", async () => {
-    authTokenStore.set({ accessToken: "expired", refreshToken: "refresh-1" });
+    authTokenStore.set({ accessToken: "expired" });
     let apiAttempts = 0;
     let refreshAttempts = 0;
     server.use(
@@ -102,11 +103,9 @@ describe("shared API client", () => {
       }),
       http.post(`${api}/auth/refresh`, async ({ request }) => {
         refreshAttempts += 1;
-        expect(await request.json()).toEqual({ refreshToken: "refresh-1" });
-        return HttpResponse.json({
-          accessToken: "fresh",
-          refreshToken: "refresh-2",
-        });
+        expect(await request.text()).toBe("");
+        expect(request.headers.get("Authorization")).toBeNull();
+        return HttpResponse.json({ accessToken: "fresh" });
       }),
     );
 
@@ -117,7 +116,7 @@ describe("shared API client", () => {
   });
 
   it("notifies the configured unauthorized handler when refresh fails", async () => {
-    authTokenStore.set({ accessToken: "expired", refreshToken: "refresh-1" });
+    authTokenStore.set({ accessToken: "expired" });
     const onUnauthorized = vi.fn();
     authTokenStore.setUnauthorizedHandler(onUnauthorized);
     server.use(
@@ -136,8 +135,55 @@ describe("shared API client", () => {
     );
 
     await expect(apiRequest("/pieces")).rejects.toBeInstanceOf(ApiError);
-    expect(authTokenStore.getRefreshToken()).toBeNull();
+    expect(authTokenStore.getAccessToken()).toBeNull();
     expect(onUnauthorized).toHaveBeenCalledTimes(1);
+  });
+
+  it("renews only once when several requests expire at the same time", async () => {
+    authTokenStore.set({ accessToken: "expired" });
+    let refreshAttempts = 0;
+    server.use(
+      http.get(`${api}/pieces`, ({ request }) =>
+        request.headers.get("Authorization") === "Bearer expired"
+          ? HttpResponse.json({ status: 401 }, { status: 401 })
+          : HttpResponse.json({ items: [] }),
+      ),
+      http.post(`${api}/auth/refresh`, async () => {
+        refreshAttempts += 1;
+        await delay(20);
+        return HttpResponse.json({ accessToken: "fresh" });
+      }),
+    );
+
+    await Promise.all([apiRequest("/pieces"), apiRequest("/pieces"), apiRequest("/pieces")]);
+    expect(refreshAttempts).toBe(1);
+  });
+
+  it("serializes session renewals across tabs with a Web Lock", async () => {
+    const order: string[] = [];
+    const locks = {
+      request: vi.fn(async (_name: string, action: () => Promise<unknown>) => {
+        order.push("lock");
+        const result = await action();
+        order.push("unlock");
+        return result;
+      }),
+    };
+    vi.stubGlobal("navigator", { locks });
+    server.use(
+      http.post(`${api}/auth/refresh`, () => {
+        order.push("refresh");
+        return HttpResponse.json({ accessToken: "fresh" });
+      }),
+    );
+
+    try {
+      await expect(refreshSession()).resolves.toEqual({ accessToken: "fresh" });
+    } finally {
+      vi.unstubAllGlobals();
+    }
+    expect(locks.request).toHaveBeenCalledWith("luma-session-refresh", expect.any(Function));
+    expect(order).toEqual(["lock", "refresh", "unlock"]);
   });
 
   it("enforces the configured request timeout", async () => {

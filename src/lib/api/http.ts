@@ -32,9 +32,9 @@ export class ApiError extends Error {
   }
 }
 
+// O refresh token vive só no cookie HttpOnly `luma_refresh`, que o JavaScript não lê.
 export interface AuthTokens {
   accessToken: string;
-  refreshToken: string;
 }
 
 export interface ApiRequestOptions extends Omit<RequestInit, "body"> {
@@ -46,26 +46,16 @@ export interface ApiRequestOptions extends Omit<RequestInit, "body"> {
 }
 
 const DEFAULT_TIMEOUT_MS = 15_000;
-const API_BASE_URL = (
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:8080/api/v1"
-).replace(/\/+$/, "");
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "/api/v1").replace(
+  /\/+$/,
+  "",
+);
+const REFRESH_LOCK_NAME = "luma-session-refresh";
 
 let authTokens: AuthTokens | null = null;
 let unauthorizedHandler: (() => void) | undefined;
-let refreshPromise: Promise<boolean> | null = null;
+let refreshPromise: Promise<RefreshedSession | null> | null = null;
 let unauthorizedNotified = false;
-const REFRESH_TOKEN_KEY = "luma_refresh_token";
-
-function readStoredRefreshToken(): string | null {
-  if (typeof window === "undefined") return null;
-  return window.sessionStorage.getItem(REFRESH_TOKEN_KEY);
-}
-
-function writeStoredRefreshToken(token: string | null) {
-  if (typeof window === "undefined") return;
-  if (token) window.sessionStorage.setItem(REFRESH_TOKEN_KEY, token);
-  else window.sessionStorage.removeItem(REFRESH_TOKEN_KEY);
-}
 
 function notifyUnauthorizedOnce() {
   if (unauthorizedNotified) return;
@@ -75,15 +65,12 @@ function notifyUnauthorizedOnce() {
 
 export const authTokenStore = {
   getAccessToken: () => authTokens?.accessToken ?? null,
-  getRefreshToken: () => authTokens?.refreshToken ?? readStoredRefreshToken(),
   set: (tokens: AuthTokens) => {
-    writeStoredRefreshToken(tokens.refreshToken);
-    authTokens = { ...tokens };
+    authTokens = { accessToken: tokens.accessToken };
     unauthorizedNotified = false;
   },
   clear: () => {
     authTokens = null;
-    writeStoredRefreshToken(null);
   },
   setUnauthorizedHandler: (handler?: () => void) => {
     unauthorizedHandler = handler;
@@ -188,7 +175,7 @@ async function performRequest<T>(
   try {
     const response = await fetch(resolveUrl(path), {
       ...requestOptions,
-      credentials: "omit",
+      credentials: "same-origin",
       headers,
       signal: controller.signal,
       body:
@@ -220,34 +207,40 @@ async function performRequest<T>(
   }
 }
 
-async function refreshTokens(): Promise<boolean> {
-  if (!authTokens?.refreshToken) return false;
-  if (refreshPromise) return refreshPromise;
+type RefreshedSession = AuthTokens & Record<string, unknown>;
 
-  const oldTokens = authTokens;
-  refreshPromise = performRequest<AuthTokens>("/auth/refresh", {
-    method: "POST",
-    body: { refreshToken: oldTokens.refreshToken },
-    authenticated: false,
-    retryOnUnauthorized: false,
-    notifyUnauthorized: false,
-  })
-    .then((tokens) => {
-    authTokenStore.set(tokens);
-      return true;
-    })
-    .catch((error: unknown) => {
-    if (error instanceof ApiError && error.status === 401) {
-      authTokenStore.clear();
-      return false;
-    }
-    throw error;
-    })
-    .finally(() => {
-      refreshPromise = null;
-    });
+// Todas as abas dividem o mesmo cookie. Se duas renovassem ao mesmo tempo, a segunda mandaria um token já
+// trocado e o backend revogaria todas as sessões; a trava faz a outra aba esperar e já mandar o cookie novo.
+export async function withSessionLock<T>(action: () => Promise<T>): Promise<T> {
+  if (typeof navigator === "undefined" || !navigator.locks) return action();
+  return await navigator.locks.request(REFRESH_LOCK_NAME, action);
+}
 
-  return refreshPromise;
+/** Renova a sessão pelo cookie. Devolve `null` quando não há sessão válida (`401`). */
+export function refreshSession<T extends AuthTokens>(): Promise<T | null> {
+  if (!refreshPromise) {
+    refreshPromise = withSessionLock(() =>
+      performRequest<RefreshedSession>("/auth/refresh", {
+        method: "POST",
+        authenticated: false,
+      }),
+    )
+      .then((session) => {
+        authTokenStore.set(session);
+        return session;
+      })
+      .catch((error: unknown) => {
+        if (error instanceof ApiError && error.status === 401) {
+          authTokenStore.clear();
+          return null;
+        }
+        throw error;
+      })
+      .finally(() => {
+        refreshPromise = null;
+      });
+  }
+  return refreshPromise as Promise<T | null>;
 }
 
 export async function apiRequest<T>(
@@ -290,7 +283,7 @@ export async function apiRequest<T>(
       const tokenChanged = Boolean(
         tokenAtRequest && authTokens?.accessToken && tokenAtRequest !== authTokens.accessToken,
       );
-      const refreshed = tokenChanged || (await refreshTokens());
+      const refreshed = tokenChanged || (await refreshSession()) !== null;
       if (refreshed) {
         try {
           return await performRequest<T>(path, preparedOptions);

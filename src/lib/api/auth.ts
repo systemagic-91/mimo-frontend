@@ -1,4 +1,9 @@
-import { ApiError, apiRequest, authTokenStore } from "./http";
+import {
+  apiRequest,
+  authTokenStore,
+  refreshSession,
+  withSessionLock,
+} from "./http";
 import type {
   AuthResponse,
   AuthSessionResponse,
@@ -21,50 +26,21 @@ export const authApi = {
     return apiRequest<AuthSessionResponse>("/auth/me", { signal });
   },
 
-  async refresh(): Promise<AuthResponse> {
-    const refreshToken = authTokenStore.getRefreshToken();
-    if (!refreshToken) {
-      throw new Error("No refresh token is available for this browser session.");
-    }
-    const response = await apiRequest<AuthResponse>("/auth/refresh", {
-      method: "POST",
-      body: { refreshToken },
-      authenticated: false,
-      retryOnUnauthorized: false,
-      notifyUnauthorized: false,
-    });
-    authTokenStore.set(response);
-    return response;
+  /** Restaura a sessão a partir do cookie HttpOnly. `null` quando não existe sessão. */
+  refresh(): Promise<AuthResponse | null> {
+    return refreshSession<AuthResponse>();
   },
 
   async logout(): Promise<void> {
     try {
-      if (authTokenStore.getRefreshToken()) {
-        const revokeSession = async () => {
-          const refreshToken = authTokenStore.getRefreshToken();
-          if (!refreshToken) return;
-          await apiRequest<void>("/auth/logout", {
-            method: "POST",
-            body: { refreshToken },
-            retryOnUnauthorized: false,
-            notifyUnauthorized: false,
-          });
-        };
-
-        try {
-          await revokeSession();
-        } catch (error) {
-          if (
-            !(error instanceof ApiError) ||
-            error.status !== 401 ||
-            !authTokenStore.getRefreshToken()
-          ) {
-            throw error;
-          }
-          await authApi.refresh();
-          await revokeSession();
-        }
-      }
+      await withSessionLock(() =>
+        apiRequest<void>("/auth/logout", {
+          method: "POST",
+          authenticated: false,
+          retryOnUnauthorized: false,
+          notifyUnauthorized: false,
+        }),
+      );
     } finally {
       authTokenStore.clear();
     }

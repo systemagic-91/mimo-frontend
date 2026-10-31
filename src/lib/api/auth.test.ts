@@ -20,18 +20,19 @@ const authResponse = {
     expiresAt: "2026-10-15T12:15:00Z",
   },
   accessToken: "access-1",
-  refreshToken: "refresh-1",
 };
 
 describe("authentication API", () => {
-  it("logs in and installs the returned tokens", async () => {
+  it("logs in and keeps only the access token in memory", async () => {
     server.use(
       http.post(`${api}/auth/login`, async ({ request }) => {
         expect(await request.json()).toEqual({
           email: "user@example.com",
           password: "correct-password",
         });
-        return HttpResponse.json(authResponse);
+        return HttpResponse.json(authResponse, {
+          headers: { "Set-Cookie": "luma_refresh=secret; HttpOnly; Path=/api/v1/auth" },
+        });
       }),
     );
 
@@ -39,19 +40,14 @@ describe("authentication API", () => {
       authApi.login("user@example.com", "correct-password"),
     ).resolves.toEqual(authResponse);
     expect(authTokenStore.getAccessToken()).toBe("access-1");
-    expect(authTokenStore.getRefreshToken()).toBe("refresh-1");
+    expect("getRefreshToken" in authTokenStore).toBe(false);
   });
 
-  it("uses the refresh token to restore the current user", async () => {
-    authTokenStore.set(authResponse);
+  it("restores the session from the cookie with an empty refresh request", async () => {
     server.use(
       http.post(`${api}/auth/refresh`, async ({ request }) => {
-        expect(await request.json()).toEqual({ refreshToken: "refresh-1" });
-        return HttpResponse.json({
-          ...authResponse,
-          accessToken: "access-2",
-          refreshToken: "refresh-2",
-        });
+        expect(await request.text()).toBe("");
+        return HttpResponse.json({ ...authResponse, accessToken: "access-2" });
       }),
       http.get(`${api}/auth/me`, ({ request }) => {
         expect(request.headers.get("Authorization")).toBe("Bearer access-2");
@@ -62,45 +58,43 @@ describe("authentication API", () => {
       }),
     );
 
-    await authApi.refresh();
+    await expect(authApi.refresh()).resolves.toMatchObject({ accessToken: "access-2" });
     await expect(authApi.me()).resolves.toEqual({
       user: authResponse.user,
       session: authResponse.session,
     });
-    expect(authTokenStore.getRefreshToken()).toBe("refresh-2");
   });
 
-  it("refreshes an expired access token before revoking the session", async () => {
-    authTokenStore.set(authResponse);
+  it("reports a missing session as null when the refresh returns 401", async () => {
+    await expect(authApi.refresh()).resolves.toBeNull();
+    expect(authTokenStore.getAccessToken()).toBeNull();
+  });
+
+  it("logs out without a body or bearer token, even with an expired access token", async () => {
+    authTokenStore.set({ accessToken: "expired" });
     let logoutAttempts = 0;
     server.use(
       http.post(`${api}/auth/logout`, async ({ request }) => {
         logoutAttempts += 1;
-        const token = request.headers.get("Authorization");
-        if (token === "Bearer access-1") {
-          return HttpResponse.json(
-            { status: 401, code: "UNAUTHENTICATED" },
-            { status: 401 },
-          );
-        }
-        expect(token).toBe("Bearer access-2");
-        expect(await request.json()).toEqual({ refreshToken: "refresh-2" });
+        expect(request.headers.get("Authorization")).toBeNull();
+        expect(await request.text()).toBe("");
         return new HttpResponse(null, { status: 204 });
-      }),
-      http.post(`${api}/auth/refresh`, async ({ request }) => {
-        expect(await request.json()).toEqual({ refreshToken: "refresh-1" });
-        return HttpResponse.json({
-          ...authResponse,
-          accessToken: "access-2",
-          refreshToken: "refresh-2",
-        });
       }),
     );
 
     await authApi.logout();
 
-    expect(logoutAttempts).toBe(2);
+    expect(logoutAttempts).toBe(1);
     expect(authTokenStore.getAccessToken()).toBeNull();
-    expect(authTokenStore.getRefreshToken()).toBeNull();
+  });
+
+  it("clears the in-memory session even when the logout request fails", async () => {
+    authTokenStore.set({ accessToken: "access-1" });
+    server.use(
+      http.post(`${api}/auth/logout`, () => HttpResponse.error()),
+    );
+
+    await expect(authApi.logout()).rejects.toThrow();
+    expect(authTokenStore.getAccessToken()).toBeNull();
   });
 });

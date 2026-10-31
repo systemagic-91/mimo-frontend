@@ -64,7 +64,6 @@ export interface AuthResponse {
   user: ApiUser;
   session: ApiSession;
   accessToken: string;
-  refreshToken: string;
 }
 
 export interface AuthSessionResponse {

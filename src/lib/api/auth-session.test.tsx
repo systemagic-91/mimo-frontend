@@ -8,7 +8,7 @@ import {
   useLocation,
 } from "react-router-dom";
 import type { ComponentProps } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { RequireAuth, RequireRole } from "@/components/auth/guards";
 import { HomeRedirect } from "@/components/auth/home-redirect";
 import Login from "@/pages/Login";
@@ -40,7 +40,6 @@ const authResponse = {
   user: staff,
   session,
   accessToken: "access-login",
-  refreshToken: "refresh-login",
 };
 
 function PrivateContent() {
@@ -116,14 +115,14 @@ function renderRouter(
 }
 
 describe("remote authentication session", () => {
-  it("restores a reload from the tab-scoped refresh token and validates /auth/me", async () => {
-    window.sessionStorage.setItem("luma_refresh_token", "refresh-before-reload");
+  // Sem cookie de sessão por padrão; os testes que restauram a sessão sobrescrevem.
+  beforeEach(() => {
+    vi.spyOn(authApi, "refresh").mockResolvedValue(null);
+  });
+
+  it("restores a reload from the session cookie and validates /auth/me", async () => {
     const refresh = vi.spyOn(authApi, "refresh").mockImplementation(async () => {
-      const response = {
-        ...authResponse,
-        accessToken: "access-restored",
-        refreshToken: "refresh-rotated",
-      };
+      const response = { ...authResponse, accessToken: "access-restored" };
       authTokenStore.set(response);
       return response;
     });
@@ -136,9 +135,8 @@ describe("remote authentication session", () => {
     expect(await screen.findByText("Área privada")).toBeInTheDocument();
     expect(refresh).toHaveBeenCalledOnce();
     expect(me).toHaveBeenCalledOnce();
-    expect(window.sessionStorage.getItem("luma_refresh_token")).toBe(
-      "refresh-rotated",
-    );
+    expect(window.sessionStorage.length).toBe(0);
+    expect(window.localStorage.length).toBe(0);
   });
 
   it("uses generic feedback for invalid credentials and allows retry", async () => {
@@ -215,7 +213,7 @@ describe("remote authentication session", () => {
   });
 
   it("redirects staff away from an owner-only route to inventory", async () => {
-    authTokenStore.set({ accessToken: "access-staff", refreshToken: "refresh-staff" });
+    authTokenStore.set({ accessToken: "access-staff" });
     vi.spyOn(authApi, "me").mockResolvedValue({ user: staff, session });
 
     renderRouter(["/owner"]);
@@ -224,8 +222,8 @@ describe("remote authentication session", () => {
     expect(screen.queryByText("Área de owner")).not.toBeInTheDocument();
   });
 
-  it("revokes the server session and clears the refresh token on logout", async () => {
-    authTokenStore.set({ accessToken: "access-staff", refreshToken: "refresh-staff" });
+  it("revokes the server session and clears the in-memory token on logout", async () => {
+    authTokenStore.set({ accessToken: "access-staff" });
     vi.spyOn(authApi, "me").mockResolvedValue({ user: staff, session });
     const logout = vi.spyOn(authApi, "logout").mockImplementation(async () => {
       authTokenStore.clear();
@@ -238,11 +236,11 @@ describe("remote authentication session", () => {
 
     expect(await screen.findByLabelText("E-mail")).toBeInTheDocument();
     await waitFor(() => expect(logout).toHaveBeenCalledOnce());
-    expect(window.sessionStorage.getItem("luma_refresh_token")).toBeNull();
+    expect(authTokenStore.getAccessToken()).toBeNull();
   });
 
   it("does not redirect before checking a protected route", async () => {
-    authTokenStore.set({ accessToken: "access-owner", refreshToken: "refresh-owner" });
+    authTokenStore.set({ accessToken: "access-owner" });
     vi.spyOn(authApi, "me").mockImplementation(
       () =>
         new Promise((resolve) => {
@@ -257,19 +255,23 @@ describe("remote authentication session", () => {
     expect(screen.queryByLabelText("E-mail")).not.toBeInTheDocument();
   });
 
-  it("ends the session predictably when the refresh token has expired", async () => {
-    window.sessionStorage.setItem("luma_refresh_token", "expired-refresh");
-    vi.spyOn(authApi, "refresh").mockRejectedValue(
-      new ApiError(401, {
-        title: "Unauthorized",
-        code: "INVALID_REFRESH_TOKEN",
-      }),
-    );
-
+  it("sends the user to login when the session cookie is missing or expired", async () => {
     renderRouter(["/private"]);
 
     expect(await screen.findByLabelText("E-mail")).toBeInTheDocument();
     expect(screen.queryByText("Área privada")).not.toBeInTheDocument();
-    expect(window.sessionStorage.getItem("luma_refresh_token")).toBeNull();
+    expect(authTokenStore.getAccessToken()).toBeNull();
+  });
+
+  it("shows a retryable error instead of logging out when the refresh fails for another reason", async () => {
+    vi.spyOn(authApi, "refresh").mockRejectedValue(
+      new ApiError(0, { title: "Network error", code: "NETWORK_ERROR" }),
+    );
+
+    renderRouter(["/private"]);
+
+    expect(
+      await screen.findByText("Não foi possível validar sua sessão."),
+    ).toBeInTheDocument();
   });
 });

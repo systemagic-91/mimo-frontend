@@ -40,17 +40,8 @@ export function useCurrentUserQuery(enabled = true) {
   return useQuery({
     queryKey: queryKeys.auth.me(),
     queryFn: async ({ signal }): Promise<AuthSessionResponse | null> => {
-      if (!authTokenStore.getAccessToken()) {
-        if (!authTokenStore.getRefreshToken()) return null;
-        try {
-          await authApi.refresh();
-        } catch (error) {
-          if (error instanceof ApiError && error.status === 401) {
-            authTokenStore.clear();
-            return null;
-          }
-          throw error;
-        }
+      if (!authTokenStore.getAccessToken() && !(await authApi.refresh())) {
+        return null;
       }
       try {
         return await authApi.me(signal);
