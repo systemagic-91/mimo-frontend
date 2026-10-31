@@ -13,6 +13,9 @@ A loja combina com cada vendedora um prazo para repassar o dinheiro das vendas: 
 - O valor que a vendedora deve à loja por peça é **venda − comissão** (comissão pelo snapshot do item). Ex.: peça de R$ 100 com 30% → deve R$ 70.
 - **Não haverá controle de pagamento recebido** por enquanto: o sistema mostra quanto vence e quando, mas não marca como pago.
 
+- A agenda filtra pelas **vendas do período** (data da venda), o mesmo período do card de comissão.
+- **Staff vê a data de vencimento, mas não o valor devido** (`amountDueCents` vem `null`); a agenda é só owner.
+
 ## Objetivo
 
 Registrar o prazo de pagamento de cada lote e oferecer ao owner a agenda do que cada vendedora deve repassar à loja.
@@ -43,11 +46,17 @@ Registrar o prazo de pagamento de cada lote e oferecer ao owner a agenda do que 
 
 ## Critérios de aceite
 
-- [ ] Lote novo exige um prazo permitido e o guarda; lotes antigos aparecem com prazo `null`.
-- [ ] Itens vendidos mostram a data de vencimento do pagamento e o valor devido (venda − comissão).
-- [ ] A agenda da vendedora agrupa as vendas do período por prazo, com totais e datas corretos no fuso da loja.
-- [ ] Mudar `settings.paymentTerms` não altera lotes existentes.
-- [ ] Testes unitários (JUnit 5 + Mockito) cobrem validação do prazo, cálculo da data e do valor devido e o agrupamento.
+- [x] Lote novo exige um prazo permitido e o guarda; lotes antigos aparecem com prazo `null`.
+- [x] Itens vendidos mostram a data de vencimento do pagamento e o valor devido (venda − comissão).
+- [x] A agenda da vendedora agrupa as vendas do período por prazo, com totais e datas corretos no fuso da loja.
+- [x] Mudar `settings.paymentTerms` não altera lotes existentes.
+- [x] Testes unitários (JUnit 5 + Mockito) cobrem validação do prazo, cálculo da data e do valor devido e o agrupamento.
+
+## Verificação (2026-10-31)
+
+- 199 testes do backend passando (9 novos), mais a checagem HTTP do `403` de staff na agenda.
+- Contra PostgreSQL real: 24/24 verificações (migration V8, prazo obrigatório e validado contra as configurações, data e valor devido para owner e staff, item devolvido sem dados de pagamento, prazo na listagem e no histórico, lote antigo no grupo `null`, totais da agenda, período vazio e invertido, `403`/`404`, mudança de configurações sem efeito nos lotes existentes e auditoria).
+- Junto com esta task, o helper `PieceCostVisibility` (BACK_23) virou `shared.security.CurrentUserRoles`, usado por peças e consignações.
 
 ## Observações de dependência
 
