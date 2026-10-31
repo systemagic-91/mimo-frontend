@@ -640,6 +640,7 @@ Cada item (`ConsignmentListItem` no front):
   "sellerId": "uuid",
   "deliveredAt": "2026-10-30T15:00:00Z",
   "dueAt": "2026-12-01T02:59:59.999999Z",
+  "dueInDays": 31,
   "status": "em_dia",
   "note": "Lote de outubro",
   "createdById": "uuid",
@@ -656,7 +657,7 @@ Cada item (`ConsignmentListItem` no front):
 }
 ```
 
-Aqui `status` é o **status visual**: `em_dia`, `atrasada` ou `quitada`.
+Aqui `status` é o **status visual**: `em_dia`, `atrasada` ou `quitada`. `dueInDays` são os dias de calendário até o vencimento (0 = vence hoje, negativo = atrasado), pela regra única de dias da seção 6.
 
 #### `GET /consignments/{consignmentId}` ✅
 
@@ -726,11 +727,11 @@ Erros das duas ações:
 - `409 ITEM_NOT_WITH_SELLER`: o item já foi vendido ou devolvido (ex.: duas pessoas clicando ao mesmo tempo); a mensagem diz qual. O front deve avisar e recarregar o lote;
 - `409 PIECE_STATE_INCONSISTENT`: item com a vendedora, mas peça fora de `CONSIGNACAO`.
 
-### 5. Dashboard ⏳ (BACK_09)
+### 5. Dashboard ✅ (BACK_09)
 
-#### `GET /dashboard` ⏳
+#### `GET /dashboard` ✅
 
-Acesso owner. Endpoint agregado:
+Acesso owner (staff recebe `403 FORBIDDEN`). Endpoint agregado:
 
 ```json
 {
@@ -757,33 +758,42 @@ Acesso owner. Endpoint agregado:
 
 Regras:
 
-- **Itens em posse (`activeInHand`):** itens `COM_VENDEDORA` em lotes abertos.
-- **Giro:** média arredondada entre o último evento de etiquetagem e a venda.
-- **Estoque parado:** peça `ETIQUETADA` há pelo menos 60 dias.
-- **Atraso:** lote aberto com `dueAt` anterior ao instante atual.
+- **Itens em posse (`activeInHand`, `activeInHandValueCents`):** itens `COM_VENDEDORA` em lotes abertos, somando o preço do snapshot.
+- **Giro médio (`avgTurnoverDays`):** média, arredondada para o inteiro mais próximo (0,5 sobe), dos dias para vender das vendas dos **últimos 90 dias** (desde 00:00 de hoje − 90 no fuso da loja). `null` quando não houve venda no período.
+- **Estoque parado (`staleCount`, `staleValueCents`):** mesmas regras de `GET /reports/stale-pieces?days=60`.
+- **`overdueSellers` (KPI):** quantidade de vendedoras em `GET /reports/overdue`; a lista `overdueSellers` traz as mesmas linhas desse relatório.
+- **`openConsignments`:** os lotes `ABERTA` no formato de `GET /consignments`, do vencimento mais próximo para o mais distante, até 200 lotes.
+- **`stageCounts`:** quantidade de peças por etapa, sempre com as seis chaves (zero quando não há peças). As chaves são minúsculas porque o frontend (`DashboardResponse`) as indexa assim.
 
-As chaves de `stageCounts` são minúsculas porque o frontend (`DashboardResponse`) as indexa assim.
+Valores vazios: contagens e somas são `0`; só `avgTurnoverDays` pode ser `null`.
 
-### 6. Relatórios ⏳ (BACK_09)
+### 6. Relatórios ✅ (BACK_09)
 
-Todos exigem `OWNER`. A exportação CSV é local no navegador; estes endpoints retornam JSON. Datas `YYYY-MM-DD` são locais no fuso da loja e viram o intervalo semiaberto `[from, to+1d)`.
+Todos exigem `OWNER` (staff recebe `403 FORBIDDEN`) e respondem JSON **sem paginação**: o front recebe todas as linhas de uma vez e monta o CSV localmente, sem cálculo de negócio no navegador.
 
-#### `GET /reports/turnover?from=YYYY-MM-DD&to=YYYY-MM-DD` ⏳
+Datas `YYYY-MM-DD` são locais no fuso da loja e viram o intervalo semiaberto `[from 00:00, to+1d 00:00)`.
 
-Retorna os itens vendidos no intervalo inclusivo:
+**Regra única de dias:** todo "dias" (`daysToSell`, `daysStopped`, `maxOverdueDays` e `dueInDays` em `GET /consignments`) conta **dias de calendário no fuso da loja**, não blocos de 24 horas. Etiquetada às 23h30 do dia 1 e vendida às 0h10 do dia 2 = 1 dia; etiquetada e vendida no mesmo dia = 0. Valores que seriam negativos viram 0, exceto `dueInDays`, que fica negativo quando o lote está atrasado.
 
-- por item: `code`, `type`, `valueCents`, `soldAt`, `sellerId`, `sellerName` e `daysToSell`;
-- no resumo: `summary.soldCount` e `summary.soldValueCents`.
+#### `GET /reports/turnover?from=YYYY-MM-DD&to=YYYY-MM-DD` ✅
+
+Vendas no intervalo, em ordem de venda. O período tem no máximo 366 dias; `from > to` ou período maior retornam `400 VALIDATION_ERROR` com `fields.period`. Sem `from` ou `to`, ou com data fora do formato, `400 INVALID_REQUEST`.
+
+- Por item: `code`, `type`, `valueCents` (snapshot do lote), `soldAt`, `sellerId`, `sellerName` e `daysToSell`.
+- `daysToSell` conta a partir da **etiquetagem mais recente antes da venda**: uma peça devolvida e vendida de novo conta a partir da volta ao estoque, não da primeira etiquetagem.
+- Resumo: `summary.soldCount` e `summary.soldValueCents`.
 
 BACK_23: cada linha ganha `totalCostCents` e `marginCents` (preço − custo − comissão), ambos `null` quando a peça não tem custo informado. O resumo ganha `summary.marginCents`, somando só as peças com custo.
 
-#### `GET /reports/overdue` ⏳
+#### `GET /reports/overdue` ✅
 
-Retorna, por vendedora: `sellerId`, `sellerName`, `phone`, `lateLots`, `piecesInHand`, `valueAtRiskCents` e `maxOverdueDays`. Considera lotes abertos vencidos e itens ainda com a vendedora.
+Uma linha por vendedora com lote `ABERTA` vencido: `sellerId`, `sellerName`, `phone`, `lateLots`, `piecesInHand` e `valueAtRiskCents` (só itens ainda `COM_VENDEDORA` nos lotes vencidos) e `maxOverdueDays` (dias desde o vencimento mais antigo; o lote que vence hoje ainda não está atrasado, então o mínimo é 1). Ordenado do maior atraso para o menor.
 
-#### `GET /reports/stale-pieces?days=60` ⏳
+#### `GET /reports/stale-pieces?days=60` ✅
 
-Retorna as peças etiquetadas paradas há pelo menos `days`, com `id`, `code`, `type`, `valueCents` e `daysStopped`, mais um resumo de quantidade e valor.
+Peças `ETIQUETADA` cuja etiquetagem mais recente foi há pelo menos `days` dias (limite inclusivo: com `days=60`, uma peça etiquetada há exatamente 60 dias entra). `days` é opcional (padrão 60) e aceita de 1 a 3650; fora disso, `400 VALIDATION_ERROR` com `fields.days`.
+
+Cada linha: `id`, `code`, `type`, `valueCents` e `daysStopped`, da mais parada para a menos. Resumo: `summary.count` e `summary.valueCents`.
 
 ### 7. Configurações ✅
 

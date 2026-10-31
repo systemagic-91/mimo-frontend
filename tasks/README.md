@@ -14,7 +14,7 @@ As tarefas estão numeradas por prioridade global. A numeração indica priorida
 | 6 | [BACK_06_VENDEDORAS_E_CONFIGURACOES.md](BACK_06_VENDEDORAS_E_CONFIGURACOES.md) | Cadastro de vendedoras, parâmetros e comissões | ✅ Concluída |
 | 7 | [BACK_07_UPLOAD_E_ARMAZENAMENTO_DE_FOTOS.md](BACK_07_UPLOAD_E_ARMAZENAMENTO_DE_FOTOS.md) | Upload seguro e fotos no PostgreSQL | ✅ Concluída |
 | 8 | [BACK_08_CONSIGNACOES_VENDAS_E_DEVOLUCOES.md](BACK_08_CONSIGNACOES_VENDAS_E_DEVOLUCOES.md) | Lotes e movimentações transacionais | ✅ Concluída |
-| 9 | [BACK_09_DASHBOARD_E_RELATORIOS.md](BACK_09_DASHBOARD_E_RELATORIOS.md) | Agregados, KPIs e relatórios | ⏳ Pendente |
+| 9 | [BACK_09_DASHBOARD_E_RELATORIOS.md](BACK_09_DASHBOARD_E_RELATORIOS.md) | Agregados, KPIs e relatórios | ✅ Concluída |
 | 10 | [BACK_10_AUDITORIA_OPERACAO_E_TESTES_INTEGRADOS.md](BACK_10_AUDITORIA_OPERACAO_E_TESTES_INTEGRADOS.md) | Auditoria, CI, observabilidade e aceite integrado | ⏳ Pendente |
 | 11 | [FRONT_11_CLIENTE_HTTP_E_ESTADO_REMOTO.md](FRONT_11_CLIENTE_HTTP_E_ESTADO_REMOTO.md) | Cliente API, React Query, erros e DTOs | ✅ Concluída¹ |
 | 12 | [FRONT_12_LOGIN_SESSAO_E_GUARDS.md](FRONT_12_LOGIN_SESSAO_E_GUARDS.md) | Login e sessão remotos | ✅ Concluída |
