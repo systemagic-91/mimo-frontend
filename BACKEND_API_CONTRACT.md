@@ -620,7 +620,26 @@ Retorna `soldCount`, `soldValueCents` e `commissionCents`, calculados com o `com
 
 Acesso owner/staff. Histórico do mais recente para o mais antigo (`deliveredAt` desc). Aceita `status` (`aberta`/`quitada`, em qualquer caixa) e paginação. Os campos de `sort` aceitos são `code`, `deliveredAt`, `dueAt`, `status` e `createdAt`.
 
-Cada item retorna `ConsignmentResponse`: `id`, `code`, `sellerId`, `deliveredAt`, `dueAt`, `status`, `note`, `createdById` e `version`. Os itens do lote vêm de `GET /consignments/{id}`.
+Cada item retorna `ConsignmentResponse`: `id`, `code`, `sellerId`, `deliveredAt`, `dueAt`, `status`, `paymentTermDays`, `note`, `createdById` e `version`. Os itens do lote vêm de `GET /consignments/{id}`.
+
+#### `GET /sellers/{sellerId}/payment-schedule?from=YYYY-MM-DD&to=YYYY-MM-DD` ✅ (BACK_27)
+
+Acesso owner (staff `403`). Agenda do que a vendedora deve repassar à loja pelas **vendas do período** (filtro pela data da venda, em datas locais inclusivas no fuso da loja, como em `/commission`).
+
+```json
+{
+  "groups": [
+    { "paymentTermDays": 30, "soldCount": 2, "amountDueCents": 10501, "firstDueDate": "2026-11-29", "lastDueDate": "2026-11-30" },
+    { "paymentTermDays": null, "soldCount": 1, "amountDueCents": 1400, "firstDueDate": null, "lastDueDate": null }
+  ],
+  "totalDueCents": 11901
+}
+```
+
+- Cada venda vence em **dia da venda no fuso da loja + prazo do lote**; o valor devido é **venda − comissão** (`valueCentsSnapshot − ROUND(valueCentsSnapshot × commissionRateSnapshot / 100)`).
+- Grupos em ordem crescente de prazo. Vendas de lotes sem prazo (anteriores à BACK_27) ficam no grupo `paymentTermDays: null`, sempre o último e sem datas.
+- Sem vendas: `{ "groups": [], "totalDueCents": 0 }`. `from > to`: `400 VALIDATION_ERROR` em `fields.period`. Vendedora inexistente: `404 SELLER_NOT_FOUND`.
+- Não existe controle de pagamento recebido: a agenda mostra só quanto vence e quando.
 
 ### 4. Consignações ✅ (BACK_08)
 
@@ -652,6 +671,7 @@ Cada item (`ConsignmentListItem` no front):
   "dueAt": "2026-12-01T02:59:59.999999Z",
   "dueInDays": 31,
   "status": "em_dia",
+  "paymentTermDays": 30,
   "note": "Lote de outubro",
   "createdById": "uuid",
   "version": 0,
@@ -671,7 +691,9 @@ Aqui `status` é o **status visual**: `em_dia`, `atrasada` ou `quitada`. `dueInD
 
 #### `GET /consignments/{consignmentId}` ✅
 
-Retorna `ConsignmentDetails`: os campos do lote com `status` persistido (`ABERTA`/`QUITADA`), `late` (boolean), `seller` e `items` (ordenados por código). Cada item tem `id`, `consignmentId`, `pieceId`, `codeSnapshot`, `typeSnapshot`, `valueCentsSnapshot`, `commissionRateSnapshot`, `status` (`COM_VENDEDORA`/`VENDIDA`/`DEVOLVIDA`), `soldAt`, `returnedAt` e `version`. Lote inexistente: `404 CONSIGNMENT_NOT_FOUND`.
+Retorna `ConsignmentDetails`: os campos do lote com `status` persistido (`ABERTA`/`QUITADA`), `late` (boolean), `paymentTermDays`, `seller` e `items` (ordenados por código). Cada item tem `id`, `consignmentId`, `pieceId`, `codeSnapshot`, `typeSnapshot`, `valueCentsSnapshot`, `commissionRateSnapshot`, `status` (`COM_VENDEDORA`/`VENDIDA`/`DEVOLVIDA`), `soldAt`, `returnedAt`, `paymentDueDate`, `amountDueCents` e `version`. Lote inexistente: `404 CONSIGNMENT_NOT_FOUND`.
+
+Pagamento do item (BACK_27): `paymentDueDate` (data local da loja: dia da venda + prazo do lote) e `amountDueCents` (venda − comissão) só existem em itens `VENDIDA` de lotes com prazo; nos demais ficam `null`. **Para staff, `amountDueCents` vem sempre `null`**; a data aparece para todos. As respostas de criação, venda e devolução seguem a mesma regra.
 
 #### `POST /consignments` ✅
 
@@ -682,9 +704,12 @@ Request:
   "sellerId": "uuid",
   "pieceIds": ["uuid", "uuid"],
   "dueDate": "2026-11-30",
+  "paymentTermDays": 30,
   "note": "Condições do lote"
 }
 ```
+
+`paymentTermDays` é obrigatório (BACK_27) e precisa ser um dos valores de `settings.paymentTerms` no momento da criação; o prazo fica guardado no lote, e mudar as configurações depois não altera lotes existentes. Lotes criados antes da BACK_27 têm `paymentTermDays: null`.
 
 `pieceIds` aceita até 200 peças. Tudo acontece em uma única transação:
 
@@ -702,7 +727,7 @@ Response `201`: `ConsignmentDetails`. Qualquer falha desfaz tudo.
 Erros:
 
 - `422 EMPTY_ITEMS`: lista vazia;
-- `400 VALIDATION_ERROR`: peça repetida (`fields.pieceIds`) ou vencimento acima de 365 dias (`fields.dueDate`);
+- `400 VALIDATION_ERROR`: peça repetida (`fields.pieceIds`), vencimento acima de 365 dias (`fields.dueDate`), prazo de pagamento ausente ou fora de `settings.paymentTerms` (`fields.paymentTermDays`);
 - `422 DUE_DATE_IN_PAST`: vencimento antes de hoje;
 - `404 SELLER_NOT_FOUND` e `422 SELLER_INACTIVE`;
 - `404 PIECE_NOT_FOUND`: alguma peça não existe (`fields.pieceIds` lista as ausentes);
@@ -1168,7 +1193,7 @@ O frontend substitui `src/lib/db.ts` e as chamadas diretas a `src/lib/domain.ts`
 15. **Backup:** manual com `pg_dump`/`pg_restore`, documentado no runbook com teste de restauração. Chaves de idempotência vencidas há mais de 7 dias são apagadas por um job diário (BACK_10).
 
 16. **Valor do estoque:** `GET /pieces` devolve `summary.totalValueCents`, a soma das peças filtradas (BACK_26).
-17. **Prazo de pagamento:** o lote guarda o prazo combinado (30/60/90); cada peça vendida vence em data da venda + prazo, e o valor devido é venda − comissão (snapshot). Sem controle de pagamento recebido por enquanto (BACK_27, pendente).
+17. **Prazo de pagamento:** o lote guarda o prazo combinado (30/60/90); cada peça vendida vence em data da venda + prazo, e o valor devido é venda − comissão (snapshot). A agenda filtra pela data da venda; staff vê a data de vencimento, mas não o valor devido. Sem controle de pagamento recebido por enquanto (BACK_27).
 18. **Data na venda e na devolução:** a tela oferece uma data opcional, usando o `soldAt`/`returnedAt` que o backend já aceita (FRONT_15).
 
 ### Pendentes
@@ -1184,7 +1209,7 @@ Nenhuma no momento.
 | Estoque           | `GET /pieces`, `GET /pieces/{id}`, `GET /pieces/{id}/events`, `POST /pieces/receive`                             |
 | Etiquetagem       | `GET /pieces?status=BANHO_OURO`, `POST /uploads/piece-photo`, `POST /pieces/label`, `GET /photos/{id}`           |
 | Consignação       | `GET /sellers`, `GET /settings`, `GET /pieces?status=ETIQUETADA`, `POST /consignments`                           |
-| Detalhe vendedora | `GET /sellers/{id}`, `GET /sellers/{id}/consignments`, `GET /sellers/{id}/stats`, `GET /sellers/{id}/commission` |
+| Detalhe vendedora | `GET /sellers/{id}`, `GET /sellers/{id}/consignments`, `GET /sellers/{id}/stats`, `GET /sellers/{id}/commission`, `GET /sellers/{id}/payment-schedule` |
 | Venda/devolução   | `POST /consignments/{id}/items/{pieceId}/sold`, `POST /consignments/{id}/items/{pieceId}/returned`               |
 | Relatórios        | `GET /reports/turnover`, `GET /reports/overdue`, `GET /reports/stale-pieces`                                     |
 | Configurações     | `GET /sellers`, `POST /sellers`, `PATCH /sellers/{id}`, `GET/PATCH /settings`, `/users`                          |

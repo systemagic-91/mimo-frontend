@@ -192,6 +192,10 @@ export interface ConsignmentItemDto {
   status: BackendConsignmentItemStatus;
   soldAt?: string | null;
   returnedAt?: string | null;
+  /** Item vendido de lote com prazo: dia da venda + prazo (`YYYY-MM-DD`, fuso da loja). BACK_27. */
+  paymentDueDate?: string | null;
+  /** Venda − comissão; sempre null para staff. BACK_27. */
+  amountDueCents?: number | null;
   version?: number;
 }
 
@@ -202,6 +206,8 @@ export interface ConsignmentDto {
   deliveredAt: string;
   dueAt: string;
   status: BackendConsignmentStatus;
+  /** Prazo de pagamento do lote (30/60/90); null em lotes antigos. BACK_27. */
+  paymentTermDays?: number | null;
   note?: string | null;
   createdById?: string;
   version?: number;
@@ -226,7 +232,22 @@ export interface CreateConsignmentRequest {
   sellerId: string;
   pieceIds: string[];
   dueDate: string;
+  /** Obrigatório; um dos `settings.paymentTerms`. BACK_27. */
+  paymentTermDays: number;
   note?: string;
+}
+
+/** `GET /sellers/{id}/payment-schedule` (owner): vendas do período agrupadas pelo prazo do lote. BACK_27. */
+export interface PaymentScheduleResponse {
+  groups: Array<{
+    /** null = vendas de lotes sem prazo informado (sempre o último grupo). */
+    paymentTermDays: number | null;
+    soldCount: number;
+    amountDueCents: number;
+    firstDueDate: string | null;
+    lastDueDate: string | null;
+  }>;
+  totalDueCents: number;
 }
 
 export interface DashboardResponse {

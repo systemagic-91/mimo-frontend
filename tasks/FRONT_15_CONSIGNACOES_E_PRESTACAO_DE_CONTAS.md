@@ -69,7 +69,8 @@ Detalhes nas seções 3 e 4 do `BACKEND_API_CONTRACT.md`. Consignações aceitam
    - o card "Prazos de pagamento" da vendedora passa a usar `GET /sellers/{id}/payment-schedule` (só owner) e mostra, por prazo, quantas vendas houve no período, quanto a vendedora deve repassar (venda − comissão) e as datas de vencimento;
    - o detalhe do lote mostra o prazo e, nos itens vendidos, a data de vencimento do pagamento e o valor devido;
    - lotes antigos aparecem como "prazo não informado". Não há controle de pagamento recebido;
-   - **a fórmula local atual do card deve ser removida.** Até a BACK_27 ficar pronta, o card fica escondido.
+   - **a fórmula local atual do card deve ser removida**;
+   - a agenda filtra pela **data da venda** (o mesmo período do card de comissão). Staff vê a data de vencimento dos itens, mas `amountDueCents` vem `null` e a agenda é só owner.
 2. **Data opcional na venda e na devolução:**
    - o botão continua registrando o momento atual, mas há um campo opcional de data para prestações de contas atrasadas;
    - a data fica entre o dia da entrega do lote e hoje (no fuso da loja);
@@ -99,4 +100,4 @@ Detalhes nas seções 3 e 4 do `BACKEND_API_CONTRACT.md`. Consignações aceitam
 
 ## Observações de dependência
 
-Depende de FRONT_11 e dos endpoints BACK_05, BACK_06 e BACK_08 (prontos). O prazo de pagamento (campo do wizard, detalhe do lote e card da vendedora) depende da BACK_27; o resto da tela não precisa esperar. Pode ser feita em paralelo com FRONT_13, FRONT_14 e FRONT_16.
+Depende de FRONT_11 e dos endpoints BACK_05, BACK_06 e BACK_08 (prontos). O prazo de pagamento (campo do wizard, detalhe do lote e card da vendedora) usa a BACK_27 (pronta). Tipos já disponíveis: `CreateConsignmentRequest.paymentTermDays`, `paymentTermDays` nos lotes, `paymentDueDate`/`amountDueCents` nos itens e `PaymentScheduleResponse`; falta o cliente/hook `sellersApi.paymentSchedule`. Pode ser feita em paralelo com FRONT_13, FRONT_14 e FRONT_16.
