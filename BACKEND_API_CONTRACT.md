@@ -189,7 +189,7 @@ Fluxo: `Controller -> ApplicationService -> Repository`. Controllers recebem DTO
 
 ### Regras
 
-- Públicos: `POST /api/v1/auth/login`, `POST /api/v1/auth/refresh`, `GET /api/v1/photos/{photoId}`, `/actuator/health`, `/v3/api-docs/**` e Swagger UI. Com a BACK_21 entra também `POST /api/v1/auth/logout`.
+- Públicos: `POST /api/v1/auth/login`, `POST /api/v1/auth/refresh`, `GET /api/v1/photos/{photoId}`, `/actuator/health`, `POST /api/v1/auth/logout`, `/v3/api-docs/**` e Swagger UI. Nas três rotas públicas de sessão o header `Authorization` é ignorado, para que um access token vencido não atrapalhe o logout.
 - `/actuator/metrics/**` e `/actuator/prometheus`: só owner (staff `403`, anônimo `401`).
 - Todas as outras rotas exigem JWT válido.
 - `owner`: dashboard, relatórios, configurações, usuários e custos das peças, além dos fluxos operacionais. Pode haver mais de um owner.
@@ -203,17 +203,17 @@ Fluxo: `Controller -> ApplicationService -> Repository`. Controllers recebem DTO
   - É rotacionado a cada uso.
   - É revogado no logout e na troca de senha.
   - Reutilizar um token já revogado revoga todas as sessões ativas do usuário.
-- Rate limit de login por IP: 5 tentativas a cada 15 minutos (`LOGIN_MAX_ATTEMPTS`, `LOGIN_RATE_LIMIT_WINDOW`). Rate limit de upload de foto por usuário: 30 a cada minuto (`UPLOAD_MAX_PER_WINDOW`, `UPLOAD_RATE_LIMIT_WINDOW`).
-  - Atrás da Vercel e do Railway, o IP de `getRemoteAddr()` é o do proxy. Em produção é obrigatório usar `server.forward-headers-strategy: framework` para ler o IP real de `X-Forwarded-For`; sem isso, o rate limit trava todos os usuários juntos (BACK_21).
+- Rate limit de login: 5 tentativas a cada 15 minutos por IP **e** por e-mail (`LOGIN_MAX_ATTEMPTS`, `LOGIN_RATE_LIMIT_WINDOW`); um login certo zera os dois contadores. O limite por e-mail barra força bruta numa conta mesmo que alguém invente IPs no `X-Forwarded-For` chamando o Railway direto. Efeito colateral aceito: 5 erros num e-mail bloqueiam aquele e-mail por 15 minutos. Rate limit de upload de foto por usuário: 30 a cada minuto (`UPLOAD_MAX_PER_WINDOW`, `UPLOAD_RATE_LIMIT_WINDOW`).
+  - `server.forward-headers-strategy: framework` (BACK_21): `getRemoteAddr()` devolve o primeiro IP de `X-Forwarded-For`, ou seja, o IP real atrás da Vercel e do Railway. É esse IP que vai para o rate limit e a auditoria.
 - CORS restrito às origens de `CORS_ALLOWED_ORIGINS` (padrão local `http://localhost:5173`). Com o proxy da Vercel em produção e o proxy do Vite em desenvolvimento (FRONT_22), o navegador não faz chamadas cross-origin; o CORS fica só como proteção para acessos diretos.
   - Headers permitidos: `Authorization`, `Content-Type`, `Idempotency-Key` e `X-Request-Id`.
   - Headers expostos: `Location`, `X-Request-Id` e `X-Trace-Id`.
-- **Sessão hoje:** os dois tokens vêm no corpo da resposta. O frontend guarda o access token em memória e o refresh token em `sessionStorage`. É um compromisso de desenvolvimento.
-- **Sessão decidida (BACK_21 + FRONT_22, antes do primeiro deploy):**
-  - o refresh token sai do corpo da resposta e passa a viajar só no cookie `luma_refresh` (`HttpOnly; Secure; SameSite=Strict; Path=/api/v1/auth; Max-Age` = validade do token);
+- **Sessão (BACK_21):**
+  - o refresh token viaja só no cookie `luma_refresh` (`HttpOnly; Secure; SameSite=Strict; Path=/api/v1/auth; Max-Age` = `JWT_REFRESH_TOKEN_TTL`) e nunca no corpo;
   - o access token continua no corpo e em memória no frontend;
-  - a Vercel faz proxy de `/api/*` para o Railway (rewrite em `vercel.json`), e o Vite faz o mesmo em desenvolvimento. Assim front e API ficam na mesma origem e o cookie é "do próprio site", inclusive no Safari;
-  - proteção contra CSRF: `SameSite=Strict` + o backend confere o header `Origin` em `/auth/refresh` e `/auth/logout`;
+  - a Vercel faz proxy de `/api/*` para o Railway (rewrite em `vercel.json`), e o Vite faz o mesmo em desenvolvimento (FRONT_22). Assim front e API ficam na mesma origem e o cookie é "do próprio site", inclusive no Safari;
+  - proteção contra CSRF em `/auth/refresh` e `/auth/logout`: `SameSite=Strict` + `403` quando o header `Origin` existe e não está em `CORS_ALLOWED_ORIGINS`. Pedido sem `Origin` (curl, Postman) é aceito, porque navegadores sempre mandam `Origin` em `POST`. Origem estrangeira costuma ser barrada antes pelo próprio CORS (`403` sem corpo); quando o pedido parece da mesma origem, o backend responde `403 ORIGIN_NOT_ALLOWED`;
+  - nome, `Secure` e `SameSite` do cookie são configuráveis (`REFRESH_COOKIE_NAME`, `REFRESH_COOKIE_SECURE`, `REFRESH_COOKIE_SAME_SITE`); o padrão é o seguro;
   - explicação em linguagem simples: `SESSAO_E_COOKIES.md`.
 - Primeiro owner: provisionado uma única vez pelas variáveis `BOOTSTRAP_OWNER_*` (ver README do backend). Não existe usuário ou senha padrão versionados.
 
@@ -405,14 +405,11 @@ O e-mail é normalizado (trim + minúsculas). Response `200`:
     "loggedAt": "2026-09-18T15:00:00Z",
     "expiresAt": "2026-09-18T15:15:00Z"
   },
-  "accessToken": "jwt",
-  "refreshToken": "opaque-token"
+  "accessToken": "jwt"
 }
 ```
 
-**Mudanças decididas:**
-
-- **BACK_21:** `refreshToken` sai do corpo. O backend passa a responder com `Set-Cookie: luma_refresh=...; HttpOnly; Secure; SameSite=Strict; Path=/api/v1/auth`.
+Junto, o header `Set-Cookie: luma_refresh=<token>; Path=/api/v1/auth; Max-Age=2592000; Expires=...; Secure; HttpOnly; SameSite=Strict`. O refresh token não aparece no corpo (BACK_21).
 
 Erros:
 
@@ -422,11 +419,11 @@ Erros:
 
 #### `POST /auth/refresh` (público) ✅
 
-Hoje: request `{ "refreshToken": "..." }`. Com a BACK_21: sem corpo, lendo o cookie `luma_refresh` e conferindo o header `Origin`. Revoga o token anterior e retorna um novo par no mesmo formato do login (o refresh novo vai no cookie). Token desconhecido, expirado, revogado ou de usuário inativo retorna `401 INVALID_REFRESH_TOKEN`; reutilizar um token revogado também revoga todas as sessões do usuário.
+Sem corpo: lê o cookie `luma_refresh` e confere o header `Origin`. Revoga o token anterior e responde no mesmo formato do login, com o refresh novo no cookie. Sem cookie, ou com token inválido, responde `401` e apaga o cookie (`Max-Age=0`). Token desconhecido, expirado, revogado ou de usuário inativo retorna `401 INVALID_REFRESH_TOKEN`; reutilizar um token revogado também revoga todas as sessões do usuário.
 
 #### `POST /auth/logout` ✅
 
-Hoje: autenticado, request `{ "refreshToken": "..." }`; revoga o refresh token se pertencer ao usuário autenticado. Com a BACK_21: público, sem corpo; lê o cookie, revoga o token e apaga o cookie (`Max-Age=0`), para que funcione mesmo com o access token vencido. Resposta `204`.
+Público e sem corpo: confere o `Origin`, lê o cookie, revoga o token (se existir) e apaga o cookie (`Max-Age=0`). Funciona mesmo com o access token vencido ou sem cookie. Resposta `204`.
 
 #### `GET /auth/me` ✅
 
@@ -440,6 +437,8 @@ Request:
 - `newPassword`, com 12 a 72 caracteres e diferente da atual.
 
 Resposta `204`. Incrementa `authVersion`, revoga todos os refresh tokens (o que invalida as sessões anteriores na hora, inclusive a atual) e zera `mustChangePassword`. Depois da troca, o frontend manda a pessoa para o login, onde ela entra com a senha nova.
+
+A resposta também apaga o cookie `luma_refresh`.
 
 Erros: `401 INVALID_CREDENTIALS` (senha atual errada) e `400 PASSWORD_UNCHANGED`.
 
@@ -1027,6 +1026,10 @@ app:
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
   security:
+    refresh-cookie:
+      name: ${REFRESH_COOKIE_NAME:luma_refresh}
+      secure: ${REFRESH_COOKIE_SECURE:true}
+      same-site: ${REFRESH_COOKIE_SAME_SITE:Strict}
     jwt:
       issuer: ${JWT_ISSUER:luma-api}
       secret: ${JWT_SECRET:} # Base64, >= 32 bytes; obrigatório em prod
@@ -1085,7 +1088,7 @@ O datasource fica nos perfis:
 
 A lista completa de variáveis de ambiente está no `RUNBOOK.md` do backend.
 
-No local e nos testes, sem `JWT_SECRET`, o backend gera uma chave efêmera. O timezone da loja vem de `settings.timezone`, não do YAML. A configuração de upload (tamanho e dimensões máximas) entra com a BACK_07; o cookie de sessão e `server.forward-headers-strategy: framework` entram com a BACK_21.
+No local e nos testes, sem `JWT_SECRET`, o backend gera uma chave efêmera. O timezone da loja vem de `settings.timezone`, não do YAML. A configuração de upload (tamanho e dimensões máximas) entra com a BACK_07; o cookie de sessão e `server.forward-headers-strategy: framework` entraram com a BACK_21.
 
 Segredos devem vir de environment/secrets manager, nunca do repositório.
 
@@ -1123,7 +1126,7 @@ O frontend substitui `src/lib/db.ts` e as chamadas diretas a `src/lib/domain.ts`
 - [x] Implementar venda/devolução idempotentes (BACK_08).
 - [x] Implementar dashboard e relatórios com consultas agregadas (BACK_09).
 - [x] Implementar gestão de usuários e troca obrigatória de senha (BACK_19).
-- [ ] Migrar o refresh token para cookie `HttpOnly` e configurar forward headers (BACK_21).
+- [x] Migrar o refresh token para cookie `HttpOnly` e configurar forward headers (BACK_21).
 - [ ] Implementar custos das peças e margem (BACK_23).
 - [x] Cobrir as regras atuais com testes unitários (JUnit 5 + Mockito) e MockMvc. Manter a cobertura a cada nova task.
 - [ ] Integrar todas as telas do frontend ao contrato (FRONT_13 a 18).
