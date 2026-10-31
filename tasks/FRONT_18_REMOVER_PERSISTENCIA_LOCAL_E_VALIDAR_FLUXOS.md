@@ -16,15 +16,22 @@ Eliminar o banco de demonstração do caminho de produção e comprovar, com tes
 - Remover seed demo de produção; se necessário, manter fixture isolada exclusivamente para testes/MSW.
 - Atualizar `src/lib/types.ts` para DTOs/tipos remotos ou remover interfaces `Db` obsoletas, sem deixar duas fontes de verdade.
 - Decidir se deve haver migração pontual de dados locais existentes; se sim, desenhar import idempotente e seguro, sem enviar credenciais.
-- Adicionar testes de integração de interface (Playwright ou equivalente) para login, recebimento, etiquetagem, consignação, venda/devolução, configuração e relatórios contra backend de teste.
-- Atualizar `README.md`, `.env.example` e diretrizes de execução para frontend + backend e documentar fallback em caso de API indisponível.
+- Adicionar testes de integração de interface (Playwright ou equivalente) para login, troca obrigatória de senha, recebimento, etiquetagem, consignação, venda/devolução, configuração, usuários e relatórios contra um backend de teste.
+- Rodar os E2E pelo proxy do Vite (`/api` → backend), como em produção, nos motores Chromium, Firefox e WebKit. Isso também cobre a verificação em navegador que ficou pendente na FRONT_22 (cookie de sessão, reload, duas abas e logout).
+- Conferir o `README.md` e o `.env.example` (já usam `VITE_API_BASE_URL=/api/v1` e o proxy desde a FRONT_22) e documentar a execução integrada e o comportamento com a API indisponível.
 
 ## Pontos de atenção
 
 - Não apagar dados locais do usuário sem decidir se é necessário importar; informar e versionar a estratégia.
 - `localStorage` ainda pode guardar preferências não sensíveis (idioma), mas não o banco de domínio nem senha.
 - A remoção depende da migração de todas as telas e da conclusão de decisões sobre sessão, fotos e contratos.
-- Testes E2E requerem backend efêmero, banco descartável e storage fake; não podem depender de credenciais reais.
+- Testes E2E requerem backend efêmero, banco descartável e storage fake; não podem depender de credenciais reais. Como subir o backend de teste:
+  - PostgreSQL descartável (Docker) e o backend com `gradlew bootRun` ou o `.jar`;
+  - primeiro owner pelas variáveis `BOOTSTRAP_OWNER_*` (ver README do backend); `JWT_SECRET` é opcional no perfil local;
+  - demais usuários criados pela API (`POST /users`), que nascem com troca obrigatória de senha;
+  - o banco não tem dados de exemplo: cada teste cria as peças, vendedoras e lotes de que precisa.
+- O login tem limite de 5 tentativas erradas a cada 15 minutos por IP **e** por e-mail. Testes de senha errada devem usar e-mails próprios, ou reiniciar o backend entre execuções.
+- Os IDs do backend são UUID e o banco começa vazio; fixtures de MSW não podem assumir os IDs do seed antigo.
 
 ## Critérios de aceite
 
@@ -38,4 +45,4 @@ Eliminar o banco de demonstração do caminho de produção e comprovar, com tes
 
 ## Observações de dependência
 
-Depende de FRONT_11 a FRONT_16 e do aceite integrado de BACK_03 a BACK_09; tarefas podem ser concluídas paralelamente antes, mas a exclusão do legado é o último passo. FRONT_17 deve ser coordenada para atualizar documentação e mensagens sem conflito.
+Depende de FRONT_11 a FRONT_16, FRONT_20, FRONT_22 e FRONT_24 e do backend (BACK_03 a BACK_23, prontos); tarefas podem ser concluídas paralelamente antes, mas a exclusão do legado é o último passo. FRONT_17 deve ser coordenada para atualizar documentação e mensagens sem conflito.
