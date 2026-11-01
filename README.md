@@ -1,15 +1,56 @@
-#### Para rodar o projeto:
+## Rodar localmente
 
-Execute: `npm install` e depois execute: `npm run dev`
+Requisitos: Node 20.19+ (exigido pelo Vite 7) e npm. O front não precisa de `.env`: sem `VITE_API_BASE_URL`, ele usa `/api/v1`.
 
-## API local
+```bash
+npm install
+npm run dev
+```
+
+O app abre em `http://localhost:5173`, mas só funciona com uma API no ar. Escolha uma das opções
+abaixo.
+
+### Com o backend local
+
+Siga o README do `mimo-backend` (Java 21, Docker para o PostgreSQL):
+
+```bash
+docker compose up -d     # na pasta do backend
+gradlew.bat bootRun      # Linux/macOS: ./gradlew bootRun
+```
+
+Confira em `http://localhost:8080/actuator/health` e rode `npm run dev` normalmente: o proxy já aponta
+para `http://localhost:8080`.
+
+### Com o backend do Railway
+
+Sem Java instalado, aponte o proxy para a API publicada:
+
+```bash
+# Git Bash / Linux / macOS
+API_PROXY_TARGET=https://mimo-backend-production-2b7f.up.railway.app npm run dev
+```
+
+```powershell
+# PowerShell
+$env:API_PROXY_TARGET = "https://mimo-backend-production-2b7f.up.railway.app"; npm run dev
+```
+
+Atenção: assim você usa o **banco de produção**. Tudo o que fizer (cadastrar peças, vender, devolver)
+grava nos dados reais da loja, e o login é com os usuários de produção. Use o Chrome ou o Edge: o Safari
+pode recusar o cookie `Secure` em `http://localhost`.
+
+## Como o front fala com a API
 
 O frontend chama a API pelo caminho relativo `VITE_API_BASE_URL=/api/v1` (o padrão, também no
 `.env.example`). Em desenvolvimento, o proxy do Vite (`server.proxy` no `vite.config.ts`) repassa
-`/api` para o backend em `http://localhost:8080`; para outro endereço, defina `API_PROXY_TARGET`
-antes do `npm run dev`. Na Vercel, o `vercel.json` faz o mesmo para o backend no Railway. Assim o
-navegador vê front e API na mesma origem, e o cookie de sessão funciona em qualquer navegador.
-Inicie PostgreSQL e a API conforme o README do backend e acesse `http://localhost:5173`.
+`/api` para o backend em `http://localhost:8080`, ou para `API_PROXY_TARGET`, quando definida. Na
+Vercel, o `vercel.json` faz o mesmo para o backend no Railway. Assim o navegador vê front e API na
+mesma origem, e o cookie de sessão funciona em qualquer navegador.
+
+O proxy de desenvolvimento retira o cabeçalho `Origin` dos pedidos. Para o navegador eles já são de
+mesma origem, mas sem isso um backend remoto compara o `Origin` `http://localhost:5173` com o
+`CORS_ALLOWED_ORIGINS` dele e responde `403 Invalid CORS request`.
 
 ## Sessão
 
