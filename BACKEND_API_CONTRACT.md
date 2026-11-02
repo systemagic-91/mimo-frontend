@@ -1147,7 +1147,7 @@ O frontend substitui `src/lib/db.ts` e as chamadas diretas a `src/lib/domain.ts`
 - [ ] implementar paginação nas listagens (FRONT_13 a 15);
 - [ ] não confiar em `next-code` para salvar uma peça (FRONT_13);
 - [x] usar `VITE_API_BASE_URL=/api/v1` com proxy na Vercel (`vercel.json`) e no Vite (`server.proxy`), com refresh por cookie e trava entre abas (FRONT_22);
-- [ ] tela de troca obrigatória de senha e gestão de usuários (FRONT_20);
+- [x] tela de troca obrigatória de senha e gestão de usuários (FRONT_20);
 - [ ] campos de custo e margem, visíveis só para owner (FRONT_24).
 
 ## Checklist de implementação

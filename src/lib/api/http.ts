@@ -54,8 +54,11 @@ const REFRESH_LOCK_NAME = "luma-session-refresh";
 
 let authTokens: AuthTokens | null = null;
 let unauthorizedHandler: (() => void) | undefined;
+let passwordChangeRequiredHandler: (() => void) | undefined;
 let refreshPromise: Promise<RefreshedSession | null> | null = null;
 let unauthorizedNotified = false;
+
+export const PASSWORD_CHANGE_REQUIRED = "PASSWORD_CHANGE_REQUIRED";
 
 function notifyUnauthorizedOnce() {
   if (unauthorizedNotified) return;
@@ -75,7 +78,19 @@ export const authTokenStore = {
   setUnauthorizedHandler: (handler?: () => void) => {
     unauthorizedHandler = handler;
   },
+  /** Chamado quando qualquer rota responde `403 PASSWORD_CHANGE_REQUIRED` (senha temporária ainda não trocada). */
+  setPasswordChangeRequiredHandler: (handler?: () => void) => {
+    passwordChangeRequiredHandler = handler;
+  },
 };
+
+export function isPasswordChangeRequired(error: unknown): boolean {
+  return (
+    error instanceof ApiError &&
+    error.status === 403 &&
+    error.code === PASSWORD_CHANGE_REQUIRED
+  );
+}
 
 function resolveUrl(path: string): string {
   return `${API_BASE_URL}/${path.replace(/^\/+/, "")}`;
@@ -267,6 +282,10 @@ export async function apiRequest<T>(
   try {
     return await performRequest<T>(path, preparedOptions);
   } catch (error) {
+    if (isPasswordChangeRequired(error)) {
+      passwordChangeRequiredHandler?.();
+      throw error;
+    }
     if (
       !(error instanceof ApiError) ||
       error.status !== 401 ||
@@ -288,6 +307,7 @@ export async function apiRequest<T>(
         try {
           return await performRequest<T>(path, preparedOptions);
         } catch (retryError) {
+          if (isPasswordChangeRequired(retryError)) passwordChangeRequiredHandler?.();
           if (retryError instanceof ApiError && retryError.status === 401) {
             authTokenStore.clear();
             if (notifyUnauthorized) notifyUnauthorizedOnce();

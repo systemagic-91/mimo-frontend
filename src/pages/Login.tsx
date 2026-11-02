@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import { RemoteQueryState } from "@/components/remote-query-state";
+import type { LoginNoticeState } from "@/components/auth/paths";
 import { Logo } from "@/components/logo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +12,12 @@ import { useCurrentUserQuery, useLoginMutation } from "@/lib/api/hooks";
 function getLoginErrorMessage(error: unknown): string {
   if (error instanceof ApiError) {
     if (error.status === 401) return "E-mail ou senha inválidos.";
+    if (error.code === "USER_INACTIVE") {
+      return "Esta conta está desativada. Fale com um(a) sócio(a) da loja para reativá-la.";
+    }
+    if (error.code === "RATE_LIMITED") {
+      return "Muitas tentativas de login. Aguarde alguns minutos e tente de novo.";
+    }
     if (error.status === 0 || error.status === 408) {
       return "Não foi possível conectar ao servidor. Verifique sua conexão e tente novamente.";
     }
@@ -27,7 +34,12 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
 
-  const requestedPath = (location.state as { from?: unknown } | null)?.from;
+  const locationState = location.state as
+    | ({ from?: unknown } & LoginNoticeState)
+    | null;
+  const notice =
+    typeof locationState?.notice === "string" ? locationState.notice : null;
+  const requestedPath = locationState?.from;
   const requestedPathname =
     typeof requestedPath === "string"
       ? requestedPath.split(/[?#]/, 1)[0]
@@ -69,6 +81,12 @@ export default function Login() {
           aria-busy={loginMutation.isPending}
           className="space-y-4 rounded-lg border bg-card p-6 shadow-none"
         >
+          {notice && !error && (
+            <p role="status" className="rounded-md border border-success/30 bg-success-bg px-3 py-2 text-sm text-success">
+              {notice}
+            </p>
+          )}
+
           {currentUser.isError && (
             <div role="alert" className="space-y-2 rounded-md border p-3 text-sm">
               <p>Não foi possível validar uma sessão existente.</p>

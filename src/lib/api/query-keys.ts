@@ -54,5 +54,11 @@ export const queryKeys = {
     all: ["settings"] as const,
     detail: () => [...queryKeys.settings.all, "detail"] as const,
   },
+  users: {
+    all: ["users"] as const,
+    lists: () => [...queryKeys.users.all, "list"] as const,
+    list: (params: PageRequest & { q?: string; role?: string; active?: boolean }) =>
+      [...queryKeys.users.lists(), params] as const,
+  },
 };
 

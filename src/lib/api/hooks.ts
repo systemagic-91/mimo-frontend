@@ -12,9 +12,12 @@ import { piecesApi, type PieceListParams } from "./pieces";
 import { reportsApi } from "./reports";
 import { sellersApi, type SellerListParams } from "./sellers";
 import { settingsApi } from "./settings";
+import { usersApi, type UserListParams } from "./users";
 import type {
+  ChangePasswordRequest,
   CreateConsignmentRequest,
   CreateSellerRequest,
+  CreateUserRequest,
   ConsignmentStatus,
   AuthSessionResponse,
   LabelPieceRequest,
@@ -22,6 +25,8 @@ import type {
   PieceStage,
   UpdateSellerRequest,
   UpdateSettingsRequest,
+  UpdateUserRequest,
+  UserDto,
 } from "./types";
 
 function useInvalidateOperationalData() {
@@ -83,6 +88,84 @@ export function useLogoutMutation() {
       );
     },
     onSettled: () => queryClient.clear(),
+  });
+}
+
+/** Troca a própria senha. O backend revoga todas as sessões, então o front também encerra a dele. */
+export function useChangePasswordMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: ChangePasswordRequest) => authApi.changePassword(input),
+    onSuccess: () => {
+      queryClient.clear();
+      queryClient.setQueryData<AuthSessionResponse | null>(
+        queryKeys.auth.me(),
+        null,
+      );
+    },
+  });
+}
+
+export function useUsersQuery(params: UserListParams = {}, enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.users.list(params),
+    queryFn: ({ signal }) => usersApi.list(params, signal),
+    enabled,
+  });
+}
+
+export function useCreateUserMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      input,
+      idempotencyKey,
+    }: {
+      input: CreateUserRequest;
+      idempotencyKey: string;
+    }) => usersApi.create(input, idempotencyKey),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.users.all }),
+  });
+}
+
+function useInvalidateUsers() {
+  const queryClient = useQueryClient();
+  return (user: UserDto) => {
+    const current = queryClient.getQueryData<AuthSessionResponse | null>(
+      queryKeys.auth.me(),
+    );
+    return Promise.all([
+      queryClient.invalidateQueries({ queryKey: queryKeys.users.all }),
+      // Nome e e-mail da própria conta aparecem no menu.
+      current?.user.id === user.id
+        ? queryClient.invalidateQueries({ queryKey: queryKeys.auth.me() })
+        : undefined,
+    ]);
+  };
+}
+
+export function useUpdateUserMutation() {
+  const invalidate = useInvalidateUsers();
+  return useMutation({
+    mutationFn: ({ id, input }: { id: string; input: UpdateUserRequest }) =>
+      usersApi.update(id, input),
+    onSuccess: invalidate,
+  });
+}
+
+export function useResetUserPasswordMutation() {
+  const invalidate = useInvalidateUsers();
+  return useMutation({
+    mutationFn: ({
+      id,
+      temporaryPassword,
+      idempotencyKey,
+    }: {
+      id: string;
+      temporaryPassword: string;
+      idempotencyKey: string;
+    }) => usersApi.resetPassword(id, temporaryPassword, idempotencyKey),
+    onSuccess: invalidate,
   });
 }
 
