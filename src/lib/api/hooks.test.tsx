@@ -56,9 +56,8 @@ describe("domain query hooks", () => {
     await waitFor(() => expect(result.current.pieces.isSuccess).toBe(true));
     await act(async () => {
       await result.current.receive.mutateAsync({
-        type: "Anel",
-        valueCents: 6490,
-        stage: "fabrica",
+        input: { type: "Anel", valueCents: 6490, stage: "fabrica" },
+        idempotencyKey: "key-1",
       });
     });
 

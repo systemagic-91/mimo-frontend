@@ -25,12 +25,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import type { Piece } from "@/lib/types";
 
 export default function Dashboard() {
   const db = useDb();
   const navigate = useNavigate();
-  const [selected, setSelected] = useState<Piece | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
 
   const kpis = useMemo(() => getKpis(db), [db]);
@@ -93,8 +92,8 @@ export default function Dashboard() {
 
       <PieceTracker
         counts={counts}
-        onOpenPiece={(piece) => {
-          setSelected(piece);
+        onOpenPiece={(pieceId) => {
+          setSelectedId(pieceId);
           setSheetOpen(true);
         }}
       />
@@ -176,7 +175,7 @@ export default function Dashboard() {
       </section>
 
       <PieceDetailSheet
-        piece={selected}
+        pieceId={selectedId}
         open={sheetOpen}
         onOpenChange={setSheetOpen}
       />

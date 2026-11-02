@@ -172,6 +172,32 @@ describe("users tab", () => {
     await waitFor(() => expect(patchBody).toEqual({ email: "ana.nova@luma.com.br" }));
   });
 
+  it("confirms before changing another user's role", async () => {
+    let patchBody: unknown;
+    server.use(
+      http.patch(`${api}/users/u-ana`, async ({ request }) => {
+        patchBody = await request.json();
+        return HttpResponse.json({ ...ana, role: "owner" });
+      }),
+    );
+    const user = userEvent.setup();
+    renderTab();
+    await screen.findByText("Ana Equipe");
+
+    await user.click(rowOf("Ana Equipe").getByRole("button", { name: "Editar Ana Equipe" }));
+    const dialog = await screen.findByRole("dialog");
+    await user.click(within(dialog).getByLabelText("Papel"));
+    await user.click(await screen.findByRole("option", { name: "Sócia(o)" }));
+    await user.click(within(dialog).getByRole("button", { name: "Salvar alterações" }));
+
+    const confirm = await screen.findByRole("alertdialog");
+    expect(confirm).toHaveTextContent("será deslogado(a) na hora");
+    expect(patchBody).toBeUndefined();
+    await user.click(within(confirm).getByRole("button", { name: "Mudar papel" }));
+
+    await waitFor(() => expect(patchBody).toEqual({ role: "owner" }));
+  });
+
   it("resets another user's password after validating the temporary password", async () => {
     let resetBody: unknown;
     let resetKey: string | null = null;
