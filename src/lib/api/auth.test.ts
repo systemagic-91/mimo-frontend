@@ -1,7 +1,7 @@
 // @vitest-environment node
 
 import { http, HttpResponse } from "msw";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { server } from "@/test/server";
 import { authApi } from "./auth";
 import { authTokenStore } from "./http";
@@ -85,6 +85,73 @@ describe("authentication API", () => {
     await authApi.logout();
 
     expect(logoutAttempts).toBe(1);
+    expect(authTokenStore.getAccessToken()).toBeNull();
+  });
+
+  it("changes the password and ends the in-memory session", async () => {
+    authTokenStore.set({ accessToken: "access-1" });
+    server.use(
+      http.post(`${api}/auth/change-password`, async ({ request }) => {
+        expect(request.headers.get("Authorization")).toBe("Bearer access-1");
+        expect(request.headers.get("Idempotency-Key")).toBeNull();
+        expect(await request.json()).toEqual({
+          currentPassword: "temporaria-123",
+          newPassword: "nova-senha-segura",
+        });
+        return new HttpResponse(null, { status: 204 });
+      }),
+    );
+
+    await authApi.changePassword({
+      currentPassword: "temporaria-123",
+      newPassword: "nova-senha-segura",
+    });
+
+    expect(authTokenStore.getAccessToken()).toBeNull();
+  });
+
+  it("reports a wrong current password without renewing or dropping the session", async () => {
+    authTokenStore.set({ accessToken: "access-1" });
+    const onUnauthorized = vi.fn();
+    authTokenStore.setUnauthorizedHandler(onUnauthorized);
+    let refreshAttempts = 0;
+    server.use(
+      http.post(`${api}/auth/change-password`, () =>
+        HttpResponse.json(
+          { status: 401, code: "INVALID_CREDENTIALS" },
+          { status: 401 },
+        ),
+      ),
+      http.post(`${api}/auth/refresh`, () => {
+        refreshAttempts += 1;
+        return HttpResponse.json({ accessToken: "access-2" });
+      }),
+    );
+
+    await expect(
+      authApi.changePassword({ currentPassword: "errada", newPassword: "nova-senha-segura" }),
+    ).rejects.toMatchObject({ status: 401, code: "INVALID_CREDENTIALS" });
+    expect(refreshAttempts).toBe(0);
+    expect(onUnauthorized).not.toHaveBeenCalled();
+    expect(authTokenStore.getAccessToken()).toBe("access-1");
+  });
+
+  it("renews an expired access token once before changing the password", async () => {
+    authTokenStore.set({ accessToken: "expired" });
+    server.use(
+      http.post(`${api}/auth/change-password`, ({ request }) =>
+        request.headers.get("Authorization") === "Bearer expired"
+          ? HttpResponse.json({ status: 401, code: "INVALID_ACCESS_TOKEN" }, { status: 401 })
+          : new HttpResponse(null, { status: 204 }),
+      ),
+      http.post(`${api}/auth/refresh`, () =>
+        HttpResponse.json({ ...authResponse, accessToken: "fresh" }),
+      ),
+    );
+
+    await expect(
+      authApi.changePassword({ currentPassword: "atual-123456", newPassword: "nova-senha-segura" }),
+    ).resolves.toBeUndefined();
     expect(authTokenStore.getAccessToken()).toBeNull();
   });
 

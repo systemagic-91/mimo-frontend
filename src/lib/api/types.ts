@@ -44,15 +44,46 @@ export interface PageEnvelope<T> {
   pagination: PageMetadata;
 }
 
+export type UserRole = "owner" | "staff";
+
 export interface ApiUser {
   id: string;
   name: string;
   email: string;
-  role: "owner" | "staff";
+  role: UserRole;
   active?: boolean;
   mustChangePassword?: boolean;
   createdAt?: string;
   updatedAt?: string;
+}
+
+/** `UserResponse` de `/users` (BACK_19): sempre traz todos os campos. */
+export interface UserDto extends ApiUser {
+  active: boolean;
+  mustChangePassword: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateUserRequest {
+  name: string;
+  email: string;
+  role: UserRole;
+  /** 12 a 72 caracteres; nunca volta na resposta. */
+  temporaryPassword: string;
+}
+
+/** Ao menos um campo. Mudar `role` ou `active` desloga a pessoa na hora. */
+export interface UpdateUserRequest {
+  name?: string;
+  email?: string;
+  role?: UserRole;
+  active?: boolean;
+}
+
+export interface ChangePasswordRequest {
+  currentPassword: string;
+  newPassword: string;
 }
 
 export interface ApiSession {

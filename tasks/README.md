@@ -25,7 +25,7 @@ As tarefas estão numeradas por prioridade global. A numeração indica priorida
 |         17 | [FRONT_17_I18N_E_CONTEUDO_DOS_IDIOMAS.md](FRONT_17_I18N_E_CONTEUDO_DOS_IDIOMAS.md)                                 | Textos em pt-BR pelo i18n; remove o seletor de idioma                                   | ⏳ Pendente   |
 |         18 | [FRONT_18_REMOVER_PERSISTENCIA_LOCAL_E_VALIDAR_FLUXOS.md](FRONT_18_REMOVER_PERSISTENCIA_LOCAL_E_VALIDAR_FLUXOS.md) | Remoção do banco local e validação ponta a ponta                                        | ⏳ Pendente   |
 |         19 | [BACK_19_GESTAO_DE_USUARIOS.md](BACK_19_GESTAO_DE_USUARIOS.md)                                                     | Cadastro de usuários pelo owner e troca obrigatória de senha                            | ✅ Concluída   |
-|         20 | [FRONT_20_GESTAO_DE_USUARIOS.md](FRONT_20_GESTAO_DE_USUARIOS.md)                                                   | Tela de usuários e de troca de senha                                                    | ⏳ Pendente   |
+|         20 | [FRONT_20_GESTAO_DE_USUARIOS.md](FRONT_20_GESTAO_DE_USUARIOS.md)                                                   | Tela de usuários e de troca de senha                                                    | ✅ Concluída  |
 |         21 | [BACK_21_REFRESH_TOKEN_EM_COOKIE.md](BACK_21_REFRESH_TOKEN_EM_COOKIE.md)                                           | Refresh token em cookie HttpOnly e IP real atrás de proxy                               | ✅ Concluída   |
 |         22 | [FRONT_22_SESSAO_COM_COOKIE_E_PROXY_VERCEL.md](FRONT_22_SESSAO_COM_COOKIE_E_PROXY_VERCEL.md)                       | Sessão por cookie e proxy `/api` na Vercel e no Vite                                    | 🟡 Parcial    |
 |         23 | [BACK_23_CUSTO_DAS_PECAS.md](BACK_23_CUSTO_DAS_PECAS.md)                                                           | Custos de fábrica e banho, e margem                                                     | ✅ Concluída  |
@@ -35,7 +35,7 @@ As tarefas estão numeradas por prioridade global. A numeração indica priorida
 
 ## Ordem de execução do frontend (2026-10-31)
 
-Todo o backend está pronto. A FRONT_11 e a FRONT_12 estão concluídas, e a FRONT_22 só espera a verificação em navegador real, que entra nos E2E da FRONT_18.
+Todo o backend está pronto. A FRONT_11, a FRONT_12 e a FRONT_20 estão concluídas, e a FRONT_22 só espera a verificação em navegador real, que entra nos E2E da FRONT_18.
 
 1. **FRONT_20 – Usuários e troca de senha.** Sem ela, ninguém além do primeiro owner consegue usar o sistema: todo usuário criado nasce com troca obrigatória de senha. Ela também ajusta o cliente HTTP (tratamento do `403 PASSWORD_CHANGE_REQUIRED` e do `401` de senha atual errada) antes que as outras telas dependam dele, e cria as abas da página de Configurações.
 2. **FRONT_13 – Estoque, etiquetagem e fotos.** Cria as peças que todas as outras telas usam.
@@ -55,7 +55,7 @@ Todo o backend está pronto. A FRONT_11 e a FRONT_12 estão concluídas, e a FRO
 - **Backend:** BACK_01 a BACK_10 implementadas: autenticação, contratos HTTP, peças/timeline, vendedoras e configurações, fotos no PostgreSQL, consignações com venda e devolução, dashboard e relatórios. Também estão prontas a BACK_10 (auditoria, métricas, tracing, CI e runbook), a BACK_19 (gestão de usuários e troca obrigatória de senha) e a BACK_21 (refresh token em cookie `HttpOnly`). A BACK_23 (custo das peças e margem) também está pronta. A BACK_26 (valor total do estoque) e a BACK_27 (prazo de pagamento no lote) também estão prontas: **todas as tasks de backend estão concluídas**. A FRONT_22 (sessão por cookie no front) também está implementada; falta conferir num navegador de verdade e na Vercel.
 - **Testes do backend:** apenas testes unitários com JUnit 5 + Mockito (e testes de contexto com H2). Não há Testcontainers nem testes integrados automatizados; não é preciso Docker para rodar `./gradlew test`. As migrations são validadas no CI contra um PostgreSQL limpo (BACK_10). Decisão definitiva: não haverá testes de integração automatizados no backend.
 - **Observabilidade (BACK_10):** tracing só com IDs nos logs, métricas protegidas para owner, logs em JSON só em produção e backup manual com `pg_dump`.
-- **Frontend:** cliente HTTP, hooks React Query (`src/lib/api/hooks.ts`) e login remoto prontos. Já existem hooks para todos os endpoints do contrato, mas as telas, exceto o Login, ainda leem/escrevem o banco local (`useDb` em `src/lib/db.ts`, regras em `src/lib/domain.ts`).
+- **Frontend:** cliente HTTP, hooks React Query (`src/lib/api/hooks.ts`), login remoto, troca de senha (`/trocar-senha`) e a aba Usuários de Configurações (FRONT_20) prontos. Ainda faltam cliente e hooks para `GET /sellers/{id}/payment-schedule` (FRONT_15) e `PATCH /pieces/{id}/costs` (FRONT_24). As demais telas ainda leem/escrevem o banco local (`useDb` em `src/lib/db.ts`, regras em `src/lib/domain.ts`).
 - **Testes do frontend:** Vitest + Testing Library + MSW configurados (`npm test`); `npm run check` roda lint e verificação de tipos. Detalhes dos scripts em `SCRIPTS_NPM.md`.
 - **i18n:** i18next está inicializado, mas as páginas não usam `useTranslation`; arquivos `en` e `zh-CN` têm conteúdo placeholder e o fallback é `en`. Decisão: ficar só com `pt-BR` (FRONT_17).
 

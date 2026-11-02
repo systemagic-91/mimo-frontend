@@ -1,7 +1,8 @@
-import { NavLink, Outlet } from "react-router-dom";
+import { Link, NavLink, Outlet } from "react-router-dom";
 import {
   BarChart3,
   Briefcase,
+  KeyRound,
   LayoutDashboard,
   LogOut,
   MoreHorizontal,
@@ -11,6 +12,7 @@ import {
   Tag,
 } from "lucide-react";
 import { Logo } from "@/components/logo";
+import { CHANGE_PASSWORD_PATH } from "@/components/auth/paths";
 import { useCurrentUserQuery, useLogoutMutation } from "@/lib/api/hooks";
 import { ROLE_LABEL } from "@/lib/status";
 import { cn } from "@/lib/utils";
@@ -161,8 +163,18 @@ export function AppShell() {
             </div>
           </div>
           <Button
+            asChild
             variant="ghost"
             className="mt-1 w-full justify-start text-muted-foreground hover:text-foreground"
+          >
+            <Link to={CHANGE_PASSWORD_PATH}>
+              <KeyRound className="h-4 w-4" />
+              Trocar senha
+            </Link>
+          </Button>
+          <Button
+            variant="ghost"
+            className="w-full justify-start text-muted-foreground hover:text-foreground"
             onClick={handleLogout}
             disabled={logoutMutation.isPending}
           >
@@ -276,6 +288,13 @@ function MoreSheet({
             <Separator className="my-2" />
           </>
         )}
+        <Link
+          to={CHANGE_PASSWORD_PATH}
+          className="flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left text-sm text-muted-foreground hover:text-foreground"
+        >
+          <KeyRound className="h-4 w-4" />
+          Trocar senha
+        </Link>
         <button
           onClick={onLogout}
           disabled={logoutPending}

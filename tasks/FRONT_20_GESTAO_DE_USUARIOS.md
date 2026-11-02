@@ -70,12 +70,22 @@ Detalhes nas seções 1 e 9 do `BACKEND_API_CONTRACT.md`.
 
 ## Critérios de aceite
 
-- [ ] Owner lista, cria, edita (inclusive o e-mail), desativa, reativa e redefine a senha de usuários.
-- [ ] Staff não vê a aba e recebe UX adequada se acessar a rota diretamente.
-- [ ] Usuário com `mustChangePassword` não consegue sair da tela de troca até concluir; depois da troca, volta ao login e entra com a nova senha.
-- [ ] Senha atual errada na troca mostra a mensagem de erro, sem deslogar.
-- [ ] Erros de regra (último owner, e-mail repetido, autodesativação, próprio papel, própria senha) aparecem de forma compreensível, e as ações proibidas na própria conta nem aparecem.
-- [ ] Testes com MSW cobrem criação, redefinição de senha, bloqueio por troca obrigatória, `403 PASSWORD_CHANGE_REQUIRED` e os erros principais.
+- [x] Owner lista, cria, edita (inclusive o e-mail), desativa, reativa e redefine a senha de usuários.
+- [x] Staff não vê a aba e recebe UX adequada se acessar a rota diretamente.
+- [x] Usuário com `mustChangePassword` não consegue sair da tela de troca até concluir; depois da troca, volta ao login e entra com a nova senha.
+- [x] Senha atual errada na troca mostra a mensagem de erro, sem deslogar.
+- [x] Erros de regra (último owner, e-mail repetido, autodesativação, próprio papel, própria senha) aparecem de forma compreensível, e as ações proibidas na própria conta nem aparecem.
+- [x] Testes com MSW cobrem criação, redefinição de senha, bloqueio por troca obrigatória, `403 PASSWORD_CHANGE_REQUIRED` e os erros principais.
+
+## Implementação (2026-11-01)
+
+- **API:** `usersApi` (`src/lib/api/users.ts`), `authApi.changePassword`, query keys `users.*` e os hooks pedidos em `hooks.ts`. Criação e redefinição recebem a `Idempotency-Key` de fora; os formulários geram uma chave nova a cada envio.
+- **Cliente HTTP:** `403 PASSWORD_CHANGE_REQUIRED` em qualquer request chama `authTokenStore.setPasswordChangeRequiredHandler`; o `RequireAuth` marca a troca pendente no cache de `/auth/me` e leva à tela de troca. `changePassword` não usa a renovação automática: `401 INVALID_CREDENTIALS` vira mensagem; só um access token vencido renova e repete uma vez.
+- **Rotas:** `/trocar-senha` (`src/pages/TrocarSenha.tsx`) fica fora do `AppShell`. Com `mustChangePassword`, o `RequireAuth` redireciona qualquer rota privada para ela e não renderiza as outras telas, então nenhuma query delas dispara. Na troca obrigatória só há "Sair"; na voluntária, "Cancelar". Ao concluir, o cache é limpo e o login mostra "Senha alterada. Entre com a nova senha."
+- **Configurações:** a página virou `src/pages/Configuracoes/` com as abas "Vendedoras", "Comissão e prazos" (ainda no banco local, até a FRONT_14) e "Usuários". A aba tem busca, filtros de papel e status, paginação e a marca "Troca de senha pendente". Desativar e mudar papel pedem confirmação; o diálogo de redefinição avisa que a pessoa será deslogada. Na própria conta só aparece a edição de nome e e-mail.
+- **Staff:** a rota segue restrita a owner; quem acessa direto vê o aviso "Esta área é restrita a sócios(as) da loja." e volta ao início. O login mostra mensagem própria para `USER_INACTIVE` e `RATE_LIMITED`.
+- **Testes:** `TrocarSenha.test.tsx`, `Configuracoes/UsersTab.test.tsx` e casos novos em `auth.test.ts` e `http.test.ts`. O `src/test/setup.ts` ganhou um shim de `fetch` para o jsdom: o `Request` do Node recusa o `AbortSignal` do jsdom, o que impedia testes de componente com MSW.
+- **Não verificado:** contra o backend real e em navegador. Fica para os E2E da FRONT_18. A confirmação de mudança de papel não tem teste automatizado, porque o `Select` do Radix não abre no jsdom.
 
 ## Observações de dependência
 

@@ -1,6 +1,7 @@
 import { AppShell } from "@/components/layout/app-shell";
 import { RequireAuth, RequireRole } from "@/components/auth/guards";
 import { HomeRedirect } from "@/components/auth/home-redirect";
+import { CHANGE_PASSWORD_PATH } from "@/components/auth/paths";
 import Login from "@/pages/Login";
 import Estoque from "@/pages/Estoque";
 import Consignacao from "@/pages/Consignacao";
@@ -10,12 +11,23 @@ import Etiquetagem from "@/pages/Etiquetagem";
 import Relatorios from "@/pages/Relatorios";
 import Configuracoes from "@/pages/Configuracoes";
 import NotFound from "@/pages/NotFound";
+import TrocarSenha from "@/pages/TrocarSenha";
 
 export const routers = [
   {
     path: "/login",
     name: "login",
     element: <Login />,
+  },
+  {
+    // Fora do AppShell: com a troca obrigatória pendente, não há menu para sair da tela.
+    path: CHANGE_PASSWORD_PATH,
+    name: "trocar-senha",
+    element: (
+      <RequireAuth>
+        <TrocarSenha />
+      </RequireAuth>
+    ),
   },
   {
     path: "/",

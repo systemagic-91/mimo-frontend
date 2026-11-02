@@ -139,6 +139,43 @@ describe("shared API client", () => {
     expect(onUnauthorized).toHaveBeenCalledTimes(1);
   });
 
+  it("signals a required password change on 403 without renewing or logging out", async () => {
+    authTokenStore.set({ accessToken: "access-temp" });
+    const onPasswordChangeRequired = vi.fn();
+    const onUnauthorized = vi.fn();
+    authTokenStore.setPasswordChangeRequiredHandler(onPasswordChangeRequired);
+    authTokenStore.setUnauthorizedHandler(onUnauthorized);
+    server.use(
+      http.get(`${api}/pieces`, () =>
+        HttpResponse.json(
+          { status: 403, code: "PASSWORD_CHANGE_REQUIRED" },
+          { status: 403 },
+        ),
+      ),
+    );
+
+    await expect(apiRequest("/pieces")).rejects.toMatchObject({
+      status: 403,
+      code: "PASSWORD_CHANGE_REQUIRED",
+    });
+    expect(onPasswordChangeRequired).toHaveBeenCalledTimes(1);
+    expect(onUnauthorized).not.toHaveBeenCalled();
+    expect(authTokenStore.getAccessToken()).toBe("access-temp");
+  });
+
+  it("does not treat other 403 responses as a required password change", async () => {
+    const onPasswordChangeRequired = vi.fn();
+    authTokenStore.setPasswordChangeRequiredHandler(onPasswordChangeRequired);
+    server.use(
+      http.get(`${api}/users`, () =>
+        HttpResponse.json({ status: 403, code: "FORBIDDEN" }, { status: 403 }),
+      ),
+    );
+
+    await expect(apiRequest("/users")).rejects.toMatchObject({ code: "FORBIDDEN" });
+    expect(onPasswordChangeRequired).not.toHaveBeenCalled();
+  });
+
   it("renews only once when several requests expire at the same time", async () => {
     authTokenStore.set({ accessToken: "expired" });
     let refreshAttempts = 0;
