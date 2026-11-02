@@ -1141,11 +1141,11 @@ O frontend substitui `src/lib/db.ts` e as chamadas diretas a `src/lib/domain.ts`
 - [x] invalidar queries após cada mutation (hooks em `src/lib/api/hooks.ts`);
 - [x] converter valores com um mapper único entre `valueCents` e o formato exibido (`src/lib/api/mappers.ts`);
 - [x] enviar `Idempotency-Key` automaticamente em toda mutation fora de `/auth/*` (`src/lib/api/http.ts`);
-- [ ] trocar `Piece.photo` base64 pelo upload (`photoId`) e exibir `photoUrl` (FRONT_13);
-- [ ] usar `sourcePieceId` na etiquetagem (FRONT_13);
+- [x] trocar `Piece.photo` base64 pelo upload (`photoId`) e exibir `photoUrl` (FRONT_13);
+- [x] usar `sourcePieceId` na etiquetagem (FRONT_13);
 - [ ] exibir conflitos `409` e validações `400`/`422` nas telas (FRONT_13 a 16);
 - [ ] implementar paginação nas listagens (FRONT_13 a 15);
-- [ ] não confiar em `next-code` para salvar uma peça (FRONT_13);
+- [x] não confiar em `next-code` para salvar uma peça (FRONT_13);
 - [x] usar `VITE_API_BASE_URL=/api/v1` com proxy na Vercel (`vercel.json`) e no Vite (`server.proxy`), com refresh por cookie e trava entre abas (FRONT_22);
 - [x] tela de troca obrigatória de senha e gestão de usuários (FRONT_20);
 - [ ] campos de custo e margem, visíveis só para owner (FRONT_24).

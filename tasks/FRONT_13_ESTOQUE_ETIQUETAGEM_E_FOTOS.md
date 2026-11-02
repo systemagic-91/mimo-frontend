@@ -75,12 +75,36 @@ Detalhes nas seções 2 e 8 do `BACKEND_API_CONTRACT.md`. Todas as rotas aceitam
 
 ## Critérios de aceite
 
-- [ ] Busca por código/tipo, filtro de status, ordenação e paginação usam os parâmetros da API.
-- [ ] Recebimento cria uma só peça (inclusive no retry) e mostra o código e o status devolvidos pelo servidor.
-- [ ] Etiquetagem seleciona a peça no banho, envia a foto, liga o `photoId` e não cria duplicata.
-- [ ] Detalhe mostra os dados e a timeline do backend em ordem estável, com a foto por `photoUrl`.
-- [ ] Erros `400`/`404`/`409`/`413`/`422`/`429`, falha de rede e upload falho são recuperáveis e não mostram falso sucesso.
-- [ ] Testes com MSW cobrem busca, recebimento, upload e etiquetagem.
+- [x] Busca por código/tipo, filtro de status, ordenação e paginação usam os parâmetros da API.
+- [x] Recebimento cria uma só peça (inclusive no retry) e mostra o código e o status devolvidos pelo servidor.
+- [x] Etiquetagem seleciona a peça no banho, envia a foto, liga o `photoId` e não cria duplicata.
+- [x] Detalhe mostra os dados e a timeline do backend em ordem estável, com a foto por `photoUrl`.
+- [x] Erros `400`/`404`/`409`/`413`/`422`/`429`, falha de rede e upload falho são recuperáveis e não mostram falso sucesso.
+- [x] Testes com MSW cobrem busca, recebimento, upload e etiquetagem.
+
+## Implementação (2026-11-01)
+
+- **Idempotência:** `piecesApi.receive`, `label` e `uploadPhoto` recebem a `Idempotency-Key` de quem chama, como `consignmentsApi.create`. O hook `useIdempotencyKey` (`src/hooks/`) devolve a mesma chave enquanto o conteúdo enviado for igual: o "Tentar de novo" depois de uma falha de rede reaproveita a chave e não cria a peça (nem a foto) duas vezes. Se o conteúdo mudar, gera outra; depois do sucesso, descarta.
+- **Estoque** (`src/pages/Estoque/`):
+  - busca com debounce, filtro de status, ordenação pelos cabeçalhos (com desempate por `code,asc`) e paginação de 50, tudo enviado à API;
+  - o resumo usa `pagination.total` e `summary.totalValueCents`, nunca a soma da página;
+  - o recebimento mostra o `next-code` só como prévia; depois de salvar, avisa com o código e o status devolvidos e abre o detalhe da peça criada;
+  - valor digitado como "84,90", convertido com `moneyToCents`.
+- **Detalhe** (`piece-detail-sheet.tsx`): recebe `pieceId` e lê `GET /pieces/{id}` e `/events`, com carregamento, erro e "Tentar novamente". A timeline ordena por `occurredAt` com desempate por `id`, como o backend. A foto vem de `photoUrl`.
+- **Etiquetagem** (`src/pages/Etiquetagem/`), em quatro passos:
+  1. escolher a peça em `BANHO_OURO` (com busca e paginação); o tipo e o valor vêm dela;
+  2. foto validada, reduzida para 320 px em JPEG no navegador (object URL, sem base64) e enviada na hora; falha de upload mostra a mensagem e "Tentar de novo" com o mesmo arquivo e a mesma chave;
+  3. dados;
+  4. confirmação com `sourcePieceId` e `photoId`.
+  - `409 INVALID_PIECE_TRANSITION` e `404 PIECE_NOT_FOUND` levam a "Escolher outra peça" (a lista é recarregada); `404 PHOTO_NOT_FOUND` leva a "Enviar a foto de novo".
+- **Dashboard:** a busca por código do "Ciclo da peça" consulta a API e abre o detalhe novo. Os contadores do Dashboard continuam no banco local até a FRONT_16.
+- **Compartilhado:** `PaginationBar` (`src/components/`), `useDebouncedValue` (`src/hooks/`, também usado na aba Usuários) e as mensagens por `code` em `src/lib/piece-errors.ts`.
+- **Testes:** `Estoque/Estoque.test.tsx` e `Etiquetagem/Etiquetagem.test.tsx`, com fixtures em `src/test/fixtures.ts`. O `setup.ts` ganhou polyfills para o `Select` do Radix no jsdom e passou a descartar os toasts ao fim de cada teste (o estado do `sonner` é global e vazava entre testes). Com o `Select` funcionando, a confirmação de mudança de papel da FRONT_20 também ganhou teste.
+- **Limitações:**
+  - no jsdom não há canvas, então a redução da foto é simulada nos testes; a validação de formato roda de verdade;
+  - o corpo multipart do upload não é inspecionado nos testes (o `FormData` do jsdom não passa pelo `Request` do Node), só a chamada e a chave;
+  - nada foi verificado contra o backend real nem em navegador (fica para os E2E da FRONT_18);
+  - como Consignação, Dashboard e Relatórios ainda leem o banco local, as peças criadas pela API ainda não aparecem nelas até as FRONT_15 e 16.
 
 ## Observações de dependência
 

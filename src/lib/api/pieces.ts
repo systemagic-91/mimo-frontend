@@ -45,36 +45,44 @@ export const piecesApi = {
     return apiRequest<{ code: string }>("/pieces/next-code", { signal });
   },
 
-  receive(
-    input: Omit<ReceivePieceRequest, "stage"> & {
-      stage: Extract<PieceStage, "fabrica" | "banho_ouro">;
-    },
-  ) {
+  // As mutations recebem a Idempotency-Key de quem chama: o formulário gera uma por envio e a reaproveita
+  // no "tentar de novo", para um retry depois de falha de rede não criar a peça (ou a foto) duas vezes.
+  receive(input: ReceivePieceInput, idempotencyKey: string) {
     const body: ReceivePieceRequest = {
       ...input,
       stage: toBackendPieceStage(input.stage),
     };
     return apiRequest<ReceivePieceResponse>("/pieces/receive", {
       method: "POST",
+      headers: { "Idempotency-Key": idempotencyKey },
       body,
     });
   },
 
-  label(input: LabelPieceRequest) {
+  label(input: LabelPieceRequest, idempotencyKey: string) {
     return apiRequest<PieceDto>("/pieces/label", {
       method: "POST",
+      headers: { "Idempotency-Key": idempotencyKey },
       body: input,
     });
   },
 
-  async uploadPhoto(file: File): Promise<UploadPiecePhotoResponse> {
+  async uploadPhoto(
+    file: File,
+    idempotencyKey: string,
+  ): Promise<UploadPiecePhotoResponse> {
     const form = new FormData();
     form.append("file", file);
     return apiRequest<UploadPiecePhotoResponse>("/uploads/piece-photo", {
       method: "POST",
+      headers: { "Idempotency-Key": idempotencyKey },
       body: form,
     });
   },
+};
+
+export type ReceivePieceInput = Omit<ReceivePieceRequest, "stage"> & {
+  stage: Extract<PieceStage, "fabrica" | "banho_ouro">;
 };
 
 export type { BackendPieceStage };

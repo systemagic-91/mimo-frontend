@@ -13,6 +13,7 @@ export const queryKeys = {
     details: () => [...queryKeys.pieces.all, "detail"] as const,
     detail: (id: string) => [...queryKeys.pieces.details(), id] as const,
     events: (id: string) => [...queryKeys.pieces.all, id, "events"] as const,
+    nextCode: () => [...queryKeys.pieces.all, "next-code"] as const,
   },
   sellers: {
     all: ["sellers"] as const,

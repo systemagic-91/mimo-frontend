@@ -1,7 +1,8 @@
+import { fromBackendPieceStage } from "@/lib/api/mappers";
+import type { PieceEventDto } from "@/lib/api/types";
 import { STAGE_LABEL } from "@/lib/status";
 import { formatDateTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import type { PieceEvent } from "@/lib/types";
 
 const DOT: Record<string, string> = {
   fabrica: "bg-muted-foreground",
@@ -12,33 +13,47 @@ const DOT: Record<string, string> = {
   devolvida: "bg-muted-foreground",
 };
 
-export function PieceTimeline({ events }: { events: PieceEvent[] }) {
+/** Ordem crescente de `occurredAt`, com desempate por `id` (a mesma regra do backend). */
+function sortPieceEvents(events: PieceEventDto[]): PieceEventDto[] {
+  return [...events].sort(
+    (a, b) =>
+      a.occurredAt.localeCompare(b.occurredAt) || a.id.localeCompare(b.id),
+  );
+}
+
+export function PieceTimeline({ events }: { events: PieceEventDto[] }) {
   if (events.length === 0) {
     return <p className="text-sm text-muted-foreground">Sem histórico.</p>;
   }
   return (
-    <ol className="relative ml-0.5 space-y-4 border-l border-border pl-4">
-      {events.map((e) => (
-        <li key={e.id} className="relative">
-          <span
-            className={cn(
-              "absolute -left-[25px] top-1 h-2.5 w-2.5 rounded-full border-2 border-background",
-              DOT[e.stage] ?? "bg-muted-foreground",
+    <ol
+      aria-label="Linha do tempo"
+      className="relative ml-0.5 space-y-4 border-l border-border pl-4"
+    >
+      {sortPieceEvents(events).map((e) => {
+        const stage = fromBackendPieceStage(e.stage);
+        return (
+          <li key={e.id} className="relative">
+            <span
+              className={cn(
+                "absolute -left-[25px] top-1 h-2.5 w-2.5 rounded-full border-2 border-background",
+                DOT[stage] ?? "bg-muted-foreground",
+              )}
+            />
+            <div className="flex items-baseline justify-between gap-2">
+              <span className="text-sm font-medium text-foreground">
+                {STAGE_LABEL[stage]}
+              </span>
+              <span className="shrink-0 text-xs text-muted-foreground">
+                {formatDateTime(e.occurredAt)}
+              </span>
+            </div>
+            {e.note && (
+              <p className="mt-0.5 text-xs text-muted-foreground">{e.note}</p>
             )}
-          />
-          <div className="flex items-baseline justify-between gap-2">
-            <span className="text-sm font-medium text-foreground">
-              {STAGE_LABEL[e.stage]}
-            </span>
-            <span className="shrink-0 text-xs text-muted-foreground">
-              {formatDateTime(e.occurredAt)}
-            </span>
-          </div>
-          {e.note && (
-            <p className="mt-0.5 text-xs text-muted-foreground">{e.note}</p>
-          )}
-        </li>
-      ))}
+          </li>
+        );
+      })}
     </ol>
   );
 }

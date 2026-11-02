@@ -1,4 +1,5 @@
 import {
+  keepPreviousData,
   useMutation,
   useQuery,
   useQueryClient,
@@ -8,7 +9,11 @@ import { ApiError, authTokenStore } from "./http";
 import { consignmentsApi, type ConsignmentListParams } from "./consignments";
 import { dashboardApi } from "./dashboard";
 import { queryKeys } from "./query-keys";
-import { piecesApi, type PieceListParams } from "./pieces";
+import {
+  piecesApi,
+  type PieceListParams,
+  type ReceivePieceInput,
+} from "./pieces";
 import { reportsApi } from "./reports";
 import { sellersApi, type SellerListParams } from "./sellers";
 import { settingsApi } from "./settings";
@@ -174,6 +179,18 @@ export function usePiecesQuery(params: PieceListParams = {}, enabled = true) {
     queryKey: queryKeys.pieces.list(params),
     queryFn: ({ signal }) => piecesApi.list(params, signal),
     enabled,
+    // Mantém a página anterior na tela enquanto a próxima busca, filtro ou página carrega.
+    placeholderData: keepPreviousData,
+  });
+}
+
+/** Só uma prévia: o código definitivo vem na resposta do recebimento. */
+export function usePieceNextCodeQuery(enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.pieces.nextCode(),
+    queryFn: ({ signal }) => piecesApi.nextCode(signal),
+    enabled,
+    staleTime: 0,
   });
 }
 
@@ -196,8 +213,13 @@ export function usePieceEventsQuery(id: string, enabled = Boolean(id)) {
 export function useReceivePieceMutation() {
   const invalidate = useInvalidateOperationalData();
   return useMutation({
-    mutationFn: (input: { type: string; valueCents: number; stage: "fabrica" | "banho_ouro"; note?: string }) =>
-      piecesApi.receive(input),
+    mutationFn: ({
+      input,
+      idempotencyKey,
+    }: {
+      input: ReceivePieceInput;
+      idempotencyKey: string;
+    }) => piecesApi.receive(input, idempotencyKey),
     onSuccess: invalidate,
   });
 }
@@ -205,14 +227,21 @@ export function useReceivePieceMutation() {
 export function useLabelPieceMutation() {
   const invalidate = useInvalidateOperationalData();
   return useMutation({
-    mutationFn: (input: LabelPieceRequest) => piecesApi.label(input),
+    mutationFn: ({
+      input,
+      idempotencyKey,
+    }: {
+      input: LabelPieceRequest;
+      idempotencyKey: string;
+    }) => piecesApi.label(input, idempotencyKey),
     onSuccess: invalidate,
   });
 }
 
 export function useUploadPiecePhotoMutation() {
   return useMutation({
-    mutationFn: (file: File) => piecesApi.uploadPhoto(file),
+    mutationFn: ({ file, idempotencyKey }: { file: File; idempotencyKey: string }) =>
+      piecesApi.uploadPhoto(file, idempotencyKey),
   });
 }
 

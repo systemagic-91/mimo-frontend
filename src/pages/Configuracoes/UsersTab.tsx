@@ -1,6 +1,8 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { Plus, Search } from "lucide-react";
 import { toast } from "sonner";
+import { PaginationBar } from "@/components/pagination-bar";
 import { RemoteQueryState } from "@/components/remote-query-state";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -48,19 +50,11 @@ export function UsersTab() {
   const currentUserId = useCurrentUserQuery().data?.user.id;
   const updateUser = useUpdateUserMutation();
   const [search, setSearch] = useState("");
-  const [q, setQ] = useState("");
+  const q = useDebouncedValue(search.trim(), SEARCH_DELAY_MS);
   const [role, setRole] = useState<RoleFilter>("todos");
   const [status, setStatus] = useState<StatusFilter>("todos");
   const [page, setPage] = useState(1);
   const [dialog, setDialog] = useState<DialogState>(null);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setQ(search.trim());
-      setPage(1);
-    }, SEARCH_DELAY_MS);
-    return () => clearTimeout(timer);
-  }, [search]);
 
   const params: UserListParams = {
     q: q || undefined,
@@ -113,7 +107,10 @@ export function UsersTab() {
             placeholder="Buscar por nome ou e-mail"
             className="pl-9"
             value={search}
-            onChange={(event) => setSearch(event.target.value)}
+            onChange={(event) => {
+              setSearch(event.target.value);
+              setPage(1);
+            }}
           />
         </div>
         <Select
@@ -190,31 +187,8 @@ export function UsersTab() {
         </div>
       )}
 
-      {pagination && pagination.totalPages > 1 && (
-        <div className="flex items-center justify-between border-t px-5 py-3 text-sm text-muted-foreground">
-          <span>
-            Página {pagination.page} de {pagination.totalPages}
-          </span>
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={page <= 1}
-              onClick={() => setPage((current) => current - 1)}
-            >
-              Anterior
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={page >= pagination.totalPages}
-              onClick={() => setPage((current) => current + 1)}
-            >
-              Próxima
-            </Button>
-          </div>
-        </div>
-      )}
+      <PaginationBar pagination={pagination} onPageChange={setPage} />
+
 
       {dialog?.kind === "form" && (
         <UserFormDialog

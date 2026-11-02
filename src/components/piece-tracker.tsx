@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { Briefcase, Droplets, Factory, Search, Tag } from "lucide-react";
 import { toast } from "sonner";
-import { useDb } from "@/lib/db";
-import { cn } from "@/lib/utils";
-import type { Piece, PieceStage } from "@/lib/types";
+import { piecesApi } from "@/lib/api/pieces";
+import { getPieceErrorMessage } from "@/lib/piece-errors";
+import type { PieceStage } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -19,21 +19,30 @@ export function PieceTracker({
   onOpenPiece,
 }: {
   counts: Record<PieceStage, number>;
-  onOpenPiece: (piece: Piece) => void;
+  onOpenPiece: (pieceId: string) => void;
 }) {
-  const db = useDb();
   const [query, setQuery] = useState("");
+  const [searching, setSearching] = useState(false);
 
-  const handleSearch = () => {
+  // A API busca por trecho do código; aqui só abre a peça com o código exato.
+  const handleSearch = async () => {
     const q = query.trim().toUpperCase();
-    if (!q) return;
-    const piece = db.pieces.find((p) => p.code.toUpperCase() === q);
-    if (piece) {
-      onOpenPiece(piece);
-    } else {
-      toast.error("Peça não encontrada", {
-        description: `Nenhuma peça com o código ${q}.`,
-      });
+    if (!q || searching) return;
+    setSearching(true);
+    try {
+      const { items } = await piecesApi.list({ q, pageSize: 20 });
+      const piece = items.find((p) => p.code.toUpperCase() === q);
+      if (piece) {
+        onOpenPiece(piece.id);
+      } else {
+        toast.error("Peça não encontrada", {
+          description: `Nenhuma peça com o código ${q}.`,
+        });
+      }
+    } catch (error) {
+      toast.error(getPieceErrorMessage(error));
+    } finally {
+      setSearching(false);
     }
   };
 
@@ -48,13 +57,14 @@ export function PieceTracker({
             placeholder="Buscar código (ex: LU-0813)"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+            onKeyDown={(e) => e.key === "Enter" && void handleSearch()}
             className="font-mono text-[13px]"
           />
           <Button
             variant="outline"
             size="icon"
-            onClick={handleSearch}
+            disabled={searching}
+            onClick={() => void handleSearch()}
             aria-label="Buscar peça"
           >
             <Search className="h-4 w-4" />

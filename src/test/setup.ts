@@ -1,5 +1,6 @@
 import "@testing-library/jest-dom/vitest";
 import { cleanup } from "@testing-library/react";
+import { toast } from "sonner";
 import { afterAll, afterEach, beforeAll } from "vitest";
 import { authTokenStore } from "@/lib/api/http";
 import { server } from "./server";
@@ -23,12 +24,24 @@ function installJsdomFetchShim() {
   };
 }
 
+// APIs de layout que o jsdom não implementa e o Select do Radix usa ao abrir.
+function installJsdomLayoutPolyfills() {
+  if (typeof window === "undefined") return;
+  const proto = window.HTMLElement.prototype;
+  proto.hasPointerCapture ??= () => false;
+  proto.releasePointerCapture ??= () => undefined;
+  proto.scrollIntoView ??= () => undefined;
+}
+
 beforeAll(() => {
   server.listen({ onUnhandledRequest: "error" });
   installJsdomFetchShim();
+  installJsdomLayoutPolyfills();
 });
 afterEach(() => {
   if (typeof document !== "undefined") cleanup();
+  // O estado dos toasts é global: sem isso, o próximo <Toaster /> mostraria os toasts deste teste.
+  toast.dismiss();
   server.resetHandlers();
   authTokenStore.clear();
   authTokenStore.setUnauthorizedHandler(undefined);

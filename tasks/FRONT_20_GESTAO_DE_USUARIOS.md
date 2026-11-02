@@ -85,7 +85,7 @@ Detalhes nas seções 1 e 9 do `BACKEND_API_CONTRACT.md`.
 - **Configurações:** a página virou `src/pages/Configuracoes/` com as abas "Vendedoras", "Comissão e prazos" (ainda no banco local, até a FRONT_14) e "Usuários". A aba tem busca, filtros de papel e status, paginação e a marca "Troca de senha pendente". Desativar e mudar papel pedem confirmação; o diálogo de redefinição avisa que a pessoa será deslogada. Na própria conta só aparece a edição de nome e e-mail.
 - **Staff:** a rota segue restrita a owner; quem acessa direto vê o aviso "Esta área é restrita a sócios(as) da loja." e volta ao início. O login mostra mensagem própria para `USER_INACTIVE` e `RATE_LIMITED`.
 - **Testes:** `TrocarSenha.test.tsx`, `Configuracoes/UsersTab.test.tsx` e casos novos em `auth.test.ts` e `http.test.ts`. O `src/test/setup.ts` ganhou um shim de `fetch` para o jsdom: o `Request` do Node recusa o `AbortSignal` do jsdom, o que impedia testes de componente com MSW.
-- **Não verificado:** contra o backend real e em navegador. Fica para os E2E da FRONT_18. A confirmação de mudança de papel não tem teste automatizado, porque o `Select` do Radix não abre no jsdom.
+- **Não verificado:** contra o backend real e em navegador. Fica para os E2E da FRONT_18. A confirmação de mudança de papel ganhou teste na FRONT_13, quando o `setup.ts` passou a ter os polyfills que o `Select` do Radix precisa no jsdom.
 
 ## Observações de dependência
 
