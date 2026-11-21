@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -27,6 +28,7 @@ export function ConfirmActionDialog({
   onConfirm: () => void;
   onCancel: () => void;
 }) {
+  const { t } = useTranslation();
   return (
     <AlertDialog open={open} onOpenChange={(next) => !next && !pending && onCancel()}>
       <AlertDialogContent>
@@ -35,9 +37,9 @@ export function ConfirmActionDialog({
           <AlertDialogDescription>{description}</AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={pending}>Cancelar</AlertDialogCancel>
+          <AlertDialogCancel disabled={pending}>{t("common.cancel")}</AlertDialogCancel>
           <Button onClick={onConfirm} disabled={pending}>
-            {pending ? "Salvando…" : confirmLabel}
+            {pending ? t("common.saving") : confirmLabel}
           </Button>
         </AlertDialogFooter>
       </AlertDialogContent>

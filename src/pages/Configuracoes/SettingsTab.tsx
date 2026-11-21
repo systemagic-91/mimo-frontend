@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { RemoteQueryState } from "@/components/remote-query-state";
 import { useSettingsQuery } from "@/lib/api/hooks";
 import { getAdminErrorMessage } from "./admin-errors";
@@ -5,11 +6,12 @@ import { SettingsForm } from "./SettingsForm";
 
 /** Aba "Comissão e prazos": o formulário só aparece depois que `GET /settings` carrega. */
 export function SettingsTab() {
+  const { t } = useTranslation();
   const settings = useSettingsQuery();
 
   return (
     <section className="rounded-lg border bg-card p-5 shadow-none">
-      <h2 className="font-serif text-lg font-medium text-foreground">Comissão e prazos</h2>
+      <h2 className="font-serif text-lg font-medium text-foreground">{t("settings.params.title")}</h2>
       {settings.isPending ? (
         <RemoteQueryState state="loading" />
       ) : settings.isError ? (

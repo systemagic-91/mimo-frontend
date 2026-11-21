@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -28,6 +29,7 @@ export function ResetPasswordDialog({
   user: UserDto;
   onClose: () => void;
 }) {
+  const { t } = useTranslation();
   const resetPassword = useResetUserPasswordMutation();
   const [temporaryPassword, setTemporaryPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -39,9 +41,7 @@ export function ResetPasswordDialog({
       temporaryPassword.length < TEMPORARY_PASSWORD_MIN ||
       temporaryPassword.length > TEMPORARY_PASSWORD_MAX
     ) {
-      setError(
-        `A senha temporária precisa ter de ${TEMPORARY_PASSWORD_MIN} a ${TEMPORARY_PASSWORD_MAX} caracteres.`,
-      );
+      setError(t("users.form.passwordLength", { min: TEMPORARY_PASSWORD_MIN, max: TEMPORARY_PASSWORD_MAX }));
       return;
     }
     setError(null);
@@ -54,9 +54,7 @@ export function ResetPasswordDialog({
       },
       {
         onSuccess: () => {
-          toast.success(
-            `Senha de ${user.name} redefinida. Entregue a senha temporária pessoalmente.`,
-          );
+          toast.success(t("users.reset.done", { name: user.name }));
           onClose();
         },
         onError: (cause) => setError(getUserErrorMessage(cause)),
@@ -69,15 +67,15 @@ export function ResetPasswordDialog({
     <Dialog open onOpenChange={(open) => !open && !pending && onClose()}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Redefinir senha</DialogTitle>
+          <DialogTitle>{t("users.reset.title")}</DialogTitle>
           <DialogDescription>
-            {user.name} será deslogado(a) na hora e terá de trocar esta senha temporária no próximo acesso.
+            {t("users.reset.description", { name: user.name })}
           </DialogDescription>
         </DialogHeader>
 
         <form id="reset-password-form" onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
-            <Label htmlFor="reset-temporary-password">Nova senha temporária</Label>
+            <Label htmlFor="reset-temporary-password">{t("users.reset.password")}</Label>
             <Input
               id="reset-temporary-password"
               type="password"
@@ -88,7 +86,7 @@ export function ResetPasswordDialog({
               required
             />
             <p className="text-xs text-muted-foreground">
-              De {TEMPORARY_PASSWORD_MIN} a {TEMPORARY_PASSWORD_MAX} caracteres.
+              {t("common.passwordLength", { min: TEMPORARY_PASSWORD_MIN, max: TEMPORARY_PASSWORD_MAX })}
             </p>
           </div>
           {error && (
@@ -100,10 +98,10 @@ export function ResetPasswordDialog({
 
         <DialogFooter>
           <Button variant="outline" onClick={onClose} disabled={pending}>
-            Cancelar
+            {t("common.cancel")}
           </Button>
           <Button type="submit" form="reset-password-form" disabled={pending}>
-            {pending ? "Salvando…" : "Redefinir e deslogar"}
+            {pending ? t("common.saving") : t("users.reset.submit")}
           </Button>
         </DialogFooter>
       </DialogContent>

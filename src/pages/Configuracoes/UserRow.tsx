@@ -1,4 +1,5 @@
 import { KeyRound, Pencil, UserCheck, UserX } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { TableCell, TableRow } from "@/components/ui/table";
@@ -23,11 +24,12 @@ export function UserRow({
   onDeactivate: () => void;
   onReactivate: () => void;
 }) {
+  const { t } = useTranslation();
   return (
     <TableRow className="hover:bg-transparent">
       <TableCell className="font-medium text-foreground">
         {user.name}
-        {isSelf && <span className="ml-2 text-xs font-normal text-muted-foreground">(você)</span>}
+        {isSelf && <span className="ml-2 text-xs font-normal text-muted-foreground">{t("users.row.you")}</span>}
       </TableCell>
       <TableCell className="text-muted-foreground">{user.email}</TableCell>
       <TableCell className="text-foreground">{ROLE_LABEL[user.role]}</TableCell>
@@ -35,13 +37,13 @@ export function UserRow({
         <div className="flex flex-wrap items-center gap-1.5">
           <StatusBadge
             status={user.active ? "ativa" : "inativa"}
-            label={user.active ? "Ativo" : "Inativo"}
+            label={user.active ? t("users.row.active") : t("users.row.inactive")}
           />
           {user.mustChangePassword && (
             <StatusBadge
               status="atrasada"
               dot={false}
-              label="Troca de senha pendente"
+              label={t("users.row.pendingPassword")}
             />
           )}
         </div>
@@ -53,7 +55,7 @@ export function UserRow({
             size="icon"
             onClick={onEdit}
             disabled={busy}
-            aria-label={`Editar ${user.name}`}
+            aria-label={t("users.row.edit", { name: user.name })}
           >
             <Pencil className="h-4 w-4" />
           </Button>
@@ -64,7 +66,7 @@ export function UserRow({
                 size="icon"
                 onClick={onResetPassword}
                 disabled={busy}
-                aria-label={`Redefinir senha de ${user.name}`}
+                aria-label={t("users.row.resetPassword", { name: user.name })}
               >
                 <KeyRound className="h-4 w-4" />
               </Button>
@@ -74,7 +76,7 @@ export function UserRow({
                   size="icon"
                   onClick={onDeactivate}
                   disabled={busy}
-                  aria-label={`Desativar ${user.name}`}
+                  aria-label={t("users.row.deactivate", { name: user.name })}
                 >
                   <UserX className="h-4 w-4" />
                 </Button>
@@ -84,7 +86,7 @@ export function UserRow({
                   size="icon"
                   onClick={onReactivate}
                   disabled={busy}
-                  aria-label={`Reativar ${user.name}`}
+                  aria-label={t("users.row.reactivate", { name: user.name })}
                 >
                   <UserCheck className="h-4 w-4" />
                 </Button>

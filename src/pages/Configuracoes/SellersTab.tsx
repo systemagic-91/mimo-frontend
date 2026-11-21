@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Plus, Search } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { PaginationBar } from "@/components/pagination-bar";
 import { RemoteQueryState } from "@/components/remote-query-state";
@@ -43,6 +44,7 @@ type DialogState =
   | null;
 
 export function SellersTab() {
+  const { t } = useTranslation();
   // As opções de comissão vêm da faixa de `GET /settings`.
   const settings = useSettingsQuery();
   const updateSeller = useUpdateSellerMutation();
@@ -67,7 +69,7 @@ export function SellersTab() {
       { id: seller.id, input: { status: active ? "ativa" : "inativa" } },
       {
         onSuccess: () => {
-          toast.success(active ? `${seller.name} ativada.` : `${seller.name} inativada.`);
+          toast.success(t(active ? "sellers.activated" : "sellers.deactivated", { name: seller.name }));
           setDialog(null);
         },
         onError: (cause) => {
@@ -81,11 +83,11 @@ export function SellersTab() {
     <section className="overflow-hidden rounded-lg border bg-card shadow-none">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b px-5 py-4">
         <div>
-          <h2 className="font-serif text-lg font-medium text-foreground">Vendedoras</h2>
+          <h2 className="font-serif text-lg font-medium text-foreground">{t("sellers.title")}</h2>
           <p className="text-sm text-muted-foreground">
             {pagination
-              ? `${pagination.total} cadastrada${pagination.total === 1 ? "" : "s"}`
-              : "Vendedoras autônomas da consignação"}
+              ? t("sellers.count", { count: pagination.total })
+              : t("sellers.subtitle")}
           </p>
         </div>
         <Button
@@ -94,7 +96,7 @@ export function SellersTab() {
           disabled={!settings.data}
         >
           <Plus className="h-4 w-4" />
-          Nova vendedora
+          {t("sellers.new")}
         </Button>
       </div>
 
@@ -102,8 +104,8 @@ export function SellersTab() {
         <div className="relative min-w-[12rem] flex-1">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            aria-label="Buscar vendedoras"
-            placeholder="Buscar por nome ou telefone"
+            aria-label={t("sellers.search")}
+            placeholder={t("sellers.searchPlaceholder")}
             className="pl-9"
             maxLength={120}
             value={search}
@@ -120,22 +122,22 @@ export function SellersTab() {
             setPage(1);
           }}
         >
-          <SelectTrigger className="w-40" aria-label="Filtrar por status">
+          <SelectTrigger className="w-40" aria-label={t("common.filterStatus")}>
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="todas">Todas</SelectItem>
-            <SelectItem value="ativa">Ativas</SelectItem>
-            <SelectItem value="inativa">Inativas</SelectItem>
+            <SelectItem value="todas">{t("sellers.filter.all")}</SelectItem>
+            <SelectItem value="ativa">{t("sellers.filter.active")}</SelectItem>
+            <SelectItem value="inativa">{t("sellers.filter.inactive")}</SelectItem>
           </SelectContent>
         </Select>
       </div>
 
       {settings.isError && (
         <p role="alert" className="border-b px-5 py-3 text-sm text-late">
-          Não foi possível carregar a faixa de comissão, então não dá para cadastrar ou editar agora.{" "}
+          {t("sellers.rangeError")}{" "}
           <button type="button" className="underline" onClick={() => void settings.refetch()}>
-            Tentar novamente
+            {t("common.retry")}
           </button>
         </p>
       )}
@@ -153,8 +155,8 @@ export function SellersTab() {
           state="empty"
           message={
             q || status !== "todas"
-              ? "Nenhuma vendedora encontrada."
-              : "Nenhuma vendedora cadastrada ainda."
+              ? t("sellers.emptySearch")
+              : t("sellers.empty")
           }
         />
       ) : (
@@ -162,12 +164,12 @@ export function SellersTab() {
           <Table>
             <TableHeader>
               <TableRow className="hover:bg-transparent">
-                <TableHead>Nome</TableHead>
-                <TableHead>Telefone</TableHead>
-                <TableHead className="text-right">Comissão</TableHead>
-                <TableHead className="text-right">Peças com ela</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
+                <TableHead>{t("common.name")}</TableHead>
+                <TableHead>{t("common.phone")}</TableHead>
+                <TableHead className="text-right">{t("common.commission")}</TableHead>
+                <TableHead className="text-right">{t("sellers.column.piecesInHand")}</TableHead>
+                <TableHead>{t("common.status")}</TableHead>
+                <TableHead className="text-right">{t("common.actions")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -205,13 +207,12 @@ export function SellersTab() {
       {dialog?.kind === "deactivate" && (
         <ConfirmActionDialog
           open
-          title="Inativar vendedora?"
-          description={`${dialog.seller.name} deixa de receber lotes novos. ${
-            dialog.piecesInHand > 0
-              ? `Os lotes em aberto (${dialog.piecesInHand} peça${dialog.piecesInHand === 1 ? "" : "s"} com ela) continuam valendo para venda e devolução.`
-              : "Nenhum lote é apagado."
-          }`}
-          confirmLabel="Inativar"
+          title={t("sellers.deactivate.title")}
+          description={`${t("sellers.deactivate.description", { name: dialog.seller.name })} ${t(
+            "sellers.deactivate.openLots",
+            { count: dialog.piecesInHand },
+          )}`}
+          confirmLabel={t("sellers.deactivate.confirm")}
           pending={updateSeller.isPending}
           onConfirm={() => setActive(dialog.seller, false)}
           onCancel={() => setDialog(null)}

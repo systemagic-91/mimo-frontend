@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -39,6 +40,7 @@ export function SellerFormDialog({
   settings: SettingsDto;
   onClose: () => void;
 }) {
+  const { t } = useTranslation();
   const createSeller = useCreateSellerMutation();
   const updateSeller = useUpdateSellerMutation();
   const idempotency = useIdempotencyKey();
@@ -69,8 +71,8 @@ export function SellerFormDialog({
     if (pending) return;
     setError(null);
     const local: Record<string, string> = {};
-    if (!name.trim()) local.name = "Informe o nome da vendedora.";
-    if (!phone.trim()) local.phone = "Informe o telefone.";
+    if (!name.trim()) local.name = t("sellers.form.nameRequired");
+    if (!phone.trim()) local.phone = t("sellers.form.phoneRequired");
     setFieldErrors(local);
     if (Object.keys(local).length) return;
 
@@ -82,7 +84,7 @@ export function SellerFormDialog({
         {
           onSuccess: (created) => {
             idempotency.reset();
-            toast.success(`${created.name} cadastrada.`);
+            toast.success(t("sellers.form.created", { name: created.name }));
             onClose();
           },
           onError: handleError,
@@ -103,7 +105,7 @@ export function SellerFormDialog({
       { id: seller.id, input },
       {
         onSuccess: () => {
-          toast.success("Vendedora atualizada.");
+          toast.success(t("sellers.form.updated"));
           onClose();
         },
         onError: handleError,
@@ -115,22 +117,22 @@ export function SellerFormDialog({
     <Dialog open onOpenChange={(open) => !open && !pending && onClose()}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{seller ? "Editar vendedora" : "Nova vendedora"}</DialogTitle>
+          <DialogTitle>{seller ? t("sellers.form.editTitle") : t("sellers.form.newTitle")}</DialogTitle>
           <DialogDescription>
             {seller
-              ? "Atualize os dados da vendedora."
-              : "Cadastre uma vendedora autônoma para consignação. Ela começa ativa."}
+              ? t("sellers.form.editDescription")
+              : t("sellers.form.newDescription")}
           </DialogDescription>
         </DialogHeader>
 
         <form id="seller-form" onSubmit={handleSubmit} className="space-y-4" noValidate>
           <div className="space-y-1.5">
-            <Label htmlFor="seller-name">Nome</Label>
+            <Label htmlFor="seller-name">{t("common.name")}</Label>
             <Input
               id="seller-name"
               value={name}
               maxLength={120}
-              placeholder="Nome completo"
+              placeholder={t("sellers.form.namePlaceholder")}
               onChange={(event) => setName(event.target.value)}
               disabled={pending}
               aria-invalid={Boolean(fieldErrors.name)}
@@ -138,7 +140,7 @@ export function SellerFormDialog({
             <FieldError message={fieldErrors.name} />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="seller-phone">Telefone</Label>
+            <Label htmlFor="seller-phone">{t("common.phone")}</Label>
             <Input
               id="seller-phone"
               value={phone}
@@ -151,7 +153,7 @@ export function SellerFormDialog({
             <FieldError message={fieldErrors.phone} />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="seller-rate">Comissão</Label>
+            <Label htmlFor="seller-rate">{t("common.commission")}</Label>
             <Select value={rate} onValueChange={setRate} disabled={pending}>
               <SelectTrigger id="seller-rate" aria-invalid={Boolean(fieldErrors.commissionRate)}>
                 <SelectValue />
@@ -167,8 +169,7 @@ export function SellerFormDialog({
             <FieldError message={fieldErrors.commissionRate} />
             {rateChanged && (
               <p className="text-xs text-muted-foreground">
-                A nova comissão só vale para os lotes entregues daqui em diante. Os lotes já entregues
-                mantêm a comissão da entrega.
+                {t("sellers.form.rateChangeHint")}
               </p>
             )}
           </div>
@@ -182,10 +183,10 @@ export function SellerFormDialog({
 
         <DialogFooter>
           <Button variant="outline" onClick={onClose} disabled={pending}>
-            Cancelar
+            {t("common.cancel")}
           </Button>
           <Button type="submit" form="seller-form" disabled={pending}>
-            {pending ? "Salvando…" : seller ? "Salvar alterações" : "Cadastrar"}
+            {pending ? t("common.saving") : seller ? t("common.saveChanges") : t("common.register")}
           </Button>
         </DialogFooter>
       </DialogContent>

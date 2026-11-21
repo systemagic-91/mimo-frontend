@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -43,6 +44,7 @@ export function UserFormDialog({
   isSelf: boolean;
   onClose: () => void;
 }) {
+  const { t } = useTranslation();
   const createUser = useCreateUserMutation();
   const updateUser = useUpdateUserMutation();
   const [name, setName] = useState(user?.name ?? "");
@@ -63,9 +65,7 @@ export function UserFormDialog({
       temporaryPassword.length < TEMPORARY_PASSWORD_MIN ||
       temporaryPassword.length > TEMPORARY_PASSWORD_MAX
     ) {
-      setError(
-        `A senha temporária precisa ter de ${TEMPORARY_PASSWORD_MIN} a ${TEMPORARY_PASSWORD_MAX} caracteres.`,
-      );
+      setError(t("users.form.passwordLength", { min: TEMPORARY_PASSWORD_MIN, max: TEMPORARY_PASSWORD_MAX }));
       return;
     }
     createUser.mutate(
@@ -76,9 +76,7 @@ export function UserFormDialog({
       },
       {
         onSuccess: (created) => {
-          toast.success(
-            `${created.name} cadastrado(a). Entregue a senha temporária pessoalmente.`,
-          );
+          toast.success(t("users.form.created", { name: created.name }));
           onClose();
         },
         onError: handleError,
@@ -100,7 +98,7 @@ export function UserFormDialog({
       { id: current.id, input },
       {
         onSuccess: () => {
-          toast.success("Usuário atualizado.");
+          toast.success(t("users.form.updated"));
           onClose();
         },
         onError: handleError,
@@ -112,7 +110,7 @@ export function UserFormDialog({
     event.preventDefault();
     setError(null);
     if (!name.trim() || !email.trim()) {
-      setError("Informe o nome e o e-mail.");
+      setError(t("users.form.required"));
       return;
     }
     if (!user) return create();
@@ -126,17 +124,17 @@ export function UserFormDialog({
       <Dialog open onOpenChange={(open) => !open && !pending && onClose()}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{user ? "Editar usuário" : "Novo usuário"}</DialogTitle>
+            <DialogTitle>{user ? t("users.form.editTitle") : t("users.form.newTitle")}</DialogTitle>
             <DialogDescription>
               {user
-                ? "Atualize os dados de acesso."
-                : "A pessoa entra com a senha temporária e precisa trocá-la no primeiro acesso."}
+                ? t("users.form.editDescription")
+                : t("users.form.newDescription")}
             </DialogDescription>
           </DialogHeader>
 
           <form id="user-form" onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-1.5">
-              <Label htmlFor="user-name">Nome</Label>
+              <Label htmlFor="user-name">{t("common.name")}</Label>
               <Input
                 id="user-name"
                 value={name}
@@ -147,7 +145,7 @@ export function UserFormDialog({
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="user-email">E-mail</Label>
+              <Label htmlFor="user-email">{t("common.email")}</Label>
               <Input
                 id="user-email"
                 type="email"
@@ -160,7 +158,7 @@ export function UserFormDialog({
             </div>
             {!isSelf && (
               <div className="space-y-1.5">
-                <Label htmlFor="user-role">Papel</Label>
+                <Label htmlFor="user-role">{t("users.column.role")}</Label>
                 <Select
                   value={role}
                   onValueChange={(value) => setRole(value as UserRole)}
@@ -178,7 +176,7 @@ export function UserFormDialog({
             )}
             {!user && (
               <div className="space-y-1.5">
-                <Label htmlFor="user-temporary-password">Senha temporária</Label>
+                <Label htmlFor="user-temporary-password">{t("users.form.temporaryPassword")}</Label>
                 <Input
                   id="user-temporary-password"
                   type="password"
@@ -189,7 +187,7 @@ export function UserFormDialog({
                   required
                 />
                 <p className="text-xs text-muted-foreground">
-                  De {TEMPORARY_PASSWORD_MIN} a {TEMPORARY_PASSWORD_MAX} caracteres. Não é enviada por e-mail.
+                  {t("users.form.temporaryPasswordHint", { min: TEMPORARY_PASSWORD_MIN, max: TEMPORARY_PASSWORD_MAX })}
                 </p>
               </div>
             )}
@@ -203,10 +201,10 @@ export function UserFormDialog({
 
           <DialogFooter>
             <Button variant="outline" onClick={onClose} disabled={pending}>
-              Cancelar
+              {t("common.cancel")}
             </Button>
             <Button type="submit" form="user-form" disabled={pending}>
-              {pending ? "Salvando…" : user ? "Salvar alterações" : "Cadastrar"}
+              {pending ? t("common.saving") : user ? t("common.saveChanges") : t("common.register")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -215,9 +213,9 @@ export function UserFormDialog({
       {user && (
         <ConfirmActionDialog
           open={confirmingRole}
-          title="Mudar o papel?"
-          description={`${user.name} passa a ser ${ROLE_LABEL[role]} e será deslogado(a) na hora.`}
-          confirmLabel="Mudar papel"
+          title={t("users.form.roleConfirmTitle")}
+          description={t("users.form.roleConfirmDescription", { name: user.name, role: ROLE_LABEL[role] })}
+          confirmLabel={t("users.form.roleConfirm")}
           pending={updateUser.isPending}
           onConfirm={() => update(user)}
           onCancel={() => setConfirmingRole(false)}

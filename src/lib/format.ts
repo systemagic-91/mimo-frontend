@@ -54,3 +54,9 @@ export function formatRelativeDays(days: number): string {
     ? i18n.t("relative.inDays", { count: days })
     : i18n.t("relative.daysAgo", { count: Math.abs(days) });
 }
+
+/** "30, 60 e 90" */
+export function formatList(items: string[]): string {
+  if (items.length <= 1) return items.join("");
+  return `${items.slice(0, -1).join(", ")} ${i18n.t("common.and")} ${items[items.length - 1]}`;
+}

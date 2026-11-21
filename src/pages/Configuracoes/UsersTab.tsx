@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { Plus, Search } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { PaginationBar } from "@/components/pagination-bar";
 import { RemoteQueryState } from "@/components/remote-query-state";
@@ -47,6 +48,7 @@ type DialogState =
   | null;
 
 export function UsersTab() {
+  const { t } = useTranslation();
   const currentUserId = useCurrentUserQuery().data?.user.id;
   const updateUser = useUpdateUserMutation();
   const [search, setSearch] = useState("");
@@ -72,7 +74,7 @@ export function UsersTab() {
       { id: user.id, input: { active } },
       {
         onSuccess: () => {
-          toast.success(active ? `${user.name} reativado(a).` : `${user.name} desativado(a).`);
+          toast.success(t(active ? "users.reactivated" : "users.deactivated", { name: user.name }));
           setDialog(null);
         },
         onError: (cause) => {
@@ -86,16 +88,16 @@ export function UsersTab() {
     <section className="overflow-hidden rounded-lg border bg-card shadow-none">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b px-5 py-4">
         <div>
-          <h2 className="font-serif text-lg font-medium text-foreground">Usuários</h2>
+          <h2 className="font-serif text-lg font-medium text-foreground">{t("users.title")}</h2>
           <p className="text-sm text-muted-foreground">
             {pagination
-              ? `${pagination.total} usuário${pagination.total === 1 ? "" : "s"}`
-              : "Contas de acesso ao sistema"}
+              ? t("users.count", { count: pagination.total })
+              : t("users.subtitle")}
           </p>
         </div>
         <Button size="sm" onClick={() => setDialog({ kind: "form", user: null })}>
           <Plus className="h-4 w-4" />
-          Novo usuário
+          {t("users.new")}
         </Button>
       </div>
 
@@ -103,8 +105,8 @@ export function UsersTab() {
         <div className="relative min-w-[12rem] flex-1">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            aria-label="Buscar usuários"
-            placeholder="Buscar por nome ou e-mail"
+            aria-label={t("users.search")}
+            placeholder={t("users.searchPlaceholder")}
             className="pl-9"
             value={search}
             onChange={(event) => {
@@ -120,11 +122,11 @@ export function UsersTab() {
             setPage(1);
           }}
         >
-          <SelectTrigger className="w-40" aria-label="Filtrar por papel">
+          <SelectTrigger className="w-40" aria-label={t("users.filterRole")}>
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="todos">Todos os papéis</SelectItem>
+            <SelectItem value="todos">{t("users.allRoles")}</SelectItem>
             <SelectItem value="owner">{ROLE_LABEL.owner}</SelectItem>
             <SelectItem value="staff">{ROLE_LABEL.staff}</SelectItem>
           </SelectContent>
@@ -136,13 +138,13 @@ export function UsersTab() {
             setPage(1);
           }}
         >
-          <SelectTrigger className="w-40" aria-label="Filtrar por status">
+          <SelectTrigger className="w-40" aria-label={t("common.filterStatus")}>
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="todos">Todos os status</SelectItem>
-            <SelectItem value="ativos">Ativos</SelectItem>
-            <SelectItem value="inativos">Inativos</SelectItem>
+            <SelectItem value="todos">{t("common.allStatuses")}</SelectItem>
+            <SelectItem value="ativos">{t("users.filter.active")}</SelectItem>
+            <SelectItem value="inativos">{t("users.filter.inactive")}</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -156,17 +158,17 @@ export function UsersTab() {
           onRetry={() => void users.refetch()}
         />
       ) : users.data.items.length === 0 ? (
-        <RemoteQueryState state="empty" message="Nenhum usuário encontrado." />
+        <RemoteQueryState state="empty" message={t("users.empty")} />
       ) : (
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow className="hover:bg-transparent">
-                <TableHead>Nome</TableHead>
-                <TableHead>E-mail</TableHead>
-                <TableHead>Papel</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
+                <TableHead>{t("common.name")}</TableHead>
+                <TableHead>{t("common.email")}</TableHead>
+                <TableHead>{t("users.column.role")}</TableHead>
+                <TableHead>{t("common.status")}</TableHead>
+                <TableHead className="text-right">{t("common.actions")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -203,9 +205,9 @@ export function UsersTab() {
       {dialog?.kind === "deactivate" && (
         <ConfirmActionDialog
           open
-          title="Desativar usuário?"
-          description={`${dialog.user.name} será deslogado(a) na hora e não conseguirá mais entrar até ser reativado(a).`}
-          confirmLabel="Desativar"
+          title={t("users.deactivate.title")}
+          description={t("users.deactivate.description", { name: dialog.user.name })}
+          confirmLabel={t("users.deactivate.confirm")}
           pending={updateUser.isPending}
           onConfirm={() => setActive(dialog.user, false)}
           onCancel={() => setDialog(null)}

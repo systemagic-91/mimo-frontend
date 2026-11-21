@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Save } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -14,6 +15,7 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { useUpdateSettingsMutation } from "@/lib/api/hooks";
+import { formatList } from "@/lib/format";
 import type { SettingsDto, UpdateSettingsRequest } from "@/lib/api/types";
 import { getAdminErrorMessage, getFieldErrors } from "./admin-errors";
 import { commissionOptions } from "./commission-options";
@@ -23,23 +25,24 @@ import { FieldError } from "@/components/field-error";
 /** Prazos de pagamento aceitos pelo backend; fixos nesta versão (BACK_06/BACK_27). */
 const PAYMENT_TERM_OPTIONS = [30, 60, 90];
 
-/** Fusos horários do Brasil (IDs IANA). O fuso salvo aparece mesmo se não estiver na lista. */
+/** Fusos horários do Brasil (IDs IANA) e a chave do rótulo. O fuso salvo aparece mesmo se não estiver na lista. */
 const TIMEZONE_OPTIONS: { id: string; label: string }[] = [
-  { id: "America/Sao_Paulo", label: "Brasília (São Paulo, Rio, Sul, Nordeste)" },
-  { id: "America/Fortaleza", label: "Fortaleza" },
-  { id: "America/Recife", label: "Recife" },
-  { id: "America/Bahia", label: "Bahia" },
-  { id: "America/Belem", label: "Belém" },
-  { id: "America/Manaus", label: "Manaus (Amazonas)" },
-  { id: "America/Cuiaba", label: "Cuiabá (Mato Grosso)" },
-  { id: "America/Campo_Grande", label: "Campo Grande (Mato Grosso do Sul)" },
-  { id: "America/Porto_Velho", label: "Porto Velho (Rondônia)" },
-  { id: "America/Rio_Branco", label: "Rio Branco (Acre)" },
-  { id: "America/Noronha", label: "Fernando de Noronha" },
+  { id: "America/Sao_Paulo", label: "settings.tz.saoPaulo" },
+  { id: "America/Fortaleza", label: "settings.tz.fortaleza" },
+  { id: "America/Recife", label: "settings.tz.recife" },
+  { id: "America/Bahia", label: "settings.tz.bahia" },
+  { id: "America/Belem", label: "settings.tz.belem" },
+  { id: "America/Manaus", label: "settings.tz.manaus" },
+  { id: "America/Cuiaba", label: "settings.tz.cuiaba" },
+  { id: "America/Campo_Grande", label: "settings.tz.campoGrande" },
+  { id: "America/Porto_Velho", label: "settings.tz.portoVelho" },
+  { id: "America/Rio_Branco", label: "settings.tz.rioBranco" },
+  { id: "America/Noronha", label: "settings.tz.noronha" },
 ];
 
 /** Formulário dos parâmetros da loja. Recebe os valores já carregados de `GET /settings`. */
 export function SettingsForm({ settings }: { settings: SettingsDto }) {
+  const { t } = useTranslation();
   const updateSettings = useUpdateSettingsMutation();
   const [defaultRate, setDefaultRate] = useState(String(settings.defaultCommissionRate));
   const [terms, setTerms] = useState<number[]>([...settings.paymentTerms]);
@@ -52,7 +55,7 @@ export function SettingsForm({ settings }: { settings: SettingsDto }) {
   const rateOptions = commissionOptions(settings);
   const timezoneOptions = TIMEZONE_OPTIONS.some((option) => option.id === settings.timezone)
     ? TIMEZONE_OPTIONS
-    : [{ id: settings.timezone, label: settings.timezone }, ...TIMEZONE_OPTIONS];
+    : [{ id: settings.timezone, label: "" }, ...TIMEZONE_OPTIONS];
   const removedTerms = settings.paymentTerms.filter((term) => !terms.includes(term));
 
   const toggleTerm = (term: number) =>
@@ -66,7 +69,7 @@ export function SettingsForm({ settings }: { settings: SettingsDto }) {
     updateSettings.mutate(input, {
       onSuccess: () => {
         setConfirmingTimezone(false);
-        toast.success("Parâmetros salvos.");
+        toast.success(t("settings.params.saved"));
       },
       onError: (cause) => {
         setConfirmingTimezone(false);
@@ -80,10 +83,10 @@ export function SettingsForm({ settings }: { settings: SettingsDto }) {
     const local: Record<string, string> = {};
     const days = Number(consignmentDays);
     if (!Number.isInteger(days) || days < 1) {
-      local.defaultConsignmentDays = "O prazo da consignação precisa ser de pelo menos 1 dia.";
+      local.defaultConsignmentDays = t("settings.params.daysInvalid");
     }
     if (terms.length === 0) {
-      local.paymentTerms = "Marque pelo menos um prazo de pagamento.";
+      local.paymentTerms = t("settings.params.termsRequired");
     }
     setFieldErrors(local);
     if (Object.keys(local).length) return null;
@@ -109,8 +112,11 @@ export function SettingsForm({ settings }: { settings: SettingsDto }) {
   return (
     <>
       <p className="mt-0.5 text-sm text-muted-foreground">
-        Faixa de comissão: {settings.commissionMin}% a {settings.commissionMax}% em passos de{" "}
-        {settings.commissionStep}%.
+        {t("settings.params.range", {
+          min: settings.commissionMin,
+          max: settings.commissionMax,
+          step: settings.commissionStep,
+        })}
       </p>
 
       <Separator className="my-4" />
@@ -118,7 +124,7 @@ export function SettingsForm({ settings }: { settings: SettingsDto }) {
       <form onSubmit={handleSubmit} noValidate>
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
           <div className="space-y-1.5">
-            <Label htmlFor="cfg-rate">Comissão padrão para novas vendedoras</Label>
+            <Label htmlFor="cfg-rate">{t("settings.params.defaultRate")}</Label>
             <Select value={defaultRate} onValueChange={setDefaultRate} disabled={pending}>
               <SelectTrigger id="cfg-rate" aria-invalid={Boolean(fieldErrors.defaultCommissionRate)}>
                 <SelectValue />
@@ -134,7 +140,7 @@ export function SettingsForm({ settings }: { settings: SettingsDto }) {
             <FieldError message={fieldErrors.defaultCommissionRate} />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="cfg-days">Prazo padrão da consignação (dias)</Label>
+            <Label htmlFor="cfg-days">{t("settings.params.defaultDays")}</Label>
             <Input
               id="cfg-days"
               type="number"
@@ -148,7 +154,7 @@ export function SettingsForm({ settings }: { settings: SettingsDto }) {
             <FieldError message={fieldErrors.defaultConsignmentDays} />
           </div>
           <div className="space-y-1.5 sm:col-span-2">
-            <Label htmlFor="cfg-timezone">Fuso horário da loja</Label>
+            <Label htmlFor="cfg-timezone">{t("settings.params.timezone")}</Label>
             <Select value={timezone} onValueChange={setTimezone} disabled={pending}>
               <SelectTrigger id="cfg-timezone" aria-invalid={Boolean(fieldErrors.timezone)}>
                 <SelectValue />
@@ -156,20 +162,20 @@ export function SettingsForm({ settings }: { settings: SettingsDto }) {
               <SelectContent>
                 {timezoneOptions.map((option) => (
                   <SelectItem key={option.id} value={option.id}>
-                    {option.label}
+                    {option.label ? t(option.label) : option.id}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
             <FieldError message={fieldErrors.timezone} />
             <p className="text-xs text-muted-foreground">
-              Define o que conta como “hoje” para vencimentos e relatórios.
+              {t("settings.params.timezoneHint")}
             </p>
           </div>
         </div>
 
         <fieldset className="mt-5 space-y-2" disabled={pending}>
-          <legend className="text-sm font-medium leading-none">Prazos de pagamento dos lotes</legend>
+          <legend className="text-sm font-medium leading-none">{t("settings.params.terms")}</legend>
           <div className="flex flex-wrap gap-4 pt-2">
             {PAYMENT_TERM_OPTIONS.map((term) => (
               <label
@@ -181,32 +187,33 @@ export function SettingsForm({ settings }: { settings: SettingsDto }) {
                   onCheckedChange={() => toggleTerm(term)}
                   aria-invalid={Boolean(fieldErrors.paymentTerms)}
                 />
-                {term} dias
+                {t("common.days", { count: term })}
               </label>
             ))}
           </div>
           <FieldError message={fieldErrors.paymentTerms} />
           <p className="text-xs text-muted-foreground">
-            São os prazos oferecidos ao criar um lote novo. Os lotes já criados mantêm o prazo que
-            tinham.
+            {t("settings.params.termsHint")}
             {removedTerms.length > 0 &&
-              ` Ao salvar, ${removedTerms.join(" e ")} dias deixam de aparecer nos lotes novos.`}
+              t("settings.params.termsRemoved", {
+                terms: formatList(removedTerms.map(String)),
+              })}
           </p>
         </fieldset>
 
         <div className="mt-5 flex justify-end">
           <Button type="submit" disabled={pending}>
             <Save className="h-4 w-4" />
-            {pending ? "Salvando…" : "Salvar parâmetros"}
+            {pending ? t("common.saving") : t("settings.params.save")}
           </Button>
         </div>
       </form>
 
       <ConfirmActionDialog
         open={confirmingTimezone}
-        title="Mudar o fuso horário?"
-        description="O fuso define o que conta como “hoje”: vencimentos dos lotes, atrasos e os períodos dos relatórios passam a ser calculados no novo fuso."
-        confirmLabel="Mudar fuso"
+        title={t("settings.params.timezoneConfirmTitle")}
+        description={t("settings.params.timezoneConfirmDescription")}
+        confirmLabel={t("settings.params.timezoneConfirm")}
         pending={pending}
         onConfirm={() => {
           const input = buildInput();

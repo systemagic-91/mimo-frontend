@@ -1,4 +1,5 @@
 import { Pencil } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -19,6 +20,7 @@ export function SellerRow({
   onEdit: () => void;
   onToggleActive: (active: boolean) => void;
 }) {
+  const { t } = useTranslation();
   const { seller, piecesInHand } = item;
   const status = fromBackendSellerStatus(seller.status);
   return (
@@ -40,14 +42,14 @@ export function SellerRow({
             checked={status === "ativa"}
             onCheckedChange={onToggleActive}
             disabled={busy}
-            aria-label={status === "ativa" ? `Inativar ${seller.name}` : `Ativar ${seller.name}`}
+            aria-label={t(status === "ativa" ? "sellers.row.deactivate" : "sellers.row.activate", { name: seller.name })}
           />
           <Button
             variant="ghost"
             size="icon"
             onClick={onEdit}
             disabled={busy}
-            aria-label={`Editar ${seller.name}`}
+            aria-label={t("sellers.row.edit", { name: seller.name })}
           >
             <Pencil className="h-4 w-4" />
           </Button>
