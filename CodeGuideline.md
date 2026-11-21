@@ -5,6 +5,7 @@
 ```
 project-root/
   ├── i18n.config.json       # Manifesto de i18n para idiomas suportados e metadados de idioma
+  ├── e2e/                   # Testes E2E com Playwright (*.e2e.ts) e o suporte do backend de teste
   ├── public/                # Arquivos estáticos (imagens, ícones, logo)
   ├── src/
   │   ├── components/        # Todos os componentes de UI reutilizáveis

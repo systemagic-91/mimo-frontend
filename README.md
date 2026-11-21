@@ -67,8 +67,48 @@ mesma origem, mas sem isso um backend remoto compara o `Origin` `http://localhos
 - A sessão sobrevive a fechar a aba e expira em 30 dias sem uso. Explicação completa em
   `SESSAO_E_COOKIES.md`.
 
+## API fora do ar
+
+O app não guarda dados no navegador: tudo vem da API. Se ela estiver fora do ar ou a rede cair, cada
+tela mostra "Não foi possível conectar ao servidor" com o botão **Tentar novamente**, e nada é dado como
+salvo. Um envio repetido depois de uma falha de rede (recebimento, etiquetagem, cadastro de vendedora,
+criação de lote) reaproveita a mesma `Idempotency-Key` e não cria registro duplicado.
+
+Versões antigas guardavam um banco de demonstração no `localStorage` (`luma_db_v1`). Ele é apagado na
+primeira carga, sem importar nada; outras preferências do navegador ficam.
+
 ## Testes
 
-Execute `npm test` para testes unitários/componentes com Vitest e MSW. Os mocks
-interceptam chamadas HTTP, então esses testes não precisam de backend ou banco
-iniciados. `npm run check` roda lint e TypeScript.
+- `npm run check`: lint e TypeScript (app, configuração do Vite e E2E).
+- `npm test`: testes unitários e de componentes com Vitest e MSW. Os mocks interceptam as chamadas HTTP,
+  então não precisam de backend nem de banco.
+- `npm run test:e2e`: testes de ponta a ponta com Playwright, contra um backend de verdade.
+
+### Testes E2E
+
+Os E2E abrem o build de produção (`vite preview`, com o mesmo proxy `/api` do desenvolvimento) no
+Chromium, no Firefox e no WebKit e usam um backend descartável: o `e2e/global-setup.ts` sobe um PostgreSQL
+limpo no Docker (porta 55432, sem volume) e o `.jar` do `mimo-backend` (porta 8081), cria o owner de teste
+pelo bootstrap e derruba tudo no fim. Cada teste cria as próprias vendedoras, peças e lotes.
+
+Requisitos: Docker rodando, JDK 21 (`JAVA_HOME`) e o repositório do backend ao lado deste
+(`../mimo-backend`). Na primeira vez, instale os navegadores:
+
+```bash
+npx playwright install chromium firefox webkit
+```
+
+Depois:
+
+```bash
+npm run test:e2e                      # os três navegadores
+npx playwright test --project=chromium # só um
+```
+
+Variáveis opcionais: `E2E_BACKEND_DIR` (outro caminho para o backend), `E2E_BACKEND_JAR` (um `.jar` já
+gerado), `E2E_JAVA_HOME`, `E2E_API_PORT`, `E2E_FRONT_PORT` e `E2E_DB_PORT`. Se já houver uma API
+respondendo na porta do E2E, ela é usada e nada é iniciado. O log do backend fica em
+`test-results/backend.log`.
+
+O CI (`.github/workflows/ci.yml`) roda `npm run check` e `npm test` em todo push e pull request e, em
+seguida, os E2E com o backend baixado do GitHub.
