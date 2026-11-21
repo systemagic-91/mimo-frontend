@@ -50,6 +50,7 @@ Remover o refresh token do JavaScript e configurar o proxy para que a sessão fu
 
 - [x] Nenhum token aparece em `localStorage` ou `sessionStorage`.
 - [ ] Login, reload da página, renovação automática e logout funcionam em desenvolvimento (proxy do Vite) e na Vercel.
+  - *2026-11-21 (FRONT_18): verificado pelos E2E com o proxy do Vite (build de produção no `vite preview`) no Chromium, no Firefox e no WebKit, incluindo reload, duas abas e logout. Falta só a parte da Vercel, depois do deploy.*
 - [ ] O app funciona no Chrome, no Firefox e no Safari em produção.
 - [ ] Reload em rota interna (ex.: `/estoque`) na Vercel abre a página, sem 404.
 - [x] Testes MSW cobrem bootstrap via refresh, `401` no refresh e logout.

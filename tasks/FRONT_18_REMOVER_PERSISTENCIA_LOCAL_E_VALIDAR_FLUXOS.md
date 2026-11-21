@@ -36,14 +36,27 @@ Eliminar o banco de demonstração do caminho de produção e comprovar, com tes
 
 ## Critérios de aceite
 
-- [ ] Nenhuma rota de produção depende de `useDb` ou muta `luma_db_v1`.
-- [ ] Credenciais/usuários demo não são embutidos no bundle de produção.
-- [ ] Fluxos críticos persistem ao reload e em sessões/dispositivos diferentes.
-- [ ] Testes E2E verificam sucesso e erro de rede/validação/conflito por fluxo.
-- [ ] Preferências legítimas permanecem separadas do estado de domínio.
-- [ ] README e `.env.example` documentam URL da API e execução integrada sem segredos.
-- [ ] O CI do front (GitHub Actions) roda lint, typecheck, testes unitários e E2E a cada push, e todos passam.
-- [ ] A chave `luma_db_v1` é apagada na primeira carga, sem afetar outras preferências.
+- [x] Nenhuma rota de produção depende de `useDb` ou muta `luma_db_v1`.
+- [x] Credenciais/usuários demo não são embutidos no bundle de produção.
+- [x] Fluxos críticos persistem ao reload e em sessões/dispositivos diferentes.
+- [x] Testes E2E verificam sucesso e erro de rede/validação/conflito por fluxo.
+- [x] Preferências legítimas permanecem separadas do estado de domínio.
+- [x] README e `.env.example` documentam URL da API e execução integrada sem segredos.
+- [ ] O CI do front (GitHub Actions) roda lint, typecheck, testes unitários e E2E a cada push, e todos passam. *(workflow criado; falta a primeira execução no GitHub, depois do push)*
+- [x] A chave `luma_db_v1` é apagada na primeira carga, sem afetar outras preferências.
+
+## Implementação (2026-11-21)
+
+- **Banco local removido:** saíram `src/lib/db.ts`, `seed.ts` (com os usuários e senhas de demonstração), `domain.ts`, `types.ts` e `uid.ts`. Os tipos `PieceStage` e `UserRole` vêm de `src/lib/api/types.ts`, a única fonte. Nenhuma tela usava mais o banco local desde a FRONT_16.
+- **Limpeza no navegador** (`src/lib/legacy-storage.ts`): o `main.tsx` apaga a chave `luma_db_v1` na carga, sem importar nada e sem mexer em outras chaves; se o armazenamento estiver bloqueado, segue sem erro.
+- **E2E com Playwright** (`e2e/`, `playwright.config.ts`, `npm run test:e2e`):
+  - rodam no **build de produção** servido pelo `vite preview`, que usa o mesmo proxy `/api` do desenvolvimento. O `vite dev` foi descartado para os E2E porque, no Windows, a diferença de maiúscula na letra do drive (`C:`/`c:`) quebra o script embutido do `index.html`; além disso, o preview é o mesmo código que vai para a Vercel;
+  - **backend descartável** (`e2e/support/backend.ts`, chamado pelo `global-setup.ts`): PostgreSQL no Docker sem volume (porta 55432), o `.jar` do `mimo-backend` (porta 8081, gerado com `gradlew bootJar` se faltar), owner pelo bootstrap e tudo derrubado no fim. O cookie de sessão roda sem `Secure` só nesse ambiente http local (`REFRESH_COOKIE_SECURE=false`); em produção ele continua `Secure`;
+  - cada teste cria os próprios dados pela API (`e2e/support/api.ts`) e usa as telas para o fluxo; rodam em série, com e-mails próprios para os testes de senha errada (rate limit);
+  - **15 fluxos × 3 motores (Chromium, Firefox e WebKit) = 45 testes, todos passando:** senha errada; sessão no reload, em outra aba e logout; troca obrigatória de senha; recebimento com validação e reload; etiquetagem com foto; erro de rede com "Tentar novamente"; wizard de consignação com venda, devolução e lote quitado; conflito de venda feita por outra pessoa; peça consignada por outra pessoa durante o wizard (409); cadastro e edição de vendedora; parâmetros com validação; cadastro de usuário; giro com a venda e CSV exportado; staff barrado nos relatórios.
+- **CI** (`.github/workflows/ci.yml`): job `check` (`npm ci`, `npm run check`, `npm test`) em todo push e pull request; job `e2e` que baixa o `mimo-backend` (público), gera o `.jar` e roda os E2E nos três motores, publicando o relatório e o `backend.log` quando falha.
+- **Docs:** README com "API fora do ar" e "Testes E2E"; `.env.example` com o analytics do template desligado; `CodeGuideline.md` com a pasta `e2e/`; `npm run check` passou a checar também os tipos dos E2E (`tsconfig.e2e.json`).
+- **Limitações:** a verificação na Vercel (FRONT_22) depende do deploy (roteiro local em `DEPLOY_VERCEL.md`); a primeira execução do CI só acontece depois do push.
 
 ## Observações de dependência
 
