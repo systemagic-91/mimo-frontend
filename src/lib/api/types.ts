@@ -359,11 +359,12 @@ export interface SettingsDto {
   updatedById?: string | null;
 }
 
+/** `PATCH /settings`: o backend exige os quatro campos em todo envio. */
 export interface UpdateSettingsRequest {
-  defaultCommissionRate?: number;
-  paymentTerms?: number[];
-  defaultConsignmentDays?: number;
-  timezone?: string;
+  defaultCommissionRate: number;
+  paymentTerms: number[];
+  defaultConsignmentDays: number;
+  timezone: string;
 }
 
 export interface UploadPiecePhotoResponse {
