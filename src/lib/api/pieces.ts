@@ -10,6 +10,7 @@ import type {
   ReceivePieceResponse,
   ReceivePieceRequest,
   LabelPieceRequest,
+  UpdatePieceCostsRequest,
   UploadPiecePhotoResponse,
 } from "./types";
 
@@ -63,6 +64,14 @@ export const piecesApi = {
     return apiRequest<PieceDto>("/pieces/label", {
       method: "POST",
       headers: { "Idempotency-Key": idempotencyKey },
+      body: input,
+    });
+  },
+
+  /** Só owner. Campo ausente não muda o custo; `null` limpa (BACK_23). */
+  updateCosts(id: string, input: UpdatePieceCostsRequest) {
+    return apiRequest<PieceDto>(`/pieces/${encodeURIComponent(id)}/costs`, {
+      method: "PATCH",
       body: input,
     });
   },

@@ -32,6 +32,7 @@ import type {
   LabelPieceRequest,
   PageRequest,
   PieceStage,
+  UpdatePieceCostsRequest,
   UpdateSellerRequest,
   UpdateSettingsRequest,
   UpdateUserRequest,
@@ -239,6 +240,22 @@ export function useLabelPieceMutation() {
       idempotencyKey: string;
     }) => piecesApi.label(input, idempotencyKey),
     onSuccess: invalidate,
+  });
+}
+
+/** Só owner. Mostra a peça devolvida na hora e atualiza listas e relatórios (o giro traz custo e margem). */
+export function useUpdatePieceCostsMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, input }: { id: string; input: UpdatePieceCostsRequest }) =>
+      piecesApi.updateCosts(id, input),
+    onSuccess: (piece) => {
+      queryClient.setQueryData(queryKeys.pieces.detail(piece.id), piece);
+      return Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.pieces.all }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.reports.all }),
+      ]);
+    },
   });
 }
 
