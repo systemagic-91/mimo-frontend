@@ -6,7 +6,11 @@ import {
 } from "@tanstack/react-query";
 import { authApi } from "./auth";
 import { ApiError, authTokenStore } from "./http";
-import { consignmentsApi, type ConsignmentListParams } from "./consignments";
+import {
+  consignmentsApi,
+  type ConsignmentListParams,
+  type ItemActionOptions,
+} from "./consignments";
 import { dashboardApi } from "./dashboard";
 import { queryKeys } from "./query-keys";
 import {
@@ -365,21 +369,25 @@ export function useCreateConsignmentMutation() {
 }
 
 function useConsignmentItemAction(action: "sold" | "returned") {
+  const queryClient = useQueryClient();
   const invalidate = useInvalidateOperationalData();
   return useMutation({
     mutationFn: ({
       consignmentId,
       pieceId,
-      note,
+      ...options
     }: {
       consignmentId: string;
       pieceId: string;
-      note?: string;
-    }) =>
+    } & ItemActionOptions) =>
       action === "sold"
-        ? consignmentsApi.markSold(consignmentId, pieceId, note)
-        : consignmentsApi.markReturned(consignmentId, pieceId, note),
-    onSuccess: invalidate,
+        ? consignmentsApi.markSold(consignmentId, pieceId, options)
+        : consignmentsApi.markReturned(consignmentId, pieceId, options),
+    onSuccess: (details) => {
+      // A resposta já é o lote atualizado: mostra na hora, antes de as listas recarregarem.
+      queryClient.setQueryData(queryKeys.consignments.detail(details.id), details);
+      return invalidate();
+    },
   });
 }
 
