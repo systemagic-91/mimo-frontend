@@ -19,7 +19,8 @@ const exists = (key: string) =>
   keys.has(key) || keys.has(`${key}_one`) || keys.has(`${key}_other`);
 
 const T_CALL = /\bt\(\s*["'`]([^"'`$]+)["'`]/g;
-const STRING_LITERAL = /["'`]([a-z][a-zA-Z0-9]*(?:\.[a-zA-Z0-9_]+)+)["'`]/g;
+// Só aspas simples e duplas: entre crases ficam os nomes de campo citados nos comentários.
+const STRING_LITERAL = /["']([a-z][a-zA-Z0-9]*(?:\.[a-zA-Z0-9_]+)+)["']/g;
 
 function collect(pattern: RegExp): Map<string, string> {
   const found = new Map<string, string>();
