@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { Camera, Check, CheckCircle2, ChevronLeft, Package } from "lucide-react";
 import { toast } from "sonner";
+import { CostField } from "@/components/cost-field";
 import { PieceCode } from "@/components/piece-code";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,6 +17,7 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { useIdempotencyKey } from "@/hooks/use-idempotency-key";
+import { useIsOwner } from "@/hooks/use-is-owner";
 import { ApiError } from "@/lib/api/http";
 import { useLabelPieceMutation } from "@/lib/api/hooks";
 import { centsToMoney } from "@/lib/api/mappers";
@@ -25,6 +27,7 @@ import { formatCurrency } from "@/lib/format";
 import {
   centsToInputValue,
   getPieceErrorMessage,
+  parseCostToCents,
   parseMoneyToCents,
 } from "@/lib/piece-errors";
 import { PIECE_TYPES } from "@/lib/status";
@@ -52,6 +55,7 @@ export default function Etiquetagem() {
   const queryClient = useQueryClient();
   const label = useLabelPieceMutation();
   const idempotency = useIdempotencyKey();
+  const isOwner = useIsOwner();
 
   const [step, setStep] = useState(0);
   const [source, setSource] = useState<PieceDto | null>(null);
@@ -59,10 +63,13 @@ export default function Etiquetagem() {
   const [type, setType] = useState<string>(PIECE_TYPES[0]);
   const [value, setValue] = useState("");
   const [note, setNote] = useState("");
+  const [bathCost, setBathCost] = useState("");
   const [backFromBath, setBackFromBath] = useState(false);
   const [error, setError] = useState<{ message: string; recovery: Recovery } | null>(null);
   const [result, setResult] = useState<PieceDto | null>(null);
   const valueCents = parseMoneyToCents(value);
+  const bathCostCents = parseCostToCents(bathCost);
+  const dataValid = valueCents !== null && (!isOwner || bathCostCents !== undefined);
 
   const selectSource = (piece: PieceDto) => {
     setSource(piece);
@@ -77,6 +84,7 @@ export default function Etiquetagem() {
     setType(PIECE_TYPES[0]);
     setValue("");
     setNote("");
+    setBathCost("");
     setBackFromBath(false);
     setError(null);
     setResult(null);
@@ -84,7 +92,7 @@ export default function Etiquetagem() {
   };
 
   const handleConfirm = () => {
-    if (!source || !photo || valueCents === null) return;
+    if (!source || !photo || !dataValid || valueCents === null) return;
     setError(null);
     const input: LabelPieceRequest = {
       sourcePieceId: source.id,
@@ -93,6 +101,8 @@ export default function Etiquetagem() {
       photoId: photo.photoId,
       note: note.trim() || undefined,
       backFromBath: true,
+      // Só owner manda custo, e só quando informado; sem o campo, a etiquetagem mantém os custos já gravados.
+      ...(isOwner && bathCostCents != null ? { bathCostCents } : {}),
     };
     label.mutate(
       { input, idempotencyKey: idempotency.keyFor(input) },
@@ -269,6 +279,15 @@ export default function Etiquetagem() {
               Informe um valor maior que zero, com até 2 casas decimais (ex.: 84,90).
             </p>
           )}
+          {isOwner && (
+            <CostField
+              id="etq-bath-cost"
+              label="Custo do banho (R$, opcional)"
+              value={bathCost}
+              onChange={setBathCost}
+              invalid={bathCostCents === undefined}
+            />
+          )}
           <div className="space-y-1.5">
             <Label htmlFor="etq-note">Observação (opcional)</Label>
             <Input
@@ -281,7 +300,7 @@ export default function Etiquetagem() {
           </div>
           <Button
             className="h-12 w-full text-base"
-            disabled={valueCents === null}
+            disabled={!dataValid}
             onClick={() => setStep(3)}
           >
             Continuar
@@ -306,6 +325,11 @@ export default function Etiquetagem() {
                 ? formatCurrency(centsToMoney(valueCents))
                 : "valor não informado"}
             </p>
+            {isOwner && bathCostCents != null && (
+              <p className="text-xs text-muted-foreground">
+                Custo do banho: {formatCurrency(centsToMoney(bathCostCents))}
+              </p>
+            )}
           </div>
           <div className="flex items-center justify-between gap-3 rounded-lg border bg-muted/30 px-4 py-3">
             <div>

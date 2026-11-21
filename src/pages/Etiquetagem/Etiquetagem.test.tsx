@@ -8,7 +8,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { authTokenStore } from "@/lib/api/http";
 import { createApiQueryClient } from "@/lib/api/query-client";
 import { server } from "@/test/server";
-import { api, makePiece, pieceList } from "@/test/fixtures";
+import { api, makePiece, pieceList, setCurrentUser } from "@/test/fixtures";
+import type { UserRole } from "@/lib/api/types";
 import Etiquetagem from ".";
 import { resizePhoto } from "./photo";
 
@@ -32,9 +33,11 @@ let uploadKeys: string[];
 let uploadAttempts: number;
 let uploadFailures: Array<{ status: number; code: string }>;
 
-function renderEtiquetagem() {
+function renderEtiquetagem(role?: UserRole) {
+  const queryClient = createApiQueryClient();
+  if (role) setCurrentUser(queryClient, role);
   render(
-    <QueryClientProvider client={createApiQueryClient()}>
+    <QueryClientProvider client={queryClient}>
       <MemoryRouter>
         <Toaster />
         <Etiquetagem />
@@ -96,6 +99,56 @@ describe("labeling screen", () => {
         );
       }),
     );
+  });
+
+  it("lets the owner inform the bath cost and sends it with the labeling", async () => {
+    let labelBody: unknown;
+    server.use(
+      http.post(`${api}/pieces/label`, async ({ request }) => {
+        labelBody = await request.json();
+        return HttpResponse.json(makePiece({ ...inBath, status: "ETIQUETADA", currentLocation: "Estoque" }));
+      }),
+    );
+    const user = userEvent.setup();
+    renderEtiquetagem("owner");
+
+    await choosePieceAndPhoto(user);
+    await screen.findByRole("img", { name: "Foto enviada da peça" });
+    await user.click(screen.getByRole("button", { name: "Continuar" }));
+    await user.type(screen.getByLabelText("Custo do banho (R$, opcional)"), "12,5x");
+    expect(screen.getByRole("button", { name: "Continuar" })).toBeDisabled();
+    await user.clear(screen.getByLabelText("Custo do banho (R$, opcional)"));
+    await user.type(screen.getByLabelText("Custo do banho (R$, opcional)"), "12,50");
+    await user.click(screen.getByRole("button", { name: "Continuar" }));
+    expect(screen.getByText(/Custo do banho: R\$\s12,50/)).toBeInTheDocument();
+    await user.click(screen.getByRole("switch", { name: "Peça retornou do banho de ouro" }));
+    await user.click(screen.getByRole("button", { name: "Confirmar etiquetagem" }));
+
+    expect(await screen.findByRole("heading", { name: "Peça etiquetada" })).toBeInTheDocument();
+    expect(labelBody).toMatchObject({ sourcePieceId: "p-bath", bathCostCents: 1250 });
+  });
+
+  it("does not show nor send the bath cost for staff", async () => {
+    let labelBody: Record<string, unknown> | undefined;
+    server.use(
+      http.post(`${api}/pieces/label`, async ({ request }) => {
+        labelBody = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json(makePiece({ ...inBath, status: "ETIQUETADA", currentLocation: "Estoque" }));
+      }),
+    );
+    const user = userEvent.setup();
+    renderEtiquetagem("staff");
+
+    await choosePieceAndPhoto(user);
+    await screen.findByRole("img", { name: "Foto enviada da peça" });
+    await user.click(screen.getByRole("button", { name: "Continuar" }));
+    expect(screen.queryByLabelText(/Custo do banho/)).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Continuar" }));
+    await user.click(screen.getByRole("switch", { name: "Peça retornou do banho de ouro" }));
+    await user.click(screen.getByRole("button", { name: "Confirmar etiquetagem" }));
+
+    expect(await screen.findByRole("heading", { name: "Peça etiquetada" })).toBeInTheDocument();
+    expect(labelBody).not.toHaveProperty("bathCostCents");
   });
 
   it("labels the piece back from the bath, keeping its code and linking the uploaded photo", async () => {
