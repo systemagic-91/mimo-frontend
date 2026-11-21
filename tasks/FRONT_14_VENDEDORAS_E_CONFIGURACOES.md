@@ -61,12 +61,33 @@ Detalhes nas seções 3 e 7 do `BACKEND_API_CONTRACT.md`.
 
 ## Critérios de aceite
 
-- [ ] Lista, criação, edição e ativação/inativação persistem no backend e sobrevivem a reload e a outro dispositivo.
-- [ ] Comissão e parâmetros inválidos exibem o erro de campo vindo da API.
-- [ ] A tela lida com lista vazia, loading, erro/retry e `403`.
-- [ ] Alterações atualizam os dados compartilhados sem refresh manual.
-- [ ] Nenhum cálculo de comissão histórica no front; os valores vêm da API.
-- [ ] Testes cobrem mutations, erros de campo e invalidação de queries.
+- [x] Lista, criação, edição e ativação/inativação persistem no backend e sobrevivem a reload e a outro dispositivo.
+- [x] Comissão e parâmetros inválidos exibem o erro de campo vindo da API.
+- [x] A tela lida com lista vazia, loading, erro/retry e `403`.
+- [x] Alterações atualizam os dados compartilhados sem refresh manual.
+- [x] Nenhum cálculo de comissão histórica no front; os valores vêm da API.
+- [x] Testes cobrem mutations, erros de campo e invalidação de queries.
+
+## Implementação (2026-11-21)
+
+- **Página** (`src/pages/Configuracoes/index.tsx`): ficou só com as abas. Cada aba é um componente: `SellersTab`, `SettingsTab` e `UsersTab` (FRONT_20).
+- **Vendedoras** (`SellersTab`, `SellerRow`, `SellerFormDialog`):
+  - lista por `useSellersQuery`, com busca por nome ou telefone (debounce), filtro Todas/Ativas/Inativas, ordem por nome e paginação de 20, tudo enviado à API;
+  - mostra comissão, peças com a vendedora (`piecesInHand`) e status; estados de carregamento, lista vazia, erro com "Tentar novamente" e `403`;
+  - cadastro e edição no mesmo diálogo. A edição envia só os campos alterados. Ao trocar a comissão, o diálogo avisa que ela só vale para lotes entregues daqui em diante;
+  - o cadastro usa `useIdempotencyKey`, como na FRONT_13: repetir depois de uma falha de rede reaproveita a chave e não duplica a vendedora. Para isso, `sellersApi.create` e `useCreateSellerMutation` passaram a receber a chave de quem chama;
+  - inativar pede confirmação e explica que os lotes em aberto continuam valendo; ativar é direto. Os dois usam `PATCH /sellers/{id}` com `status`;
+  - as opções de comissão vêm de `commissionMin`/`commissionMax`/`commissionStep` de `GET /settings` (`commission-options.ts`). Sem as configurações carregadas, cadastro e edição ficam desabilitados, com aviso e "Tentar novamente". Uma taxa antiga fora da faixa atual continua aparecendo na edição.
+- **Parâmetros** (`SettingsTab`, `SettingsForm`):
+  - o formulário só monta depois que `GET /settings` carrega, e remonta com os valores salvos quando `updatedAt` muda;
+  - envia sempre os quatro campos (o tipo `UpdateSettingsRequest` passou a exigir os quatro);
+  - prazos 30/60/90 como caixas de marcar. O texto explica que os prazos valem para lotes novos e, ao desmarcar um, diz qual deixa de aparecer;
+  - fuso horário escolhido entre os fusos do Brasil (o salvo aparece mesmo fora da lista). Trocar o fuso pede confirmação.
+- **Erros:** `admin-errors.ts` traduz os códigos de `/sellers` e `/settings` e transforma `fields` do `400 VALIDATION_ERROR` em mensagens mostradas abaixo de cada campo (`FieldError`), com `aria-invalid`. A validação local (nome e telefone obrigatórios, ao menos um prazo, prazo de consignação ≥ 1) impede o envio, e os botões ficam desabilitados durante o salvamento.
+- **Testes:** `SellersTab.test.tsx` e `SettingsTab.test.tsx` cobrem lista, filtros, vazio, erro com retry, `403`, cadastro (com a lista recarregada), chave reaproveitada no retry, validação local, erro de campo da API, edição parcial, inativação, ativação, envio dos quatro campos, invalidação de settings e vendedoras e a confirmação do fuso. O `setup.ts` ganhou um stub de `ResizeObserver`, usado pelo `Checkbox` e pelo `Switch` do Radix.
+- **Limitações:**
+  - nada foi verificado contra o backend real nem em navegador (fica para os E2E da FRONT_18);
+  - as telas de consignação ainda leem as vendedoras do banco local até a FRONT_15, então quem é cadastrada pela API ainda não aparece nelas.
 
 ## Observações de dependência
 
