@@ -73,7 +73,8 @@ Detalhes na seção 2 (peças) e na seção 6 (giro) do `BACKEND_API_CONTRACT.md
 - **CSV:** a proteção contra fórmula deixou de marcar texto que é só um número, como "-25,00" (margem negativa); antes o Excel mostraria como texto.
 - **Testes:** `parseCostToCents`, `piece-costs.test.tsx` (corpo do `PATCH` ausente × `null`, cache e invalidação), recebimento e etiquetagem para owner e staff, detalhe (exibição, envio só do campo alterado, `null` ao limpar, nada sem mudança, nada para staff) e giro com custo completo, parcial, ausente e margem negativa, inclusive no CSV. As fixtures ganharam `setCurrentUser`.
 - **Verificação contra o Railway** (17 checks), só na peça de teste LU-0055 (vendida): custo parcial deixa a margem `null` e conta em `piecesWithoutFullCost`; com os dois custos a margem do giro bate (100 − 30 − 20 − 25 = 25); campo ausente não muda o outro custo; `null` limpa; `0` é válido; corpo vazio, negativo, não inteiro e campo desconhecido dão `400`; recebimento e etiquetagem com custo negativo são recusados sem criar peça. A LU-0055 ficou com fábrica R$ 0,30 e banho R$ 0,20.
-- **Limitações:** o `403` para staff ao enviar custo não foi verificado contra o Railway (não há conta de staff de teste); fica coberto pela regra de nunca enviar o campo para staff. Não foi testado em navegador real.
+- **Staff (verificado em 2026-11-21, durante a FRONT_17, com a conta de teste `staff@email.com`):** `PATCH /pieces/{id}/costs` responde `403 FORBIDDEN` sem mudar nada, e os custos chegam `null` para staff.
+- **Limitações:** não foi testado em navegador real.
 
 ## Observações de dependência
 
