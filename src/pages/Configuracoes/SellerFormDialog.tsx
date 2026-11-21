@@ -23,7 +23,7 @@ import { useCreateSellerMutation, useUpdateSellerMutation } from "@/lib/api/hook
 import type { SellerDto, SettingsDto, UpdateSellerRequest } from "@/lib/api/types";
 import { getAdminErrorMessage, getFieldErrors } from "./admin-errors";
 import { commissionOptions } from "./commission-options";
-import { FieldError } from "./FieldError";
+import { FieldError } from "@/components/field-error";
 
 /**
  * Cadastra uma vendedora ou edita nome, telefone e comissão.

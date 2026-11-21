@@ -18,7 +18,7 @@ import type { SettingsDto, UpdateSettingsRequest } from "@/lib/api/types";
 import { getAdminErrorMessage, getFieldErrors } from "./admin-errors";
 import { commissionOptions } from "./commission-options";
 import { ConfirmActionDialog } from "./ConfirmActionDialog";
-import { FieldError } from "./FieldError";
+import { FieldError } from "@/components/field-error";
 
 /** Prazos de pagamento aceitos pelo backend; fixos nesta versão (BACK_06/BACK_27). */
 const PAYMENT_TERM_OPTIONS = [30, 60, 90];
