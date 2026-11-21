@@ -14,6 +14,7 @@ const CODE_MESSAGES: Record<string, string> = {
   IDEMPOTENCY_KEY_REUSED: "Os dados mudaram durante o envio. Confira e envie de novo.",
   CONFLICT: "A peça foi alterada por outra pessoa. Atualize e tente de novo.",
   INVALID_PAGINATION: "Filtro ou ordenação inválidos. Limpe os filtros e tente de novo.",
+  FORBIDDEN: "Apenas sócios(as) podem informar ou ver custos.",
 };
 
 const FIELD_MESSAGES: Record<string, string> = {
@@ -23,6 +24,8 @@ const FIELD_MESSAGES: Record<string, string> = {
   note: "A observação pode ter no máximo 500 caracteres.",
   file: "A foto precisa ser JPEG, PNG ou WebP, com até 2000×2000 px.",
   q: "A busca pode ter no máximo 120 caracteres.",
+  factoryCostCents: "Informe um custo da fábrica igual ou maior que zero.",
+  bathCostCents: "Informe um custo do banho igual ou maior que zero.",
 };
 
 /** Mensagem compreensível para os erros de peças e fotos (BACK_05/BACK_07). */
@@ -54,6 +57,21 @@ export function parseMoneyToCents(value: string): number | null {
     return cents > 0 ? cents : null;
   } catch {
     return null;
+  }
+}
+
+/**
+ * Custo digitado em reais. Vazio é `null` ("não informado"); zero é um custo válido.
+ * `undefined` quando o texto não é um valor com até 2 casas decimais.
+ */
+export function parseCostToCents(value: string): number | null | undefined {
+  const normalized = value.trim().replace(/\s/g, "").replace(",", ".");
+  if (normalized === "") return null;
+  if (!/^\d+(\.\d{1,2})?$/.test(normalized)) return undefined;
+  try {
+    return moneyToCents(Number(normalized));
+  } catch {
+    return undefined;
   }
 }
 
