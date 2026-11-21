@@ -25,6 +25,8 @@ export const queryKeys = {
     stats: (id: string) => [...queryKeys.sellers.all, id, "stats"] as const,
     commission: (id: string, from: string, to: string) =>
       [...queryKeys.sellers.all, id, "commission", { from, to }] as const,
+    paymentSchedule: (id: string, from: string, to: string) =>
+      [...queryKeys.sellers.all, id, "payment-schedule", { from, to }] as const,
   },
   consignments: {
     all: ["consignments"] as const,

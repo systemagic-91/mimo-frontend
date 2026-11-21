@@ -4,6 +4,7 @@ import type {
   CreateSellerRequest,
   PageEnvelope,
   PageRequest,
+  PaymentScheduleResponse,
   SellerCommissionDto,
   SellerDto,
   SellerListItem,
@@ -63,6 +64,14 @@ export const sellersApi = {
   commission(id: string, from: string, to: string, signal?: AbortSignal) {
     return apiRequest<SellerCommissionDto>(
       `/sellers/${encodeURIComponent(id)}/commission${buildQueryString({ from, to })}`,
+      { signal },
+    );
+  },
+
+  /** Só owner. `from`/`to` são datas locais inclusivas da loja, pela data da venda (BACK_27). */
+  paymentSchedule(id: string, from: string, to: string, signal?: AbortSignal) {
+    return apiRequest<PaymentScheduleResponse>(
+      `/sellers/${encodeURIComponent(id)}/payment-schedule${buildQueryString({ from, to })}`,
       { signal },
     );
   },

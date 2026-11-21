@@ -282,6 +282,20 @@ export function useSellerCommissionQuery(
   });
 }
 
+/** Só owner: para staff, passe `enabled = false` (o backend responde 403). */
+export function useSellerPaymentScheduleQuery(
+  id: string,
+  from: string,
+  to: string,
+  enabled = Boolean(id && from && to),
+) {
+  return useQuery({
+    queryKey: queryKeys.sellers.paymentSchedule(id, from, to),
+    queryFn: ({ signal }) => sellersApi.paymentSchedule(id, from, to, signal),
+    enabled,
+  });
+}
+
 export function useCreateSellerMutation() {
   const queryClient = useQueryClient();
   return useMutation({
