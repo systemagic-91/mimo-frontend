@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { FieldError } from "@/components/field-error";
 import { PieceCode } from "@/components/piece-code";
 import { RemoteQueryState } from "@/components/remote-query-state";
@@ -27,9 +28,9 @@ const MAX_PERIOD_DAYS = 366;
 function shortcuts(timeZone: string) {
   const today = todayInZone(timeZone);
   return [
-    { label: "Mês atual", range: periodRange("mes_atual", timeZone) },
-    { label: "Mês anterior", range: periodRange("mes_anterior", timeZone) },
-    { label: "Últimos 90 dias", range: { from: addDaysToDate(today, -89), to: today } },
+    { label: "reports.turnover.shortcut.currentMonth", range: periodRange("mes_atual", timeZone) },
+    { label: "reports.turnover.shortcut.previousMonth", range: periodRange("mes_anterior", timeZone) },
+    { label: "reports.turnover.shortcut.last90", range: { from: addDaysToDate(today, -89), to: today } },
   ];
 }
 
@@ -41,16 +42,17 @@ const csvMoney = (cents: number | null) => (cents == null ? "" : centsToCsvDecim
  * (a margem só existe com os dois custos informados) e aparecem pelo papel de owner.
  */
 export function TurnoverTab({ timeZone }: { timeZone: string }) {
+  const { t } = useTranslation();
   const isOwner = useIsOwner();
   const [range, setRange] = useState(() => periodRange("mes_atual", timeZone));
   const { from, to } = range;
   const days = from && to ? countDaysInclusive(from, to) : 0;
   const periodError = !from || !to
-    ? "Informe as duas datas."
+    ? t("reports.turnover.missingDates")
     : days < 1
-      ? "A data inicial precisa ser antes ou igual à final."
+      ? t("reports.turnover.inverted")
       : days > MAX_PERIOD_DAYS
-        ? `O período pode ter no máximo ${MAX_PERIOD_DAYS} dias.`
+        ? t("reports.turnover.tooLong", { max: MAX_PERIOD_DAYS })
         : null;
   // Só consulta com o período válido.
   const report = useTurnoverReportQuery(from, to, periodError === null);
@@ -60,13 +62,13 @@ export function TurnoverTab({ timeZone }: { timeZone: string }) {
     downloadCsv(
       `giro-de-pecas-${from}-a-${to}.csv`,
       [
-        "Codigo",
-        "Tipo",
-        "Valor",
-        "Vendida em",
-        "Vendedora",
-        "Dias ate venda",
-        ...(isOwner ? ["Comissao", "Custo", "Margem"] : []),
+        t("reports.csv.code"),
+        t("reports.csv.type"),
+        t("reports.csv.value"),
+        t("reports.csv.soldAt"),
+        t("reports.csv.seller"),
+        t("reports.csv.daysToSell"),
+        ...(isOwner ? [t("reports.csv.commission"), t("reports.csv.cost"), t("reports.csv.margin")] : []),
       ],
       rows.map((row) => [
         row.code,
@@ -89,7 +91,7 @@ export function TurnoverTab({ timeZone }: { timeZone: string }) {
         <div className="space-y-2">
           <div className="flex flex-wrap items-end gap-3">
             <div className="space-y-1">
-              <Label htmlFor="g-from">De</Label>
+              <Label htmlFor="g-from">{t("reports.turnover.from")}</Label>
               <Input
                 id="g-from"
                 type="date"
@@ -99,7 +101,7 @@ export function TurnoverTab({ timeZone }: { timeZone: string }) {
               />
             </div>
             <div className="space-y-1">
-              <Label htmlFor="g-to">Até</Label>
+              <Label htmlFor="g-to">{t("reports.turnover.to")}</Label>
               <Input
                 id="g-to"
                 type="date"
@@ -117,7 +119,7 @@ export function TurnoverTab({ timeZone }: { timeZone: string }) {
                   size="sm"
                   onClick={() => setRange(shortcut.range)}
                 >
-                  {shortcut.label}
+                  {t(shortcut.label)}
                 </Button>
               ))}
             </div>
@@ -130,14 +132,18 @@ export function TurnoverTab({ timeZone }: { timeZone: string }) {
       {summary && periodError === null && (
         <div className="space-y-0.5 text-sm text-muted-foreground">
           <p>
-            {summary.soldCount} venda{summary.soldCount === 1 ? "" : "s"} ·{" "}
+            {t("reports.turnover.sales", { count: summary.soldCount })} ·{" "}
             {formatCents(summary.soldValueCents)}
           </p>
           {isOwner && summary.soldCount > 0 && (
             <p>
-              Margem: <span className="font-medium text-foreground">{money(summary.marginCents)}</span>
+              {t("reports.turnover.margin")} <span className="font-medium text-foreground">{money(summary.marginCents)}</span>
               {summary.piecesWithoutFullCost > 0 &&
-                ` (margem de ${withMargin} de ${summary.soldCount} venda${summary.soldCount === 1 ? "" : "s"}; ${summary.piecesWithoutFullCost} sem os dois custos)`}
+                t("reports.turnover.partialMargin", {
+                  withMargin,
+                  sales: t("reports.turnover.sales", { count: summary.soldCount }),
+                  without: summary.piecesWithoutFullCost,
+                })}
             </p>
           )}
         </div>
@@ -145,7 +151,7 @@ export function TurnoverTab({ timeZone }: { timeZone: string }) {
 
       <section className="overflow-hidden rounded-lg border bg-card shadow-none">
         {periodError !== null ? (
-          <RemoteQueryState state="empty" message="Ajuste o período para ver as vendas." />
+          <RemoteQueryState state="empty" message={t("reports.turnover.fixPeriod")} />
         ) : report.isPending ? (
           <RemoteQueryState state="loading" />
         ) : report.isError ? (
@@ -155,23 +161,23 @@ export function TurnoverTab({ timeZone }: { timeZone: string }) {
             onRetry={() => void report.refetch()}
           />
         ) : rows.length === 0 ? (
-          <RemoteQueryState state="empty" message="Nenhuma venda no período." />
+          <RemoteQueryState state="empty" message={t("reports.turnover.empty")} />
         ) : (
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
-                  <TableHead>Código</TableHead>
-                  <TableHead>Tipo</TableHead>
-                  <TableHead className="text-right">Valor</TableHead>
-                  <TableHead>Vendida em</TableHead>
-                  <TableHead>Vendedora</TableHead>
-                  <TableHead className="text-right">Dias até venda</TableHead>
+                  <TableHead>{t("reports.column.code")}</TableHead>
+                  <TableHead>{t("reports.column.type")}</TableHead>
+                  <TableHead className="text-right">{t("reports.column.value")}</TableHead>
+                  <TableHead>{t("reports.turnover.soldAt")}</TableHead>
+                  <TableHead>{t("reports.column.seller")}</TableHead>
+                  <TableHead className="text-right">{t("reports.turnover.daysToSell")}</TableHead>
                   {isOwner && (
                     <>
-                      <TableHead className="text-right">Comissão</TableHead>
-                      <TableHead className="text-right">Custo</TableHead>
-                      <TableHead className="text-right">Margem</TableHead>
+                      <TableHead className="text-right">{t("reports.turnover.commission")}</TableHead>
+                      <TableHead className="text-right">{t("reports.turnover.cost")}</TableHead>
+                      <TableHead className="text-right">{t("reports.turnover.margin.column")}</TableHead>
                     </>
                   )}
                 </TableRow>

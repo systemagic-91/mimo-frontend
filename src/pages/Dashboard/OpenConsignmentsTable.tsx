@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { PieceCode } from "@/components/piece-code";
 import { StatusBadge } from "@/components/status-badge";
@@ -23,29 +24,30 @@ export function OpenConsignmentsTable({
   timeZone: string;
 }) {
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   return (
     <section className="rounded-lg border bg-card shadow-none">
       <div className="border-b px-5 py-4">
-        <h2 className="font-serif text-lg font-medium text-foreground">Consignações em aberto</h2>
+        <h2 className="font-serif text-lg font-medium text-foreground">{t("dashboard.open.title")}</h2>
       </div>
       <div className="overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-transparent">
-              <TableHead>Lote</TableHead>
-              <TableHead>Vendedora</TableHead>
-              <TableHead className="text-right">Peças</TableHead>
-              <TableHead className="text-right">Valor</TableHead>
-              <TableHead>Devolução</TableHead>
-              <TableHead className="text-right">Status</TableHead>
+              <TableHead>{t("dashboard.open.lot")}</TableHead>
+              <TableHead>{t("dashboard.open.seller")}</TableHead>
+              <TableHead className="text-right">{t("dashboard.open.pieces")}</TableHead>
+              <TableHead className="text-right">{t("dashboard.open.value")}</TableHead>
+              <TableHead>{t("dashboard.open.due")}</TableHead>
+              <TableHead className="text-right">{t("common.status")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {consignments.length === 0 && (
               <TableRow className="hover:bg-transparent">
                 <TableCell colSpan={6} className="py-10 text-center text-muted-foreground">
-                  Nenhuma consignação em aberto.
+                  {t("dashboard.open.empty")}
                 </TableCell>
               </TableRow>
             )}

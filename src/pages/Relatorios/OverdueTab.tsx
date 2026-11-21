@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { RemoteQueryState } from "@/components/remote-query-state";
 import {
   Table,
@@ -15,13 +16,21 @@ import { ExportButton } from "./ExportButton";
 
 /** Vendedoras com lote vencido (`GET /reports/overdue`), do maior atraso para o menor. */
 export function OverdueTab() {
+  const { t } = useTranslation();
   const report = useOverdueReportQuery();
   const rows = report.data?.items ?? [];
 
   const exportCsv = () =>
     downloadCsv(
       "inadimplencia.csv",
-      ["Vendedora", "Telefone", "Lotes atrasados", "Pecas em posse", "Valor em risco", "Maior atraso (dias)"],
+      [
+        t("reports.csv.seller"),
+        t("reports.csv.phone"),
+        t("reports.csv.lateLots"),
+        t("reports.csv.piecesInHand"),
+        t("reports.csv.valueAtRisk"),
+        t("reports.csv.maxOverdue"),
+      ],
       rows.map((row) => [
         row.sellerName,
         row.phone,
@@ -35,7 +44,7 @@ export function OverdueTab() {
   return (
     <div className="space-y-4">
       <div className="flex items-end justify-between gap-3">
-        <p className="text-sm text-muted-foreground">Vendedoras com consignações em aberto após o prazo</p>
+        <p className="text-sm text-muted-foreground">{t("reports.overdue.subtitle")}</p>
         <ExportButton onClick={exportCsv} disabled={rows.length === 0} />
       </div>
       <section className="overflow-hidden rounded-lg border bg-card shadow-none">
@@ -48,18 +57,18 @@ export function OverdueTab() {
             onRetry={() => void report.refetch()}
           />
         ) : rows.length === 0 ? (
-          <RemoteQueryState state="empty" message="Nenhuma inadimplência. Todas as vendedoras estão em dia." />
+          <RemoteQueryState state="empty" message={t("reports.overdue.empty")} />
         ) : (
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
-                  <TableHead>Vendedora</TableHead>
-                  <TableHead>Telefone</TableHead>
-                  <TableHead className="text-right">Lotes atrasados</TableHead>
-                  <TableHead className="text-right">Peças em posse</TableHead>
-                  <TableHead className="text-right">Valor em risco</TableHead>
-                  <TableHead className="text-right">Maior atraso</TableHead>
+                  <TableHead>{t("reports.column.seller")}</TableHead>
+                  <TableHead>{t("reports.column.phone")}</TableHead>
+                  <TableHead className="text-right">{t("reports.overdue.lateLots")}</TableHead>
+                  <TableHead className="text-right">{t("reports.overdue.piecesInHand")}</TableHead>
+                  <TableHead className="text-right">{t("reports.overdue.valueAtRisk")}</TableHead>
+                  <TableHead className="text-right">{t("reports.overdue.maxOverdue")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -73,7 +82,7 @@ export function OverdueTab() {
                       {formatCents(row.valueAtRiskCents)}
                     </TableCell>
                     <TableCell className="text-right tabular-nums text-late">
-                      {row.maxOverdueDays} dia{row.maxOverdueDays === 1 ? "" : "s"}
+                      {t("common.days", { count: row.maxOverdueDays })}
                     </TableCell>
                   </TableRow>
                 ))}

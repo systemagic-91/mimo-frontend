@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { AlertTriangle, Briefcase, Clock3, PackageX } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { KpiCard } from "@/components/kpi-card";
 import { PieceDetailSheet } from "@/components/piece-detail-sheet";
 import { PieceTracker } from "@/components/piece-tracker";
@@ -13,6 +14,7 @@ import { OpenConsignmentsTable } from "./OpenConsignmentsTable";
 
 /** Dashboard do owner: uma só chamada a `GET /dashboard`, sem contas no navegador. */
 export default function Dashboard() {
+  const { t } = useTranslation();
   const timeZone = useStoreTimezone();
   // Só owner chega aqui (HomeRedirect), mas a consulta também não dispara para staff.
   const isOwner = useIsOwner();
@@ -25,7 +27,7 @@ export default function Dashboard() {
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="font-serif text-2xl font-medium text-foreground">Dashboard</h1>
+        <h1 className="font-serif text-2xl font-medium text-foreground">{t("dashboard.title")}</h1>
         <p className="mt-0.5 text-sm text-muted-foreground">{todayLabel}</p>
       </header>
 
@@ -41,38 +43,40 @@ export default function Dashboard() {
         <>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <KpiCard
-              label="Peças ativas em consignação"
+              label={t("dashboard.kpi.inHand")}
               value={dashboard.data.kpis.activeInHand}
-              sub={`${formatCents(dashboard.data.kpis.activeInHandValueCents)} em posse das vendedoras`}
+              sub={t("dashboard.kpi.inHandSub", { value: formatCents(dashboard.data.kpis.activeInHandValueCents) })}
               icon={Briefcase}
               accent="gold"
             />
             <KpiCard
-              label="Giro médio de peça"
+              label={t("dashboard.kpi.turnover")}
               value={
                 dashboard.data.kpis.avgTurnoverDays !== null
-                  ? `${dashboard.data.kpis.avgTurnoverDays} dias`
+                  ? t("common.days", { count: dashboard.data.kpis.avgTurnoverDays })
                   : "—"
               }
-              sub="Da etiquetagem à venda, vendas dos últimos 90 dias"
+              sub={t("dashboard.kpi.turnoverSub")}
               icon={Clock3}
             />
             <KpiCard
-              label="Estoque parado há +60 dias"
+              label={t("dashboard.kpi.stale")}
               value={dashboard.data.kpis.staleCount}
-              sub={`${formatCents(dashboard.data.kpis.staleValueCents)} parados em estoque`}
+              sub={t("dashboard.kpi.staleSub", { value: formatCents(dashboard.data.kpis.staleValueCents) })}
               icon={PackageX}
               accent="late"
             />
             <KpiCard
-              label="Vendedoras inadimplentes"
+              label={t("dashboard.kpi.overdue")}
               value={dashboard.data.kpis.overdueSellers}
               sub={
                 dashboard.data.overdueSellers.length
-                  ? `${formatCents(
-                      dashboard.data.overdueSellers.reduce((sum, row) => sum + row.valueAtRiskCents, 0),
-                    )} em risco`
-                  : "Todas em dia"
+                  ? t("dashboard.kpi.overdueSub", {
+                      value: formatCents(
+                        dashboard.data.overdueSellers.reduce((sum, row) => sum + row.valueAtRiskCents, 0),
+                      ),
+                    })
+                  : t("dashboard.kpi.overdueNone")
               }
               icon={AlertTriangle}
               accent="late"

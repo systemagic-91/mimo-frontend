@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useStoreTimezone } from "@/hooks/use-store-timezone";
 import { OverdueTab } from "./OverdueTab";
@@ -9,22 +10,23 @@ import { TurnoverTab } from "./TurnoverTab";
  * o conteúdo das abas fechadas não fica montado.
  */
 export default function Relatorios() {
+  const { t } = useTranslation();
   const timeZone = useStoreTimezone();
 
   return (
     <div className="space-y-5">
       <header>
-        <h1 className="font-serif text-2xl font-medium text-foreground">Relatórios</h1>
+        <h1 className="font-serif text-2xl font-medium text-foreground">{t("reports.title")}</h1>
         <p className="mt-0.5 text-sm text-muted-foreground">
-          Giro, inadimplência e estoque parado — exportáveis em CSV
+          {t("reports.subtitle")}
         </p>
       </header>
 
       <Tabs defaultValue="giro">
         <TabsList>
-          <TabsTrigger value="giro">Giro de peças</TabsTrigger>
-          <TabsTrigger value="inadimplencia">Inadimplência</TabsTrigger>
-          <TabsTrigger value="paradas">Peças paradas</TabsTrigger>
+          <TabsTrigger value="giro">{t("reports.tab.turnover")}</TabsTrigger>
+          <TabsTrigger value="inadimplencia">{t("reports.tab.overdue")}</TabsTrigger>
+          <TabsTrigger value="paradas">{t("reports.tab.stale")}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="giro">

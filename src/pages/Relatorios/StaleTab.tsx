@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { PieceCode } from "@/components/piece-code";
 import { PieceDetailSheet } from "@/components/piece-detail-sheet";
 import { RemoteQueryState } from "@/components/remote-query-state";
@@ -27,6 +28,7 @@ const DAY_OPTIONS = [30, 60, 90, 180, 365];
 
 /** Peças etiquetadas paradas há pelo menos N dias (`GET /reports/stale-pieces`). */
 export function StaleTab() {
+  const { t } = useTranslation();
   const [days, setDays] = useState(60);
   const report = useStalePiecesReportQuery(days);
   const rows = report.data?.items ?? [];
@@ -35,7 +37,7 @@ export function StaleTab() {
   const exportCsv = () =>
     downloadCsv(
       `pecas-paradas-${days}-dias.csv`,
-      ["Codigo", "Tipo", "Valor", "Parada ha (dias)"],
+      [t("reports.csv.code"), t("reports.csv.type"), t("reports.csv.value"), t("reports.csv.daysStopped")],
       rows.map((row) => [row.code, row.type, centsToCsvDecimal(row.valueCents), row.daysStopped]),
     );
 
@@ -43,15 +45,15 @@ export function StaleTab() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-          Peças etiquetadas paradas em estoque há pelo menos
+          {t("reports.stale.subtitle")}
           <Select value={String(days)} onValueChange={(value) => setDays(Number(value))}>
-            <SelectTrigger className="h-8 w-28" aria-label="Dias parados">
+            <SelectTrigger className="h-8 w-28" aria-label={t("reports.stale.daysLabel")}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
               {DAY_OPTIONS.map((option) => (
                 <SelectItem key={option} value={String(option)}>
-                  {option} dias
+                  {t("common.days", { count: option })}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -62,7 +64,7 @@ export function StaleTab() {
 
       {report.data && (
         <p className="text-sm text-muted-foreground">
-          {report.data.summary.count} peça{report.data.summary.count === 1 ? "" : "s"} ·{" "}
+          {t("common.pieces", { count: report.data.summary.count })} ·{" "}
           {formatCents(report.data.summary.valueCents)}
         </p>
       )}
@@ -77,16 +79,16 @@ export function StaleTab() {
             onRetry={() => void report.refetch()}
           />
         ) : rows.length === 0 ? (
-          <RemoteQueryState state="empty" message={`Nenhuma peça parada há ${days} dias ou mais.`} />
+          <RemoteQueryState state="empty" message={t("reports.stale.empty", { days })} />
         ) : (
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
-                  <TableHead>Código</TableHead>
-                  <TableHead>Tipo</TableHead>
-                  <TableHead className="text-right">Valor</TableHead>
-                  <TableHead className="text-right">Parada há</TableHead>
+                  <TableHead>{t("reports.column.code")}</TableHead>
+                  <TableHead>{t("reports.column.type")}</TableHead>
+                  <TableHead className="text-right">{t("reports.column.value")}</TableHead>
+                  <TableHead className="text-right">{t("reports.stale.stopped")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -108,7 +110,7 @@ export function StaleTab() {
                       {formatCents(row.valueCents)}
                     </TableCell>
                     <TableCell className="text-right tabular-nums text-late">
-                      {row.daysStopped} dia{row.daysStopped === 1 ? "" : "s"}
+                      {t("common.days", { count: row.daysStopped })}
                     </TableCell>
                   </TableRow>
                 ))}
