@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Check, Search } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { PaginationBar } from "@/components/pagination-bar";
 import { PieceCode } from "@/components/piece-code";
 import { RemoteQueryState } from "@/components/remote-query-state";
@@ -24,6 +25,7 @@ export function SourcePieceStep({
   onSelect: (piece: PieceDto) => void;
   onContinue: () => void;
 }) {
+  const { t } = useTranslation();
   const [search, setSearch] = useState("");
   const q = useDebouncedValue(search.trim());
   const [page, setPage] = useState(1);
@@ -40,8 +42,8 @@ export function SourcePieceStep({
       <div className="relative">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
-          aria-label="Buscar peça no banho"
-          placeholder="Buscar por código ou tipo"
+          aria-label={t("labeling.searchBath")}
+          placeholder={t("common.searchCodeOrType")}
           maxLength={120}
           className="pl-9"
           value={search}
@@ -63,11 +65,11 @@ export function SourcePieceStep({
       ) : pieces.data.items.length === 0 ? (
         <RemoteQueryState
           state="empty"
-          message={q ? "Nenhuma peça no banho com essa busca." : "Nenhuma peça no banho de ouro agora."}
+          message={q ? t("labeling.bathEmptySearch") : t("labeling.bathEmpty")}
         />
       ) : (
         <div className="overflow-hidden rounded-lg border">
-          <ul aria-label="Peças no banho de ouro" className="divide-y">
+          <ul aria-label={t("labeling.bathList")} className="divide-y">
             {pieces.data.items.map((piece) => {
               const active = selected?.id === piece.id;
               return (
@@ -103,7 +105,7 @@ export function SourcePieceStep({
       )}
 
       <Button className="h-12 w-full text-base" disabled={!selected} onClick={onContinue}>
-        Continuar
+        {t("common.continue")}
       </Button>
     </section>
   );

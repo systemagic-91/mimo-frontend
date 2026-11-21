@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { CostField } from "@/components/cost-field";
 import { PieceCode } from "@/components/piece-code";
@@ -46,6 +47,7 @@ export function ReceivePieceDialog({
   const nextCode = usePieceNextCodeQuery();
   const idempotency = useIdempotencyKey();
   const isOwner = useIsOwner();
+  const { t } = useTranslation();
   const [type, setType] = useState<string>(PIECE_TYPES[0]);
   const [value, setValue] = useState("");
   const [stage, setStage] = useState<InitialStage>("fabrica");
@@ -59,7 +61,7 @@ export function ReceivePieceDialog({
     event.preventDefault();
     const valueCents = parseMoneyToCents(value);
     if (valueCents === null) {
-      setError("Informe um valor maior que zero, com até 2 casas decimais (ex.: 84,90).");
+      setError(t("piece.form.valueInvalid"));
       return;
     }
     if (isOwner && factoryCostCents === undefined) return;
@@ -78,8 +80,8 @@ export function ReceivePieceDialog({
         onSuccess: ({ piece }) => {
           idempotency.reset();
           const status = STAGE_LABEL[fromBackendPieceStage(piece.status)];
-          toast.success("Peça recebida", {
-            description: `${piece.code} registrada como ${status}.`,
+          toast.success(t("stock.receive.done"), {
+            description: t("stock.receive.doneDescription", { code: piece.code, status }),
           });
           onReceived(piece);
         },
@@ -92,23 +94,22 @@ export function ReceivePieceDialog({
     <Dialog open onOpenChange={(open) => !open && !pending && onClose()}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Receber peça</DialogTitle>
+          <DialogTitle>{t("stock.receive.title")}</DialogTitle>
           <DialogDescription>
-            Registre a chegada da peça da fábrica ou o envio ao banho de ouro. O
-            código é gerado pelo sistema ao salvar.
+            {t("stock.receive.description")}
           </DialogDescription>
         </DialogHeader>
 
         <form id="receive-piece-form" onSubmit={handleSubmit} className="space-y-4">
           {nextCode.data && (
             <div className="flex items-center justify-between rounded-lg border bg-muted/30 px-4 py-2.5">
-              <span className="text-sm text-muted-foreground">Próximo código (prévia)</span>
+              <span className="text-sm text-muted-foreground">{t("stock.receive.nextCode")}</span>
               <PieceCode code={nextCode.data.code} />
             </div>
           )}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label htmlFor="rec-type">Tipo</Label>
+              <Label htmlFor="rec-type">{t("piece.form.type")}</Label>
               <Select value={type} onValueChange={setType} disabled={pending}>
                 <SelectTrigger id="rec-type">
                   <SelectValue />
@@ -123,7 +124,7 @@ export function ReceivePieceDialog({
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="rec-value">Valor de venda (R$)</Label>
+              <Label htmlFor="rec-value">{t("piece.form.value")}</Label>
               <Input
                 id="rec-value"
                 inputMode="decimal"
@@ -136,7 +137,7 @@ export function ReceivePieceDialog({
             </div>
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="rec-stage">Onde está</Label>
+            <Label htmlFor="rec-stage">{t("stock.receive.stage")}</Label>
             <Select
               value={stage}
               onValueChange={(next) => setStage(next as InitialStage)}
@@ -146,15 +147,15 @@ export function ReceivePieceDialog({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="fabrica">Na fábrica</SelectItem>
-                <SelectItem value="banho_ouro">Enviada ao banho de ouro</SelectItem>
+                <SelectItem value="fabrica">{t("stock.receive.stage.fabrica")}</SelectItem>
+                <SelectItem value="banho_ouro">{t("stock.receive.stage.banho_ouro")}</SelectItem>
               </SelectContent>
             </Select>
           </div>
           {isOwner && (
             <CostField
               id="rec-factory-cost"
-              label="Custo da fábrica (R$, opcional)"
+              label={t("stock.receive.factoryCost")}
               value={factoryCost}
               onChange={setFactoryCost}
               disabled={pending}
@@ -162,10 +163,10 @@ export function ReceivePieceDialog({
             />
           )}
           <div className="space-y-1.5">
-            <Label htmlFor="rec-note">Observação (opcional)</Label>
+            <Label htmlFor="rec-note">{t("common.noteOptional")}</Label>
             <Input
               id="rec-note"
-              placeholder="Lote do fornecedor, cor, etc."
+              placeholder={t("stock.receive.notePlaceholder")}
               maxLength={500}
               value={note}
               onChange={(event) => setNote(event.target.value)}
@@ -182,14 +183,14 @@ export function ReceivePieceDialog({
 
         <DialogFooter>
           <Button variant="outline" onClick={onClose} disabled={pending}>
-            Cancelar
+            {t("common.cancel")}
           </Button>
           <Button type="submit" form="receive-piece-form" disabled={pending}>
             {pending
-              ? "Salvando…"
+              ? t("common.saving")
               : receive.isError
-                ? "Tentar de novo"
-                : "Confirmar recebimento"}
+                ? t("common.tryAgain")
+                : t("stock.receive.submit")}
           </Button>
         </DialogFooter>
       </DialogContent>

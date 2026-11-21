@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import { Camera, RotateCcw } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { useIdempotencyKey } from "@/hooks/use-idempotency-key";
 import { useUploadPiecePhotoMutation } from "@/lib/api/hooks";
@@ -24,6 +25,7 @@ export function PhotoStep({
   onUploaded: (photo: UploadedPhoto) => void;
   onContinue: () => void;
 }) {
+  const { t } = useTranslation();
   const fileRef = useRef<HTMLInputElement>(null);
   const selections = useRef(0);
   const upload = useUploadPiecePhotoMutation();
@@ -67,7 +69,7 @@ export function PhotoStep({
       setError(
         cause instanceof PhotoValidationError
           ? cause.message
-          : "Não foi possível processar a foto.",
+          : t("labeling.photo.process"),
       );
     } finally {
       setProcessing(false);
@@ -82,7 +84,7 @@ export function PhotoStep({
         accept="image/jpeg,image/png,image/webp,image/*"
         capture="environment"
         className="hidden"
-        aria-label="Arquivo da foto"
+        aria-label={t("labeling.photo.file")}
         data-testid="photo-input"
         onChange={(event) => void handleFile(event.target.files?.[0])}
       />
@@ -91,12 +93,12 @@ export function PhotoStep({
           type="button"
           onClick={() => fileRef.current?.click()}
           disabled={busy}
-          aria-label="Trocar a foto"
+          aria-label={t("labeling.photo.change")}
           className="block w-full overflow-hidden rounded-lg border"
         >
           <img
             src={photo.photoUrl}
-            alt="Foto enviada da peça"
+            alt={t("labeling.uploadedPhotoAlt")}
             className="mx-auto max-h-72 w-full object-cover"
           />
         </button>
@@ -109,17 +111,17 @@ export function PhotoStep({
         >
           <Camera className="h-10 w-10 text-gold" />
           <span className="text-sm font-medium text-foreground">
-            {busy ? "Enviando foto…" : "Fotografar a peça"}
+            {busy ? t("labeling.photo.sending") : t("labeling.photo.take")}
           </span>
           <span className="text-xs text-muted-foreground">
-            Toque para abrir a câmera ou galeria
+            {t("labeling.photo.hint")}
           </span>
         </button>
       )}
 
       {busy && photo && (
         <p role="status" className="mt-3 text-center text-sm text-muted-foreground">
-          Enviando foto…
+          {t("labeling.photo.sending")}
         </p>
       )}
 
@@ -135,7 +137,7 @@ export function PhotoStep({
               onClick={() => send(failed.file, failed.selection)}
             >
               <RotateCcw className="h-4 w-4" />
-              Tentar de novo
+              {t("common.tryAgain")}
             </Button>
           )}
         </div>
@@ -146,7 +148,7 @@ export function PhotoStep({
         disabled={!photo || busy}
         onClick={onContinue}
       >
-        Continuar
+        {t("common.continue")}
       </Button>
     </section>
   );

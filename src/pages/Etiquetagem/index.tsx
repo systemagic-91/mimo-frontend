@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { Camera, Check, CheckCircle2, ChevronLeft, Package } from "lucide-react";
@@ -34,7 +35,7 @@ import { cn } from "@/lib/utils";
 import { PhotoStep, type UploadedPhoto } from "./PhotoStep";
 import { SourcePieceStep } from "./SourcePieceStep";
 
-const STEPS = ["Peça", "Foto", "Dados", "Confirmação"];
+const STEPS = ["labeling.step.piece", "labeling.step.photo", "labeling.step.data", "labeling.step.confirm"];
 
 /** O que fazer depois de um erro na etiquetagem. */
 type Recovery = "retry" | "choose-piece" | "resend-photo";
@@ -55,6 +56,7 @@ export default function Etiquetagem() {
   const label = useLabelPieceMutation();
   const idempotency = useIdempotencyKey();
   const isOwner = useIsOwner();
+  const { t } = useTranslation();
 
   const [step, setStep] = useState(0);
   const [source, setSource] = useState<PieceDto | null>(null);
@@ -109,8 +111,8 @@ export default function Etiquetagem() {
         onSuccess: (piece) => {
           idempotency.reset();
           setResult(piece);
-          toast.success("Peça etiquetada", {
-            description: `${piece.code} disponível em estoque.`,
+          toast.success(t("labeling.done"), {
+            description: t("labeling.doneDescription", { code: piece.code }),
           });
         },
         onError: (cause) => {
@@ -144,14 +146,14 @@ export default function Etiquetagem() {
         </div>
         <div>
           <h1 className="font-serif text-2xl font-medium text-foreground">
-            Peça etiquetada
+            {t("labeling.done")}
           </h1>
           <PieceCode code={result.code} className="mt-2 inline-block text-xl" />
         </div>
         {result.photoUrl && (
           <img
             src={result.photoUrl}
-            alt={`Foto da peça ${result.code}`}
+            alt={t("labeling.photoAlt", { code: result.code })}
             className="mx-auto h-48 w-48 rounded-lg border object-cover"
           />
         )}
@@ -162,7 +164,7 @@ export default function Etiquetagem() {
         <div className="flex flex-col gap-2 pt-2">
           <Button className="h-12 text-base" onClick={reset}>
             <Camera className="h-5 w-5" />
-            Nova etiquetagem
+            {t("labeling.new")}
           </Button>
           <Button
             variant="outline"
@@ -170,7 +172,7 @@ export default function Etiquetagem() {
             onClick={() => navigate("/estoque")}
           >
             <Package className="h-5 w-5" />
-            Ver no estoque
+            {t("labeling.viewStock")}
           </Button>
         </div>
       </div>
@@ -181,14 +183,14 @@ export default function Etiquetagem() {
     <div className="mx-auto max-w-md space-y-5">
       <header>
         <h1 className="font-serif text-2xl font-medium text-foreground">
-          Etiquetagem
+          {t("labeling.title")}
         </h1>
         <p className="mt-0.5 text-sm text-muted-foreground">
-          Registre a peça que voltou do banho de ouro
+          {t("labeling.subtitle")}
         </p>
       </header>
 
-      <ol className="flex items-center gap-2" aria-label="Passos">
+      <ol className="flex items-center gap-2" aria-label={t("common.steps")}>
         {STEPS.map((stepLabel, i) => (
           <li
             key={stepLabel}
@@ -213,7 +215,7 @@ export default function Etiquetagem() {
                 i === step ? "text-foreground" : "text-muted-foreground",
               )}
             >
-              {stepLabel}
+              {t(stepLabel)}
             </span>
             {i < STEPS.length - 1 && <div className="h-px flex-1 bg-border" />}
           </li>
@@ -237,17 +239,17 @@ export default function Etiquetagem() {
           {photo && (
             <img
               src={photo.photoUrl}
-              alt="Foto enviada da peça"
+              alt={t("labeling.uploadedPhotoAlt")}
               className="mx-auto h-32 w-32 rounded-lg border object-cover"
             />
           )}
           <div className="flex items-center justify-between rounded-lg border bg-muted/30 px-4 py-3">
-            <span className="text-sm text-muted-foreground">Código da peça</span>
+            <span className="text-sm text-muted-foreground">{t("labeling.pieceCode")}</span>
             <PieceCode code={source.code} className="text-base" />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label htmlFor="etq-type">Tipo</Label>
+              <Label htmlFor="etq-type">{t("piece.form.type")}</Label>
               <Select value={type} onValueChange={setType}>
                 <SelectTrigger id="etq-type">
                   <SelectValue />
@@ -262,7 +264,7 @@ export default function Etiquetagem() {
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="etq-value">Valor de venda (R$)</Label>
+              <Label htmlFor="etq-value">{t("piece.form.value")}</Label>
               <Input
                 id="etq-value"
                 inputMode="decimal"
@@ -275,23 +277,23 @@ export default function Etiquetagem() {
           </div>
           {value !== "" && valueCents === null && (
             <p role="alert" className="text-sm text-late">
-              Informe um valor maior que zero, com até 2 casas decimais (ex.: 84,90).
+              {t("piece.form.valueInvalid")}
             </p>
           )}
           {isOwner && (
             <CostField
               id="etq-bath-cost"
-              label="Custo do banho (R$, opcional)"
+              label={t("labeling.bathCost")}
               value={bathCost}
               onChange={setBathCost}
               invalid={bathCostCents === undefined}
             />
           )}
           <div className="space-y-1.5">
-            <Label htmlFor="etq-note">Observação (opcional)</Label>
+            <Label htmlFor="etq-note">{t("common.noteOptional")}</Label>
             <Input
               id="etq-note"
-              placeholder="Cor, acabamento, etc."
+              placeholder={t("labeling.notePlaceholder")}
               maxLength={500}
               value={note}
               onChange={(event) => setNote(event.target.value)}
@@ -302,7 +304,7 @@ export default function Etiquetagem() {
             disabled={!dataValid}
             onClick={() => setStep(3)}
           >
-            Continuar
+            {t("common.continue")}
           </Button>
         </section>
       )}
@@ -312,7 +314,7 @@ export default function Etiquetagem() {
           {photo && (
             <img
               src={photo.photoUrl}
-              alt="Foto enviada da peça"
+              alt={t("labeling.uploadedPhotoAlt")}
               className="mx-auto h-40 w-40 rounded-lg border object-cover"
             />
           )}
@@ -322,21 +324,21 @@ export default function Etiquetagem() {
               {type} ·{" "}
               {valueCents !== null
                 ? formatCents(valueCents)
-                : "valor não informado"}
+                : t("labeling.valueMissing")}
             </p>
             {isOwner && bathCostCents != null && (
               <p className="text-xs text-muted-foreground">
-                Custo do banho: {formatCents(bathCostCents)}
+                {t("labeling.bathCostSummary", { value: formatCents(bathCostCents) })}
               </p>
             )}
           </div>
           <div className="flex items-center justify-between gap-3 rounded-lg border bg-muted/30 px-4 py-3">
             <div>
               <Label htmlFor="etq-back-from-bath" className="text-sm font-medium text-foreground">
-                Peça retornou do banho de ouro
+                {t("labeling.backFromBath")}
               </Label>
               <p className="text-xs text-muted-foreground">
-                Confirme para registrar como etiquetada
+                {t("labeling.backFromBathHint")}
               </p>
             </div>
             <Switch
@@ -358,8 +360,8 @@ export default function Etiquetagem() {
                   onClick={() => recover(error.recovery)}
                 >
                   {error.recovery === "choose-piece"
-                    ? "Escolher outra peça"
-                    : "Enviar a foto de novo"}
+                    ? t("labeling.choosePiece")
+                    : t("labeling.resendPhoto")}
                 </Button>
               )}
             </div>
@@ -376,10 +378,10 @@ export default function Etiquetagem() {
           >
             <Check className="h-5 w-5" />
             {label.isPending
-              ? "Salvando…"
+              ? t("common.saving")
               : error?.recovery === "retry"
-                ? "Tentar de novo"
-                : "Confirmar etiquetagem"}
+                ? t("common.tryAgain")
+                : t("labeling.submit")}
           </Button>
         </section>
       )}
@@ -395,7 +397,7 @@ export default function Etiquetagem() {
           }}
         >
           <ChevronLeft className="h-4 w-4" />
-          Voltar
+          {t("common.back")}
         </Button>
       )}
     </div>

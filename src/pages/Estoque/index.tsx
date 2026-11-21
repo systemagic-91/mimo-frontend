@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { PackagePlus, Search } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { PaginationBar } from "@/components/pagination-bar";
 import { PieceCode } from "@/components/piece-code";
 import { PieceDetailSheet } from "@/components/piece-detail-sheet";
@@ -40,6 +41,7 @@ const SEARCH_DELAY_MS = 300;
 type StatusFilter = "todos" | PieceStage;
 
 export default function Estoque() {
+  const { t } = useTranslation();
   const timeZone = useStoreTimezone();
   const [search, setSearch] = useState("");
   const q = useDebouncedValue(search.trim(), SEARCH_DELAY_MS);
@@ -83,18 +85,21 @@ export default function Estoque() {
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="font-serif text-2xl font-medium text-foreground">
-            Estoque
+            {t("stock.title")}
           </h1>
           {/* Quantidade e valor do filtro inteiro, vindos da API (não a soma da página). */}
           <p className="mt-0.5 text-sm text-muted-foreground" aria-live="polite">
             {data
-              ? `${data.pagination.total} peça${data.pagination.total === 1 ? "" : "s"} · ${formatCents(data.summary.totalValueCents)}`
-              : "Carregando…"}
+              ? t("stock.summary", {
+                  pieces: t("common.pieces", { count: data.pagination.total }),
+                  value: formatCents(data.summary.totalValueCents),
+                })
+              : t("common.loading")}
           </p>
         </div>
         <Button onClick={() => setReceiving(true)}>
           <PackagePlus className="h-4 w-4" />
-          Receber peça
+          {t("stock.receive")}
         </Button>
       </header>
 
@@ -102,8 +107,8 @@ export default function Estoque() {
         <div className="relative flex-1">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            aria-label="Buscar peças"
-            placeholder="Buscar por código ou tipo"
+            aria-label={t("stock.search")}
+            placeholder={t("common.searchCodeOrType")}
             maxLength={120}
             value={search}
             onChange={(event) => {
@@ -120,11 +125,11 @@ export default function Estoque() {
             setPage(1);
           }}
         >
-          <SelectTrigger className="sm:w-56" aria-label="Filtrar por status">
-            <SelectValue placeholder="Status" />
+          <SelectTrigger className="sm:w-56" aria-label={t("stock.filterStatus")}>
+            <SelectValue placeholder={t("stock.status")} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="todos">Todos os status</SelectItem>
+            <SelectItem value="todos">{t("stock.allStatuses")}</SelectItem>
             {PIECE_STAGES.map((s) => (
               <SelectItem key={s} value={s}>
                 {STAGE_LABEL[s]}
@@ -151,20 +156,20 @@ export default function Estoque() {
             <Table>
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
-                  <SortableHead field="code" label="Código" sort={sort} onSort={handleSort} />
-                  <SortableHead field="type" label="Tipo" sort={sort} onSort={handleSort} />
+                  <SortableHead field="code" label={t("stock.column.code")} sort={sort} onSort={handleSort} />
+                  <SortableHead field="type" label={t("stock.column.type")} sort={sort} onSort={handleSort} />
                   <SortableHead
                     field="valueCents"
-                    label="Valor"
+                    label={t("stock.column.value")}
                     sort={sort}
                     onSort={handleSort}
                     className="text-right"
                   />
-                  <TableHead className="hidden md:table-cell">Localização</TableHead>
-                  <SortableHead field="status" label="Status" sort={sort} onSort={handleSort} />
+                  <TableHead className="hidden md:table-cell">{t("stock.column.location")}</TableHead>
+                  <SortableHead field="status" label={t("stock.column.status")} sort={sort} onSort={handleSort} />
                   <SortableHead
                     field="updatedAt"
-                    label="Atualizado"
+                    label={t("stock.column.updatedAt")}
                     sort={sort}
                     onSort={handleSort}
                     className="hidden text-right md:table-cell"
@@ -175,7 +180,7 @@ export default function Estoque() {
                 {pieces.data.items.length === 0 && (
                   <TableRow className="hover:bg-transparent">
                     <TableCell colSpan={6} className="py-10 text-center text-muted-foreground">
-                      Nenhuma peça encontrada.
+                      {t("stock.empty")}
                     </TableCell>
                   </TableRow>
                 )}
@@ -191,7 +196,7 @@ export default function Estoque() {
                         <button
                           type="button"
                           className="hover:underline"
-                          aria-label={`Ver peça ${p.code}`}
+                          aria-label={t("stock.viewPiece", { code: p.code })}
                           onClick={(event) => {
                             event.stopPropagation();
                             openPiece(p.id);
