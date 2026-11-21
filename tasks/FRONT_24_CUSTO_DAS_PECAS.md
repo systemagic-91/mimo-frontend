@@ -56,10 +56,24 @@ Detalhes na seção 2 (peças) e na seção 6 (giro) do `BACKEND_API_CONTRACT.md
 
 ## Critérios de aceite
 
-- [ ] Owner informa e edita os custos nos três pontos (recebimento, etiquetagem e detalhe), inclusive limpando um valor.
-- [ ] Staff não vê nenhum campo, coluna ou valor de custo e nunca envia campos de custo.
-- [ ] O relatório e o CSV mostram comissão, custo e margem coerentes com a API, incluindo peças sem custo e com custo parcial.
-- [ ] Testes com MSW cobrem a visibilidade por papel, o `PATCH` (ausente × `null`) e a conversão de valores.
+- [x] Owner informa e edita os custos nos três pontos (recebimento, etiquetagem e detalhe), inclusive limpando um valor.
+- [x] Staff não vê nenhum campo, coluna ou valor de custo e nunca envia campos de custo.
+- [x] O relatório e o CSV mostram comissão, custo e margem coerentes com a API, incluindo peças sem custo e com custo parcial.
+- [x] Testes com MSW cobrem a visibilidade por papel, o `PATCH` (ausente × `null`) e a conversão de valores.
+
+## Implementação (2026-11-21)
+
+- **API:** `piecesApi.updateCosts` e `useUpdatePieceCostsMutation`, que grava a peça devolvida no cache do detalhe e invalida peças e relatórios. Os inputs de recebimento e etiquetagem já aceitavam os custos pelos tipos.
+- **Papel:** o hook `useIsOwner` (`src/hooks/`) decide o que aparece; Dashboard e página da vendedora passaram a usá-lo também.
+- **Valores** (`parseCostToCents` em `src/lib/piece-errors.ts`): vazio é `null` ("não informado"), zero é custo válido, negativo ou com mais de 2 casas é recusado na tela. Campo compartilhado em `src/components/cost-field.tsx`.
+- **Recebimento (Estoque):** "Custo da fábrica (R$, opcional)" só para owner. O campo só vai no corpo quando o owner informa um valor (inclusive `0`); vazio não é enviado; staff nunca envia.
+- **Etiquetagem:** "Custo do banho (R$, opcional)" só para owner, com a mesma regra, e o valor aparece na confirmação. Sem o campo, a etiquetagem mantém os custos já gravados.
+- **Detalhe da peça** (`src/components/piece-costs-section.tsx`, só owner): fábrica, banho e total, com "não informado" para `null`. "Editar custos" manda só o que mudou e `null` quando o owner apaga um valor; sem mudança, não chama a API.
+- **Giro:** para owner, colunas "Comissão", "Custo" e "Margem" (margem negativa em destaque, "—" quando a API manda `null`), a margem total e, com `piecesWithoutFullCost > 0`, "margem de X de Y vendas; Z sem os dois custos". O CSV ganha as mesmas três colunas (vazias quando `null`).
+- **CSV:** a proteção contra fórmula deixou de marcar texto que é só um número, como "-25,00" (margem negativa); antes o Excel mostraria como texto.
+- **Testes:** `parseCostToCents`, `piece-costs.test.tsx` (corpo do `PATCH` ausente × `null`, cache e invalidação), recebimento e etiquetagem para owner e staff, detalhe (exibição, envio só do campo alterado, `null` ao limpar, nada sem mudança, nada para staff) e giro com custo completo, parcial, ausente e margem negativa, inclusive no CSV. As fixtures ganharam `setCurrentUser`.
+- **Verificação contra o Railway** (17 checks), só na peça de teste LU-0055 (vendida): custo parcial deixa a margem `null` e conta em `piecesWithoutFullCost`; com os dois custos a margem do giro bate (100 − 30 − 20 − 25 = 25); campo ausente não muda o outro custo; `null` limpa; `0` é válido; corpo vazio, negativo, não inteiro e campo desconhecido dão `400`; recebimento e etiquetagem com custo negativo são recusados sem criar peça. A LU-0055 ficou com fábrica R$ 0,30 e banho R$ 0,20.
+- **Limitações:** o `403` para staff ao enviar custo não foi verificado contra o Railway (não há conta de staff de teste); fica coberto pela regra de nunca enviar o campo para staff. Não foi testado em navegador real.
 
 ## Observações de dependência
 
