@@ -198,22 +198,38 @@ No Railway, mudar uma variável reinicia o serviço (cerca de um minuto fora do 
 
 ## Critérios de aceite
 
-- [ ] Toda requisição (fora health e prometheus) gera uma linha de acesso com método, caminho sem query, status e duração.
-- [ ] Linhas de requisições autenticadas trazem `userId` e `role` (no JSON de produção e no padrão local).
-- [ ] Login, logout, troca de senha, recusas de segurança e reuso de refresh token são logados nos níveis da tabela.
-- [ ] Criação e mudanças de usuários, vendedoras, configurações, peças, fotos e consignações geram `INFO` com os IDs, só depois do commit.
-- [ ] O `ApiExceptionHandler` loga os erros devolvidos pelo nível do status, e o `500` sai com a stack trace.
-- [ ] O padrão do `application.yml` é `root: ${LOG_LEVEL_ROOT:WARN}`, `br.com.luma: ${LOG_LEVEL_APP:ERROR}`, `br.com.luma.access: ${LOG_LEVEL_ACCESS:OFF}` e `br.com.luma.sales: INFO`.
-- [ ] As três variáveis ligam e desligam os três grupos de log sem alterar código; com `LOG_LEVEL_ACCESS=OFF` o filtro de acesso não mede nem monta nada.
-- [ ] Toda venda (inclusive retroativa) gera uma linha `Sale registered` em `br.com.luma.sales`, depois do commit, mesmo com `LOG_LEVEL_APP=OFF`; uma venda que falhou não gera linha.
-- [ ] `/actuator/loggers` muda o nível na hora, só para owner (staff e anônimo recebem `403`/`401`), recusa mudar `br.com.luma.sales` (`403`) e a mudança volta ao valor da variável no restart.
-- [ ] O documento explica os modos (padrão, problemas, completo, desligado), que as vendas saem sempre, e como trocar de modo pelo Railway e pelo Actuator.
-- [ ] Testes com `OutputCaptureExtension` cobrem os eventos principais e garantem que senha, token e cookie nunca aparecem na saída (login, troca de senha, criação de usuário com senha temporária, refresh).
-- [ ] Um documento em linguagem simples (`LOGS.md` no backend, ou uma seção no `RUNBOOK.md`) lista os eventos, os níveis e como achar no Railway as linhas de uma requisição pelo `requestId`.
+- [x] Toda requisição (fora health e prometheus) gera uma linha de acesso com método, caminho sem query, status e duração.
+- [x] Linhas de requisições autenticadas trazem `userId` e `role` (no JSON de produção e no padrão local).
+- [x] Login, logout, troca de senha, recusas de segurança e reuso de refresh token são logados nos níveis da tabela.
+- [x] Criação e mudanças de usuários, vendedoras, configurações, peças, fotos e consignações geram `INFO` com os IDs, só depois do commit.
+- [x] O `ApiExceptionHandler` loga os erros devolvidos pelo nível do status, e o `500` sai com a stack trace.
+- [x] O padrão do `application.yml` é `root: ${LOG_LEVEL_ROOT:WARN}`, `br.com.luma: ${LOG_LEVEL_APP:ERROR}`, `br.com.luma.access: ${LOG_LEVEL_ACCESS:OFF}` e `br.com.luma.sales: INFO`.
+- [x] As três variáveis ligam e desligam os três grupos de log sem alterar código; com `LOG_LEVEL_ACCESS=OFF` o filtro de acesso não mede nem monta nada.
+- [x] Toda venda (inclusive retroativa) gera uma linha `Sale registered` em `br.com.luma.sales`, depois do commit, mesmo com `LOG_LEVEL_APP=OFF`; uma venda que falhou não gera linha.
+- [x] `/actuator/loggers` muda o nível na hora, só para owner (staff e anônimo recebem `403`/`401`), recusa mudar `br.com.luma.sales` (`403`) e a mudança volta ao valor da variável no restart.
+- [x] O documento explica os modos (padrão, problemas, completo, desligado), que as vendas saem sempre, e como trocar de modo pelo Railway e pelo Actuator.
+- [x] Testes com `OutputCaptureExtension` cobrem os eventos principais e garantem que senha, token e cookie nunca aparecem na saída (login, troca de senha, criação de usuário com senha temporária, refresh).
+- [x] Um documento em linguagem simples (`LOGS.md` no backend, ou uma seção no `RUNBOOK.md`) lista os eventos, os níveis e como achar no Railway as linhas de uma requisição pelo `requestId`.
 
 ## Verificação sugerida
 
 Depois do deploy, repetir pelo front um fluxo completo no Railway (login, recebimento, etiquetagem, lote, venda, devolução, um erro de validação e um login errado) e conferir no painel de logs que cada passo aparece uma vez, com `requestId` e `userId`, e que nenhuma senha ou token aparece. Esse roteiro roda no modo completo, ligado pelo Actuator. Depois, voltar ao padrão (`{"configuredLevel":null}`) e conferir que só saem erros, avisos das bibliotecas e as vendas: uma venda nova aparece, um login não. Por fim, conferir que `POST /actuator/loggers/br.com.luma.sales` é recusado.
+
+## Implementação (2026-11-21)
+
+Commits `4c525c9..863340c` no `mimo-backend`.
+
+- **Infraestrutura** (`shared/logging`): `AccessLogFilter` (logger `br.com.luma.access`, dentro do filtro de observação para levar o `traceId`, não mede nada quando desligado), `UserMdcFilter` (põe `userId` e `role` no MDC depois do JWT; quem limpa é o filtro de acesso, que ainda loga com eles), `LogLevelChangeFilter` (registra quem mudou o nível pelo Actuator), `AfterCommit`, `LogMasking` e `SalesLog`.
+- **Níveis** no `application.yml`: `root: ${LOG_LEVEL_ROOT:WARN}`, `br.com.luma: ${LOG_LEVEL_APP:ERROR}`, `br.com.luma.access: ${LOG_LEVEL_ACCESS:OFF}`, `br.com.luma.sales: INFO` e `br.com.luma.loglevel: INFO`; `LOG_SLOW_REQUEST_MS` (1000). O padrão de log local ganhou `userId` e `role`.
+- **Mudança em relação à proposta:** a linha "nível de log alterado" ganhou um logger próprio (`br.com.luma.loglevel`, ligado em `INFO`). No padrão econômico o resto de `br.com.luma` fica em `ERROR`, e a mudança de nível precisa aparecer mesmo assim.
+- **Actuator:** `loggers` exposto, só para owner; `POST /actuator/loggers/br.com.luma.sales` é negado (`denyAll`) para qualquer um.
+- **Erros da API** (`ApiErrorLog`, usado pelo `ApiExceptionHandler` e pelo `ProblemDetailWriter`): 400/404 em INFO (com os nomes dos campos), 401/403/409/413/415/422/429 em WARN, `PASSWORD_CHANGE_REQUIRED` em DEBUG; o 500 sai em ERROR **com a stack trace**.
+- **Eventos:** autenticação (login aceito e recusado com e-mail mascarado, rate limit, refresh vencido, reuso de refresh token, logout, troca de senha), bootstrap do owner, usuários, vendedoras e configurações (só IDs e nomes de campo; troca de fuso com o anterior e o novo), peças (custos sem valores), fotos, consignações (lote criado, devolução, lote quitado), **vendas em `br.com.luma.sales`**, idempotência (retry, chave reusada, em andamento) e jobs (duração e falha). Os eventos de negócio saem depois do commit.
+- **Relatórios e dashboard:** sem log próprio; a linha de acesso já mostra em WARN as consultas lentas (com o caminho, sem a query).
+- **Testes:** `LoggingSupportTests`, `ApiErrorLogTests` e testes de log em `AuthApplicationServiceTests` (eventos e nenhuma senha, token ou e-mail completo), `SellerApplicationServiceTests` e `ConsignmentApplicationServiceTests` (venda logada com o resto do backend em `OFF`); `LumaApplicationTests` cobre os níveis padrão, o Actuator só para owner, a recusa do logger de vendas, o registro da troca de nível e a linha de acesso com `role`. `./gradlew clean check`: 210 testes, todos passando.
+- **Teste de fumaça local no perfil `prod`** (PostgreSQL descartável + `.jar`, logs em JSON): no padrão, a subida não gerou nenhuma linha e o fluxo login → vendedora → peça → lote → venda gerou **uma só linha, a da venda**; com o modo completo ligado pelo Actuator apareceram login recusado (e-mail mascarado), erros da API, linhas de acesso com `userId`/`role` e a troca de nível com quem mudou; o Actuator recusou o logger de vendas. Senha, token, e-mail completo, nome, telefone e o texto da busca não apareceram em nenhuma linha.
+- **Docs:** `LOGS.md` (em linguagem simples: grupos, modos, como trocar pelo Railway e pelo Actuator, eventos e o que nunca aparece), variáveis no `RUNBOOK.md` e link no `README.md`.
+- **Falta:** a verificação no Railway depois do deploy (seção "Verificação sugerida").
 
 ## Observações de dependência
 
