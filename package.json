@@ -8,10 +8,11 @@
     "build": "cross-env NODE_ENV=development vite build --mode development",
     "build:prod": "vite build",
     "check": "npm run lint && npm run typecheck",
-    "typecheck": "tsc --noEmit -p tsconfig.app.json && tsc --noEmit -p tsconfig.node.json",
+    "typecheck": "tsc --noEmit -p tsconfig.app.json && tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.e2e.json",
     "lint": "eslint .",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:e2e": "playwright test",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -75,6 +76,7 @@
     "@babel/core": "^7.28.3",
     "@babel/plugin-transform-react-jsx": "^7.27.1",
     "@eslint/js": "^9.34.0",
+    "@playwright/test": "^1.65.1",
     "@tailwindcss/postcss": "^4.1.12",
     "@tailwindcss/typography": "^0.5.16",
     "@testing-library/jest-dom": "^6.6.4",

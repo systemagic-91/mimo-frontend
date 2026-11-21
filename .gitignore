@@ -17,6 +17,8 @@ yarn-error.log*
 pnpm-debug.log*
 
 # Tool caches
+test-results/
+playwright-report/
 .vite/
 .eslintcache
 *.tsbuildinfo
