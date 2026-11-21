@@ -90,15 +90,39 @@ Detalhes nas seções 3 e 4 do `BACKEND_API_CONTRACT.md`. Consignações aceitam
 
 ## Critérios de aceite
 
-- [ ] O wizard valida vendedora, ao menos uma peça, data e prazo de pagamento antes do envio.
-- [ ] O lote criado tem código, snapshots, vencimento e itens iguais aos devolvidos pelo servidor; o retry não cria lote duplicado.
-- [ ] Venda e devolução aguardam o resultado, evitam double-submit e refletem os estados persistidos; a data opcional registra prestações de contas atrasadas no dia certo.
-- [ ] O lote guarda o prazo de pagamento escolhido e o card da vendedora mostra os valores e vencimentos da API, sem cálculo local.
-- [ ] Conflitos `409` recuperam a seleção ou a lista; `401`/`403` e falha de rede recebem o tratamento padrão.
-- [ ] Staff usa lista, wizard, histórico e ações, sem ver nem chamar stats, comissão e agenda de repasses, e sem ver valores devidos.
-- [ ] Dashboard, lista de vendedoras e detalhe atualizam sem reload depois das ações.
-- [ ] A impressão gera o romaneio do lote efetivamente criado.
-- [ ] Testes cobrem criação, retry, ação de item, conflito e invalidação de cache.
+- [x] O wizard valida vendedora, ao menos uma peça, data e prazo de pagamento antes do envio.
+- [x] O lote criado tem código, snapshots, vencimento e itens iguais aos devolvidos pelo servidor; o retry não cria lote duplicado.
+- [x] Venda e devolução aguardam o resultado, evitam double-submit e refletem os estados persistidos; a data opcional registra prestações de contas atrasadas no dia certo.
+- [x] O lote guarda o prazo de pagamento escolhido e o card da vendedora mostra os valores e vencimentos da API, sem cálculo local.
+- [x] Conflitos `409` recuperam a seleção ou a lista; `401`/`403` e falha de rede recebem o tratamento padrão.
+- [x] Staff usa lista, wizard, histórico e ações, sem ver nem chamar stats, comissão e agenda de repasses, e sem ver valores devidos.
+- [x] Dashboard, lista de vendedoras e detalhe atualizam sem reload depois das ações.
+- [x] A impressão gera o romaneio do lote efetivamente criado.
+- [x] Testes cobrem criação, retry, ação de item, conflito e invalidação de cache.
+
+## Implementação (2026-11-21)
+
+- **API:** `sellersApi.paymentSchedule` e `useSellerPaymentScheduleQuery` (chave `sellers.paymentSchedule`). `markSold`/`markReturned` recebem `{ at?, note? }`: sem `at`, o corpo vai vazio e o servidor usa o horário atual. As ações gravam o lote devolvido no cache do detalhe antes das invalidações de sempre.
+- **Fuso da loja** (`src/lib/store-time.ts` e `useStoreTimezone`): hoje, soma de dias, 23:59:59 de um dia no fuso, formatação de datas locais e os períodos "mês atual", "mês anterior" e "todo o histórico" (a partir de 2020-01-01), sempre pelo `settings.timezone`.
+- **Lista** (`src/pages/Consignacao/`): vendedoras de `GET /sellers` com busca e paginação. Peças, valor, próximo vencimento e atraso vêm prontos da API.
+- **Wizard** (`src/pages/NovaConsignacao/`):
+  - vendedoras ativas e peças etiquetadas com busca e paginação na API; a seleção fica guardada por UUID com os dados da peça, então sobrevive à troca de página (limite de 200);
+  - vencimento sugerido = hoje no fuso da loja + `defaultConsignmentDays`, entre hoje e hoje + 365; prazo de pagamento obrigatório entre os `settings.paymentTerms` (já escolhido quando só há um);
+  - a `Idempotency-Key` vem de `useIdempotencyKey`: confirmar de novo depois de uma falha de rede não duplica o lote;
+  - erros: `409 PIECE_NOT_AVAILABLE`/`404 PIECE_NOT_FOUND` tiram de `fields.pieceIds` as peças da seleção, avisam quais foram e recarregam a lista; `SELLER_INACTIVE`/`SELLER_NOT_FOUND` voltam ao passo da vendedora; vencimento e prazo inválidos voltam ao passo do prazo com o erro no campo;
+  - depois do `201`, mostra o lote criado (código oficial, vencimento, prazo, total) com "Imprimir romaneio" e "Ver lotes da vendedora". O romaneio (`src/components/consignment-receipt.tsx`) usa os snapshots da resposta.
+- **Página da vendedora** (`src/pages/ConsignacaoSeller/`):
+  - histórico por `GET /consignments?sellerId=`, e não por `/sellers/{id}/consignments`: essa lista já traz o status visual, os dias até o vencimento e o que ainda está com a vendedora, sem recalcular atraso no front;
+  - itens carregados ao expandir o lote (`GET /consignments/{id}`), com o prazo de pagamento ("não informado" em lotes antigos) e, nos vendidos, a data de pagamento e o valor a repassar quando a API manda (`null` para staff);
+  - "Vendida" e "Devolvida" registram na hora; "Com data" abre o registro retroativo (do dia da entrega até hoje; dia anterior vai como 23:59:59 no fuso da loja). Os botões do lote ficam desabilitados durante o envio. `409 ITEM_NOT_WITH_SELLER` avisa e recarrega o lote; erro de data da API aparece no campo;
+  - cards de números, comissão e agenda de repasses só para owner; para staff essas chamadas não são feitas. A fórmula local antiga do card de prazos foi removida;
+  - "Imprimir romaneio" no lote expandido (o romaneio vai para o `body` por portal, e o histórico some na impressão).
+- **Compartilhado:** `FieldError` saiu de `Configuracoes/` para `src/components/field-error.tsx`; mensagens em `src/lib/consignment-errors.ts`.
+- **Testes:** `store-time.test.ts`, `lib/api/consignments.test.tsx` (corpo das ações, agenda, cache e invalidação), `Consignacao.test.tsx`, `NovaConsignacao.test.tsx` (validação, criação, romaneio, retry com a mesma chave, 409 e vendedora inativa) e `ConsignacaoSeller.test.tsx` (owner e staff, venda, double submit, 409, devolução com data, erro de data, valor devido oculto e vendedora inexistente).
+- **Verificação contra o Railway** (pelo proxy do Vite, 24 checks): criação com retry pela mesma chave, snapshots, prazo, `dueAt` no dia escolhido, 409 de peça indisponível, lista com status visual, erros de data na venda e na devolução, devolução que quita o lote, 409 na ação repetida e os endpoints do owner. Ficaram em produção a peça LU-0055 ("Teste FRONT_15 (pode ignorar)", R$ 1,00, de volta ao estoque) e o lote quitado C-2026-001; a vendedora de teste da FRONT_14 continua inativa.
+- **Limitações:**
+  - não foi testado em navegador real (a impressão, por exemplo); fica para os E2E da FRONT_18;
+  - o Dashboard e os Relatórios ainda leem o banco local até a FRONT_16.
 
 ## Observações de dependência
 
