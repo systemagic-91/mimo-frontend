@@ -12,8 +12,16 @@ describe("csv", () => {
   });
 
   it("neutralizes text that Excel would run as a formula", () => {
-    const csv = buildCsv(["Nome"], [["=HYPERLINK(1)"], ["+1"], ["-2"], ["@SUM(A1)"]]);
-    expect(csv.split("\r\n").slice(1)).toEqual(["'=HYPERLINK(1)", "'+1", "'-2", "'@SUM(A1)"]);
+    const csv = buildCsv(["Nome"], [["=HYPERLINK(1)"], ["+1"], ["-2-1"], ["@SUM(A1)"]]);
+    expect(csv.split("\r\n").slice(1)).toEqual(["'=HYPERLINK(1)", "'+1", "'-2-1", "'@SUM(A1)"]);
+  });
+
+  it("does not mark a negative amount as a formula", () => {
+    expect(buildCsv(["Margem"], [["-25,00"], ["-3"], ["-2+3"]]).split("\r\n").slice(1)).toEqual([
+      '"-25,00"',
+      "-3",
+      "'-2+3",
+    ]);
   });
 
   it("keeps numbers and empty cells as they are", () => {

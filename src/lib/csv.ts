@@ -1,18 +1,20 @@
 /**
  * CSV para abrir no Excel em português: separador `;`, BOM para os acentos e quebra de linha CRLF.
  * Texto que começaria com `=`, `+`, `-`, `@`, tab ou CR ganha um apóstrofo na frente, para o Excel não
- * executá-lo como fórmula (injeção de CSV). Números ficam como estão.
+ * executá-lo como fórmula (injeção de CSV). Números, e texto que é só um número (como "-25,00"), ficam
+ * como estão.
  */
 
 export type CsvCell = string | number | null | undefined;
 
 const FORMULA_START = /^[=+\-@\t\r]/;
+const PLAIN_NUMBER = /^-?\d+([.,]\d+)?$/;
 const NEEDS_QUOTES = /[";,\r\n]/;
 
 function escapeCell(cell: CsvCell): string {
   if (cell === null || cell === undefined) return "";
   if (typeof cell === "number") return String(cell);
-  const text = FORMULA_START.test(cell) ? `'${cell}` : cell;
+  const text = FORMULA_START.test(cell) && !PLAIN_NUMBER.test(cell) ? `'${cell}` : cell;
   return NEEDS_QUOTES.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
 }
 
