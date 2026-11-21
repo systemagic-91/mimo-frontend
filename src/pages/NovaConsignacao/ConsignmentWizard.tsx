@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { useIdempotencyKey } from "@/hooks/use-idempotency-key";
@@ -27,7 +28,7 @@ import { SellerStep } from "./SellerStep";
 import { TermsStep } from "./TermsStep";
 import { WizardSteps } from "./WizardSteps";
 
-const STEPS = ["Vendedora", "Peças", "Prazo", "Revisão"];
+const STEPS = ["wizard.step.seller", "wizard.step.pieces", "wizard.step.terms", "wizard.step.review"];
 const SELLER = 0;
 const PIECES = 1;
 const TERMS = 2;
@@ -42,6 +43,7 @@ export function ConsignmentWizard({ settings }: { settings: SettingsDto }) {
   const queryClient = useQueryClient();
   const createConsignment = useCreateConsignmentMutation();
   const idempotency = useIdempotencyKey();
+  const { t } = useTranslation();
   const timeZone = settings.timezone;
   const today = todayInZone(timeZone);
 
@@ -70,10 +72,10 @@ export function ConsignmentWizard({ settings }: { settings: SettingsDto }) {
   const validateTerms = () => {
     const errors: Record<string, string> = {};
     if (!dueDate || dueDate < today || dueDate > addDaysToDate(today, 365)) {
-      errors.dueDate = "O vencimento precisa estar entre hoje e daqui a 365 dias.";
+      errors.dueDate = t("wizard.dueDateInvalid");
     }
     if (paymentTermDays === null || !settings.paymentTerms.includes(paymentTermDays)) {
-      errors.paymentTermDays = "Escolha o prazo de pagamento.";
+      errors.paymentTermDays = t("wizard.paymentTermRequired");
     }
     setFieldErrors(errors);
     return Object.keys(errors).length === 0;
@@ -109,7 +111,7 @@ export function ConsignmentWizard({ settings }: { settings: SettingsDto }) {
       void queryClient.invalidateQueries({ queryKey: queryKeys.pieces.all });
       setStepError(
         removed.length
-          ? `${removed.join(", ")} não ${removed.length === 1 ? "está" : "estão"} mais disponíve${removed.length === 1 ? "l" : "is"} e ${removed.length === 1 ? "foi tirada" : "foram tiradas"} da seleção.`
+          ? t("wizard.removed", { count: removed.length, codes: removed.join(", ") })
           : message,
       );
       setStep(PIECES);
@@ -140,8 +142,8 @@ export function ConsignmentWizard({ settings }: { settings: SettingsDto }) {
         onSuccess: (details) => {
           idempotency.reset();
           setCreated(details);
-          toast.success("Consignação criada", {
-            description: `${details.code} entregue para ${details.seller.name}.`,
+          toast.success(t("wizard.created"), {
+            description: t("wizard.createdDescription", { code: details.code, name: details.seller.name }),
           });
         },
         onError: handleError,
@@ -210,15 +212,15 @@ export function ConsignmentWizard({ settings }: { settings: SettingsDto }) {
             else setStep(step - 1);
           }}
         >
-          Voltar
+          {t("common.back")}
         </Button>
         {step < REVIEW ? (
           <Button disabled={!canContinue} onClick={goNext}>
-            Continuar
+            {t("common.continue")}
           </Button>
         ) : (
           <Button disabled={pending || pieces.size === 0} onClick={confirm}>
-            {pending ? "Enviando…" : "Confirmar entrega"}
+            {pending ? t("wizard.sending") : t("wizard.confirm")}
           </Button>
         )}
       </div>

@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { StatusBadge } from "@/components/status-badge";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { useStoreTimezone } from "@/hooks/use-store-timezone";
@@ -5,7 +6,11 @@ import { fromBackendSellerStatus } from "@/lib/api/mappers";
 import type { SellerListItem } from "@/lib/api/types";
 import { formatCents, formatDate, formatRelativeDays } from "@/lib/format";
 
-const STATUS_LABEL = { em_dia: "Em dia", atrasada: "Atrasado", inativa: "Inativa" } as const;
+const STATUS_LABEL = {
+  em_dia: "consignment.status.em_dia",
+  atrasada: "consignment.status.atrasada",
+  inativa: "consignment.status.inativa",
+} as const;
 
 /** Uma vendedora na lista da consignação. Atraso e vencimento vêm da API; nada é recalculado aqui. */
 export function SellerConsignmentRow({
@@ -15,6 +20,7 @@ export function SellerConsignmentRow({
   item: SellerListItem;
   onOpen: () => void;
 }) {
+  const { t } = useTranslation();
   const timeZone = useStoreTimezone();
   const { seller } = item;
   const status =
@@ -63,7 +69,7 @@ export function SellerConsignmentRow({
         )}
       </TableCell>
       <TableCell className="text-right">
-        <StatusBadge status={status} label={STATUS_LABEL[status]} />
+        <StatusBadge status={status} label={t(STATUS_LABEL[status])} />
       </TableCell>
     </TableRow>
   );

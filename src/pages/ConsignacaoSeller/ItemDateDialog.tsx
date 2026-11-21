@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { FieldError } from "@/components/field-error";
 import { Button } from "@/components/ui/button";
 import {
@@ -41,6 +42,7 @@ export function ItemDateDialog({
   onConfirm: (action: ItemAction, at: string | undefined) => void;
   onClose: () => void;
 }) {
+  const { t } = useTranslation();
   const [action, setAction] = useState<ItemAction>("sold");
   const [date, setDate] = useState(today);
   const [localError, setLocalError] = useState<string | null>(null);
@@ -49,7 +51,7 @@ export function ItemDateDialog({
     event.preventDefault();
     if (pending) return;
     if (!date || date < minDate || date > today) {
-      setLocalError("A data precisa estar entre a entrega do lote e hoje.");
+      setLocalError(t("seller.itemDate.invalid"));
       return;
     }
     setLocalError(null);
@@ -60,9 +62,9 @@ export function ItemDateDialog({
     <Dialog open onOpenChange={(open) => !open && !pending && onClose()}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Registrar {code} com data</DialogTitle>
+          <DialogTitle>{t("seller.itemDate.title", { code })}</DialogTitle>
           <DialogDescription>
-            Para prestações de contas atrasadas. A data fica entre a entrega do lote e hoje.
+            {t("seller.itemDate.description")}
           </DialogDescription>
         </DialogHeader>
         <form id="item-date-form" onSubmit={submit} className="space-y-4" noValidate>
@@ -70,19 +72,19 @@ export function ItemDateDialog({
             value={action}
             onValueChange={(value) => setAction(value as ItemAction)}
             className="flex gap-6"
-            aria-label="O que aconteceu"
+            aria-label={t("seller.itemDate.what")}
           >
             <label className="flex items-center gap-2 text-sm">
-              <RadioGroupItem value="sold" aria-label="Vendida" />
-              Vendida
+              <RadioGroupItem value="sold" aria-label={t("seller.item.sold")} />
+              {t("seller.item.sold")}
             </label>
             <label className="flex items-center gap-2 text-sm">
-              <RadioGroupItem value="returned" aria-label="Devolvida" />
-              Devolvida
+              <RadioGroupItem value="returned" aria-label={t("seller.item.returned")} />
+              {t("seller.item.returned")}
             </label>
           </RadioGroup>
           <div className="space-y-1.5">
-            <Label htmlFor="item-date">Data</Label>
+            <Label htmlFor="item-date">{t("seller.itemDate.date")}</Label>
             <Input
               id="item-date"
               type="date"
@@ -98,10 +100,10 @@ export function ItemDateDialog({
         </form>
         <DialogFooter>
           <Button variant="outline" onClick={onClose} disabled={pending}>
-            Cancelar
+            {t("common.cancel")}
           </Button>
           <Button type="submit" form="item-date-form" disabled={pending}>
-            {pending ? "Salvando…" : "Registrar"}
+            {pending ? t("common.saving") : t("seller.itemDate.submit")}
           </Button>
         </DialogFooter>
       </DialogContent>

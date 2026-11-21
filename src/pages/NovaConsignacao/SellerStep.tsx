@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Check, Search } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { PaginationBar } from "@/components/pagination-bar";
 import { RemoteQueryState } from "@/components/remote-query-state";
 import { Input } from "@/components/ui/input";
@@ -19,6 +20,7 @@ export function SellerStep({
   selected: SellerDto | null;
   onSelect: (seller: SellerDto) => void;
 }) {
+  const { t } = useTranslation();
   const [search, setSearch] = useState("");
   const q = useDebouncedValue(search.trim(), 300);
   const [page, setPage] = useState(1);
@@ -35,8 +37,8 @@ export function SellerStep({
       <div className="relative">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
-          aria-label="Buscar vendedoras"
-          placeholder="Buscar por nome ou telefone"
+          aria-label={t("sellers.search")}
+          placeholder={t("sellers.searchPlaceholder")}
           className="pl-9"
           maxLength={120}
           value={search}
@@ -57,10 +59,10 @@ export function SellerStep({
         />
       ) : sellers.data.items.length === 0 ? (
         <p className="rounded-lg border bg-card p-6 text-center text-sm text-muted-foreground">
-          {q ? "Nenhuma vendedora ativa encontrada." : "Nenhuma vendedora ativa. Cadastre em Configurações."}
+          {q ? t("wizard.sellerSearchEmpty") : t("wizard.sellerEmpty")}
         </p>
       ) : (
-        <div className="space-y-2" role="radiogroup" aria-label="Vendedora">
+        <div className="space-y-2" role="radiogroup" aria-label={t("wizard.sellerLabel")}>
           {sellers.data.items.map(({ seller }) => {
             const checked = selected?.id === seller.id;
             return (
@@ -89,7 +91,7 @@ export function SellerStep({
                 <span className="min-w-0 flex-1">
                   <span className="block font-medium text-foreground">{seller.name}</span>
                   <span className="block text-xs text-muted-foreground">
-                    {seller.phone} · Comissão {seller.commissionRate}%
+                    {t("wizard.sellerLine", { phone: seller.phone, rate: seller.commissionRate })}
                   </span>
                 </span>
               </button>

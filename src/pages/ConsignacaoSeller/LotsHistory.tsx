@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { ChevronRight } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { PaginationBar } from "@/components/pagination-bar";
 import { PieceCode } from "@/components/piece-code";
 import { RemoteQueryState } from "@/components/remote-query-state";
@@ -19,6 +20,7 @@ const PAGE_SIZE = 20;
  * ainda está com a vendedora; o histórico de `/sellers/{id}/consignments` não traz o atraso.
  */
 export function LotsHistory({ sellerId, timeZone }: { sellerId: string; timeZone: string }) {
+  const { t } = useTranslation();
   const [page, setPage] = useState(1);
   const [expanded, setExpanded] = useState<string | null>(null);
   const lots = useConsignmentsQuery({
@@ -31,7 +33,7 @@ export function LotsHistory({ sellerId, timeZone }: { sellerId: string; timeZone
   return (
     <section className="no-print rounded-lg border bg-card shadow-none">
       <div className="border-b px-5 py-4">
-        <h2 className="font-serif text-lg font-medium text-foreground">Histórico de lotes</h2>
+        <h2 className="font-serif text-lg font-medium text-foreground">{t("seller.lots.title")}</h2>
       </div>
 
       {lots.isPending ? (
@@ -43,7 +45,7 @@ export function LotsHistory({ sellerId, timeZone }: { sellerId: string; timeZone
           onRetry={() => void lots.refetch()}
         />
       ) : lots.data.items.length === 0 ? (
-        <RemoteQueryState state="empty" message="Nenhum lote entregue para esta vendedora." />
+        <RemoteQueryState state="empty" message={t("seller.lots.empty")} />
       ) : (
         <ul className="divide-y divide-border">
           {lots.data.items.map((lot) => {
@@ -66,10 +68,10 @@ export function LotsHistory({ sellerId, timeZone }: { sellerId: string; timeZone
                     <div className="flex flex-wrap items-center gap-2">
                       <PieceCode code={lot.code} />
                       <span className="text-sm text-muted-foreground">
-                        Entregue em {formatDate(lot.deliveredAt, timeZone)}
+                        {t("seller.lots.delivered", { date: formatDate(lot.deliveredAt, timeZone) })}
                       </span>
                       <span className="text-sm text-muted-foreground">
-                        · Devolução{" "}
+                        {t("seller.lots.due")}{" "}
                         <span className="text-foreground">{formatDate(lot.dueAt, timeZone)}</span>
                         {lot.status !== "quitada" && (
                           <span className="ml-1 text-xs">{formatRelativeDays(lot.dueInDays)}</span>
@@ -77,9 +79,11 @@ export function LotsHistory({ sellerId, timeZone }: { sellerId: string; timeZone
                       </span>
                     </div>
                     <p className="mt-0.5 text-xs text-muted-foreground">
-                      {lot.piecesInHand} peça{lot.piecesInHand === 1 ? "" : "s"} com a vendedora ·{" "}
-                      {formatCents(lot.valueInHandCents)} · pagamento{" "}
-                      {lot.paymentTermDays ? `em ${lot.paymentTermDays} dias` : "com prazo não informado"}
+                      {t("seller.lots.inHand", { count: lot.piecesInHand })} ·{" "}
+                      {formatCents(lot.valueInHandCents)} ·{" "}
+                      {lot.paymentTermDays
+                        ? t("seller.lots.paymentIn", { days: t("common.days", { count: lot.paymentTermDays }) })
+                        : t("seller.lots.paymentUnknown")}
                     </p>
                   </div>
                   <StatusBadge status={lot.status} label={CONSIGNMENT_STATUS_LABEL[lot.status]} />

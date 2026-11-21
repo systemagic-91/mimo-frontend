@@ -1,4 +1,5 @@
 import { CalendarDays, Check, HandCoins, Undo2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { PieceCode } from "@/components/piece-code";
 import { Button } from "@/components/ui/button";
 import { fromBackendConsignmentItemStatus } from "@/lib/api/mappers";
@@ -24,6 +25,7 @@ export function ItemRow({
   onAction: (action: ItemAction) => void;
   onActionWithDate: () => void;
 }) {
+  const { t } = useTranslation();
   const status = fromBackendConsignmentItemStatus(item.status);
 
   return (
@@ -31,36 +33,36 @@ export function ItemRow({
       <div className="flex min-w-0 items-center gap-3">
         <PieceCode code={item.codeSnapshot} />
         <span className="text-sm text-muted-foreground">
-          {item.typeSnapshot} · {formatCents(item.valueCentsSnapshot)} · comissão{" "}
-          {item.commissionRateSnapshot}%
+          {item.typeSnapshot} · {formatCents(item.valueCentsSnapshot)} ·{" "}
+          {t("seller.item.commission", { rate: item.commissionRateSnapshot })}
         </span>
       </div>
 
       {status === "com_vendedora" && (
         <div className="flex flex-wrap gap-1.5">
-          <Button size="sm" onClick={() => onAction("sold")} disabled={busy} aria-label={`Vendida ${item.codeSnapshot}`}>
+          <Button size="sm" onClick={() => onAction("sold")} disabled={busy} aria-label={t("seller.item.soldLabel", { code: item.codeSnapshot })}>
             <Check className="h-3.5 w-3.5" />
-            Vendida
+            {t("seller.item.sold")}
           </Button>
           <Button
             size="sm"
             variant="outline"
             onClick={() => onAction("returned")}
             disabled={busy}
-            aria-label={`Devolvida ${item.codeSnapshot}`}
+            aria-label={t("seller.item.returnedLabel", { code: item.codeSnapshot })}
           >
             <Undo2 className="h-3.5 w-3.5" />
-            Devolvida
+            {t("seller.item.returned")}
           </Button>
           <Button
             size="sm"
             variant="ghost"
             onClick={onActionWithDate}
             disabled={busy}
-            aria-label={`Registrar ${item.codeSnapshot} com data`}
+            aria-label={t("seller.item.withDateLabel", { code: item.codeSnapshot })}
           >
             <CalendarDays className="h-3.5 w-3.5" />
-            Com data
+            {t("seller.item.withDate")}
           </Button>
         </div>
       )}
@@ -69,13 +71,13 @@ export function ItemRow({
         <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
           <span className="flex items-center gap-1.5 text-success">
             <HandCoins className="h-3.5 w-3.5" />
-            Vendida em {formatDate(item.soldAt, timeZone)}
+            {t("seller.item.soldAt", { date: formatDate(item.soldAt, timeZone) })}
           </span>
           {item.paymentDueDate && (
             <span className="text-muted-foreground">
-              Pagamento até {formatLocalDate(item.paymentDueDate)}
+              {t("seller.item.paymentDue", { date: formatLocalDate(item.paymentDueDate) })}
               {item.amountDueCents != null &&
-                ` · repassar ${formatCents(item.amountDueCents)}`}
+                t("seller.item.amountDue", { value: formatCents(item.amountDueCents) })}
             </span>
           )}
         </span>
@@ -84,7 +86,7 @@ export function ItemRow({
       {status === "devolvida" && item.returnedAt && (
         <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <Undo2 className="h-3.5 w-3.5" />
-          Devolvida em {formatDate(item.returnedAt, timeZone)}
+          {t("seller.item.returnedAt", { date: formatDate(item.returnedAt, timeZone) })}
         </span>
       )}
     </li>

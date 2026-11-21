@@ -1,5 +1,6 @@
 import { Link, useParams } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { RemoteQueryState } from "@/components/remote-query-state";
 import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
@@ -22,6 +23,7 @@ export default function ConsignacaoSeller() {
   const { sellerId = "" } = useParams();
   const timeZone = useStoreTimezone();
   const isOwner = useIsOwner();
+  const { t } = useTranslation();
   const seller = useSellerQuery(sellerId);
 
   const back = (
@@ -30,7 +32,7 @@ export default function ConsignacaoSeller() {
       className="no-print inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
     >
       <ArrowLeft className="h-4 w-4" />
-      Consignação
+      {t("seller.back")}
     </Link>
   );
 
@@ -39,9 +41,9 @@ export default function ConsignacaoSeller() {
     if (seller.error instanceof ApiError && seller.error.code === "SELLER_NOT_FOUND") {
       return (
         <div className="py-16 text-center">
-          <p className="text-muted-foreground">Vendedora não encontrada.</p>
+          <p className="text-muted-foreground">{t("seller.notFound")}</p>
           <Button asChild variant="outline" className="mt-4">
-            <Link to="/consignacao">Voltar para consignação</Link>
+            <Link to="/consignacao">{t("seller.backToList")}</Link>
           </Button>
         </div>
       );
@@ -76,7 +78,7 @@ export default function ConsignacaoSeller() {
           </div>
           <div className="flex items-center gap-2">
             <span className="rounded-md border border-gold/30 bg-gold/15 px-2 py-0.5 text-xs font-medium text-gold">
-              Comissão {seller.data.commissionRate}%
+              {t("seller.commissionBadge", { rate: seller.data.commissionRate })}
             </span>
             <StatusBadge status={status} label={SELLER_STATUS_LABEL[status]} />
           </div>

@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { PieceCode } from "@/components/piece-code";
 import { Separator } from "@/components/ui/separator";
 import type { PieceDto, SellerDto } from "@/lib/api/types";
@@ -17,22 +18,23 @@ export function ReviewStep({
   paymentTermDays: number;
   note: string;
 }) {
+  const { t } = useTranslation();
   const totalCents = pieces.reduce((sum, piece) => sum + piece.valueCents, 0);
 
   return (
     <section className="rounded-lg border bg-card p-5 shadow-none">
       <dl className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <div>
-          <dt className="text-xs text-muted-foreground">Vendedora</dt>
+          <dt className="text-xs text-muted-foreground">{t("wizard.review.seller")}</dt>
           <dd className="font-medium text-foreground">{seller.name}</dd>
         </div>
         <div>
-          <dt className="text-xs text-muted-foreground">Devolução em</dt>
+          <dt className="text-xs text-muted-foreground">{t("wizard.review.dueAt")}</dt>
           <dd className="font-medium text-foreground">{formatLocalDate(dueDate)}</dd>
         </div>
         <div>
-          <dt className="text-xs text-muted-foreground">Prazo de pagamento</dt>
-          <dd className="font-medium text-foreground">{paymentTermDays} dias</dd>
+          <dt className="text-xs text-muted-foreground">{t("wizard.review.paymentTerm")}</dt>
+          <dd className="font-medium text-foreground">{t("common.days", { count: paymentTermDays })}</dd>
         </div>
       </dl>
       {note.trim() && (
@@ -57,7 +59,7 @@ export function ReviewStep({
       <Separator className="my-4" />
       <div className="flex items-center justify-between">
         <span className="text-sm text-muted-foreground">
-          {pieces.length} peça{pieces.length === 1 ? "" : "s"}
+          {t("common.pieces", { count: pieces.length })}
         </span>
         <span className="font-semibold tabular-nums text-foreground">
           {formatCents(totalCents)}

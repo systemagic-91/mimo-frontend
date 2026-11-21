@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { createPortal } from "react-dom";
 import { Printer } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { ConsignmentReceipt } from "@/components/consignment-receipt";
 import { RemoteQueryState } from "@/components/remote-query-state";
@@ -22,6 +23,7 @@ import { ItemRow } from "./ItemRow";
 
 /** Itens do lote, carregados ao expandir (`GET /consignments/{id}`), com venda e devolução. */
 export function LotDetails({ consignmentId, timeZone }: { consignmentId: string; timeZone: string }) {
+  const { t } = useTranslation();
   const lot = useConsignmentQuery(consignmentId);
   const markSold = useMarkItemSoldMutation();
   const markReturned = useMarkItemReturnedMutation();
@@ -49,11 +51,10 @@ export function LotDetails({ consignmentId, timeZone }: { consignmentId: string;
         onSuccess: () => {
           setDatedItem(null);
           setDateError(undefined);
-          toast.success(action === "sold" ? "Venda registrada" : "Devolução registrada", {
-            description:
-              action === "sold"
-                ? `${item.codeSnapshot} marcada como vendida.`
-                : `${item.codeSnapshot} voltou para o estoque.`,
+          toast.success(t(action === "sold" ? "seller.lot.sold" : "seller.lot.returned"), {
+            description: t(action === "sold" ? "seller.lot.soldDescription" : "seller.lot.returnedDescription", {
+              code: item.codeSnapshot,
+            }),
           });
         },
         onError: (cause) => {
@@ -81,18 +82,20 @@ export function LotDetails({ consignmentId, timeZone }: { consignmentId: string;
     <div className="space-y-2 px-5 pb-4 pl-11">
       <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
         <span>
-          Prazo de pagamento:{" "}
+          {t("seller.lot.paymentTerm")}{" "}
           <span className="text-foreground">
-            {details.paymentTermDays ? `${details.paymentTermDays} dias` : "não informado"}
+            {details.paymentTermDays
+              ? t("common.days", { count: details.paymentTermDays })
+              : t("common.notInformedLower")}
           </span>
           {details.note && ` · ${details.note}`}
         </span>
         <Button variant="ghost" size="sm" onClick={() => window.print()}>
           <Printer className="h-3.5 w-3.5" />
-          Imprimir romaneio
+          {t("common.printReceipt")}
         </Button>
       </div>
-      <ul className="space-y-1.5" aria-label={`Peças do lote ${details.code}`}>
+      <ul className="space-y-1.5" aria-label={t("seller.lot.items", { code: details.code })}>
         {details.items.map((item) => (
           <ItemRow
             key={item.id}

@@ -1,10 +1,12 @@
 import { Check } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 
 /** Indicador dos passos do assistente. */
 export function WizardSteps({ steps, current }: { steps: string[]; current: number }) {
+  const { t } = useTranslation();
   return (
-    <ol className="flex items-center gap-2" aria-label="Passos">
+    <ol className="flex items-center gap-2" aria-label={t("common.steps")}>
       {steps.map((label, index) => (
         <li
           key={label}
@@ -29,7 +31,7 @@ export function WizardSteps({ steps, current }: { steps: string[]; current: numb
               index === current ? "text-foreground" : "text-muted-foreground",
             )}
           >
-            {label}
+            {t(label)}
           </span>
           {index < steps.length - 1 && <span className="h-px flex-1 bg-border" />}
         </li>

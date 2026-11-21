@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Check, Search, X } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { PaginationBar } from "@/components/pagination-bar";
 import { PieceCode } from "@/components/piece-code";
 import { RemoteQueryState } from "@/components/remote-query-state";
@@ -27,6 +28,7 @@ export function PiecesStep({
   selected: Map<string, PieceDto>;
   onToggle: (piece: PieceDto) => void;
 }) {
+  const { t } = useTranslation();
   const [search, setSearch] = useState("");
   const q = useDebouncedValue(search.trim(), 300);
   const [page, setPage] = useState(1);
@@ -46,8 +48,8 @@ export function PiecesStep({
       <div className="relative">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
-          aria-label="Buscar peças"
-          placeholder="Buscar por código ou tipo"
+          aria-label={t("stock.search")}
+          placeholder={t("common.searchCodeOrType")}
           className="pl-9"
           maxLength={120}
           value={search}
@@ -62,11 +64,11 @@ export function PiecesStep({
         <div className="flex items-center justify-between border-b px-4 py-3">
           <span className="text-sm text-muted-foreground">
             {pieces.data
-              ? `${pieces.data.pagination.total} peça${pieces.data.pagination.total === 1 ? "" : "s"} etiquetada${pieces.data.pagination.total === 1 ? "" : "s"}`
-              : "Peças etiquetadas"}
+              ? t("wizard.piecesCount", { count: pieces.data.pagination.total })
+              : t("wizard.piecesLabel")}
           </span>
           <span className="text-sm font-medium text-foreground">
-            {selected.size} selecionada{selected.size === 1 ? "" : "s"}
+            {t("wizard.selected", { count: selected.size })}
           </span>
         </div>
 
@@ -81,7 +83,7 @@ export function PiecesStep({
         ) : pieces.data.items.length === 0 ? (
           <RemoteQueryState
             state="empty"
-            message={q ? "Nenhuma peça encontrada." : "Nenhuma peça etiquetada disponível para consignação."}
+            message={q ? t("wizard.piecesEmptySearch") : t("wizard.piecesEmpty")}
           />
         ) : (
           <div className="max-h-96 divide-y divide-border overflow-y-auto">
@@ -124,7 +126,7 @@ export function PiecesStep({
 
       {full && (
         <p className="text-sm text-muted-foreground">
-          Um lote pode ter no máximo {MAX_PIECES_PER_LOT} peças.
+          {t("wizard.maxPieces", { max: MAX_PIECES_PER_LOT })}
         </p>
       )}
 
@@ -132,13 +134,13 @@ export function PiecesStep({
         <div className="rounded-lg border bg-card px-4 py-3">
           <div className="flex items-center justify-between">
             <span className="text-sm text-muted-foreground">
-              {selected.size} peça{selected.size === 1 ? "" : "s"} · valor total
+              {t("wizard.selectedTotal", { pieces: t("common.pieces", { count: selected.size }) })}
             </span>
             <span className="font-semibold tabular-nums text-gold">
               {formatCents(totalCents)}
             </span>
           </div>
-          <ul className="mt-2 flex flex-wrap gap-1.5" aria-label="Peças selecionadas">
+          <ul className="mt-2 flex flex-wrap gap-1.5" aria-label={t("wizard.selectedList")}>
             {selectedPieces.map((piece) => (
               <li key={piece.id}>
                 <Button
@@ -147,7 +149,7 @@ export function PiecesStep({
                   size="sm"
                   className="h-7 gap-1 px-2"
                   onClick={() => onToggle(piece)}
-                  aria-label={`Tirar ${piece.code} da seleção`}
+                  aria-label={t("wizard.removePiece", { code: piece.code })}
                 >
                   <span className="font-mono text-xs">{piece.code}</span>
                   <X className="h-3 w-3" />
