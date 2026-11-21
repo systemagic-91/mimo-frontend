@@ -8,7 +8,8 @@ import { authTokenStore } from "@/lib/api/http";
 import { createApiQueryClient } from "@/lib/api/query-client";
 import { buildCsv, downloadCsv } from "@/lib/csv";
 import { periodRange } from "@/lib/store-time";
-import { api, makeEvent, makePiece } from "@/test/fixtures";
+import { api, makeEvent, makePiece, setCurrentUser } from "@/test/fixtures";
+import type { UserRole } from "@/lib/api/types";
 import { server } from "@/test/server";
 import Relatorios from ".";
 
@@ -21,9 +22,11 @@ const SP = "America/Sao_Paulo";
 let turnoverRequests: URLSearchParams[];
 let staleRequests: URLSearchParams[];
 
-function renderPage() {
+function renderPage(role?: UserRole) {
+  const queryClient = createApiQueryClient();
+  if (role) setCurrentUser(queryClient, role);
   render(
-    <QueryClientProvider client={createApiQueryClient()}>
+    <QueryClientProvider client={queryClient}>
       <MemoryRouter>
         <Relatorios />
       </MemoryRouter>
@@ -150,6 +153,45 @@ describe("reports", () => {
       "﻿Codigo;Tipo;Valor;Vendida em;Vendedora;Dias ate venda\r\n" +
         'LU-0001;Brinco;"84,90";09/11/2026;"Ana; Ribeiro";12',
     );
+  });
+
+  it("shows commission, cost and margin to the owner, with a dash for partial or missing costs", async () => {
+    const base = { type: "Brinco", soldAt: "2026-11-10T15:00:00Z", sellerId: "s-ana", sellerName: "Ana", daysToSell: 3 };
+    server.use(
+      http.get(`${api}/reports/turnover`, () =>
+        HttpResponse.json({
+          items: [
+            { ...base, code: "LU-0001", valueCents: 10000, commissionCents: 3000, totalCostCents: 4000, marginCents: 3000 },
+            { ...base, code: "LU-0002", valueCents: 10000, commissionCents: 3000, totalCostCents: 2500, marginCents: null },
+            { ...base, code: "LU-0003", valueCents: 5000, commissionCents: 1500, totalCostCents: null, marginCents: null },
+            { ...base, code: "LU-0004", valueCents: 5000, commissionCents: 1500, totalCostCents: 6000, marginCents: -2500 },
+          ],
+          summary: { soldCount: 4, soldValueCents: 30000, marginCents: 500, piecesWithoutFullCost: 2 },
+        }),
+      ),
+    );
+    const user = userEvent.setup();
+    renderPage("owner");
+
+    const full = within((await screen.findByText("LU-0001")).closest("tr")!);
+    expect(full.getByText(/R\$\s30,00/, { selector: "td:nth-child(7)" })).toBeInTheDocument();
+    expect(full.getByText(/R\$\s40,00/)).toBeInTheDocument();
+    // Custo parcial: mostra o custo total, mas a margem fica "—".
+    const partial = within(screen.getByText("LU-0002").closest("tr")!);
+    expect(partial.getByText(/R\$\s25,00/)).toBeInTheDocument();
+    expect(partial.getByText("—")).toBeInTheDocument();
+    expect(within(screen.getByText("LU-0003").closest("tr")!).getAllByText("—")).toHaveLength(2);
+    expect(within(screen.getByText("LU-0004").closest("tr")!).getByText(/-R\$\s25,00/)).toHaveClass("text-late");
+    expect(screen.getByText(/margem de 2 de 4 vendas; 2 sem os dois custos/)).toBeInTheDocument();
+    expect(screen.getByText(/R\$\s5,00/)).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Exportar CSV" }));
+    const lines = lastCsv().csv.split("\r\n");
+    expect(lines[0]).toBe("\uFEFFCodigo;Tipo;Valor;Vendida em;Vendedora;Dias ate venda;Comissao;Custo;Margem");
+    expect(lines[1]).toBe('LU-0001;Brinco;"100,00";10/11/2026;Ana;3;"30,00";"40,00";"30,00"');
+    expect(lines[2]).toBe('LU-0002;Brinco;"100,00";10/11/2026;Ana;3;"30,00";"25,00";');
+    expect(lines[3]).toBe('LU-0003;Brinco;"50,00";10/11/2026;Ana;3;"15,00";;');
+    expect(lines[4]).toBe('LU-0004;Brinco;"50,00";10/11/2026;Ana;3;"15,00";"60,00";"-25,00"');
   });
 
   it("shows the overdue report and exports it", async () => {

@@ -13,6 +13,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useIsOwner } from "@/hooks/use-is-owner";
 import { useTurnoverReportQuery } from "@/lib/api/hooks";
 import { centsToMoney } from "@/lib/api/mappers";
 import { centsToCsvDecimal, downloadCsv } from "@/lib/csv";
@@ -39,8 +40,15 @@ function shortcuts(timeZone: string) {
   ];
 }
 
-/** Vendas do período (`GET /reports/turnover`), em datas locais da loja. */
+const money = (cents: number | null) => (cents == null ? "—" : formatCurrency(centsToMoney(cents)));
+const csvMoney = (cents: number | null) => (cents == null ? "" : centsToCsvDecimal(cents));
+
+/**
+ * Vendas do período (`GET /reports/turnover`), em datas locais da loja. Comissão, custo e margem vêm da API
+ * (a margem só existe com os dois custos informados) e aparecem pelo papel de owner.
+ */
 export function TurnoverTab({ timeZone }: { timeZone: string }) {
+  const isOwner = useIsOwner();
   const [range, setRange] = useState(() => periodRange("mes_atual", timeZone));
   const { from, to } = range;
   const days = from && to ? countDaysInclusive(from, to) : 0;
@@ -58,7 +66,15 @@ export function TurnoverTab({ timeZone }: { timeZone: string }) {
   const exportCsv = () =>
     downloadCsv(
       `giro-de-pecas-${from}-a-${to}.csv`,
-      ["Codigo", "Tipo", "Valor", "Vendida em", "Vendedora", "Dias ate venda"],
+      [
+        "Codigo",
+        "Tipo",
+        "Valor",
+        "Vendida em",
+        "Vendedora",
+        "Dias ate venda",
+        ...(isOwner ? ["Comissao", "Custo", "Margem"] : []),
+      ],
       rows.map((row) => [
         row.code,
         row.type,
@@ -66,8 +82,13 @@ export function TurnoverTab({ timeZone }: { timeZone: string }) {
         formatDateInZone(row.soldAt, timeZone),
         row.sellerName,
         row.daysToSell,
+        ...(isOwner
+          ? [csvMoney(row.commissionCents), csvMoney(row.totalCostCents), csvMoney(row.marginCents)]
+          : []),
       ]),
     );
+  const summary = report.data?.summary;
+  const withMargin = summary ? summary.soldCount - summary.piecesWithoutFullCost : 0;
 
   return (
     <div className="space-y-4">
@@ -113,11 +134,20 @@ export function TurnoverTab({ timeZone }: { timeZone: string }) {
         <ExportButton onClick={exportCsv} disabled={periodError !== null || rows.length === 0} />
       </div>
 
-      {report.data && periodError === null && (
-        <p className="text-sm text-muted-foreground">
-          {report.data.summary.soldCount} venda{report.data.summary.soldCount === 1 ? "" : "s"} ·{" "}
-          {formatCurrency(centsToMoney(report.data.summary.soldValueCents))}
-        </p>
+      {summary && periodError === null && (
+        <div className="space-y-0.5 text-sm text-muted-foreground">
+          <p>
+            {summary.soldCount} venda{summary.soldCount === 1 ? "" : "s"} ·{" "}
+            {formatCurrency(centsToMoney(summary.soldValueCents))}
+          </p>
+          {isOwner && summary.soldCount > 0 && (
+            <p>
+              Margem: <span className="font-medium text-foreground">{money(summary.marginCents)}</span>
+              {summary.piecesWithoutFullCost > 0 &&
+                ` (margem de ${withMargin} de ${summary.soldCount} venda${summary.soldCount === 1 ? "" : "s"}; ${summary.piecesWithoutFullCost} sem os dois custos)`}
+            </p>
+          )}
+        </div>
       )}
 
       <section className="overflow-hidden rounded-lg border bg-card shadow-none">
@@ -144,6 +174,13 @@ export function TurnoverTab({ timeZone }: { timeZone: string }) {
                   <TableHead>Vendida em</TableHead>
                   <TableHead>Vendedora</TableHead>
                   <TableHead className="text-right">Dias até venda</TableHead>
+                  {isOwner && (
+                    <>
+                      <TableHead className="text-right">Comissão</TableHead>
+                      <TableHead className="text-right">Custo</TableHead>
+                      <TableHead className="text-right">Margem</TableHead>
+                    </>
+                  )}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -161,6 +198,21 @@ export function TurnoverTab({ timeZone }: { timeZone: string }) {
                     </TableCell>
                     <TableCell className="text-muted-foreground">{row.sellerName}</TableCell>
                     <TableCell className="text-right tabular-nums text-foreground">{row.daysToSell}</TableCell>
+                    {isOwner && (
+                      <>
+                        <TableCell className="text-right tabular-nums text-muted-foreground">
+                          {money(row.commissionCents)}
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums text-muted-foreground">
+                          {money(row.totalCostCents)}
+                        </TableCell>
+                        <TableCell
+                          className={`text-right tabular-nums ${row.marginCents != null && row.marginCents < 0 ? "text-late" : "text-foreground"}`}
+                        >
+                          {money(row.marginCents)}
+                        </TableCell>
+                      </>
+                    )}
                   </TableRow>
                 ))}
               </TableBody>
