@@ -52,12 +52,26 @@ Detalhes nas seções 5 e 6 do `BACKEND_API_CONTRACT.md`. **Tudo é só para own
 
 ## Critérios de aceite
 
-- [ ] O dashboard apresenta os valores da API e todos os componentes recebem os campos esperados.
-- [ ] O relatório de giro refaz a consulta ao mudar o período e respeita os limites no fuso da loja.
-- [ ] Inadimplência e estoque parado vêm do backend, com as colunas atuais preservadas.
-- [ ] O CSV exportado corresponde às linhas exibidas e abre corretamente no Excel.
-- [ ] Staff não dispara consultas de dashboard/relatórios e recebe UX adequada se acessar a rota.
-- [ ] Testes cobrem filtros, export, estados de carregamento e erro e conversão de centavos.
+- [x] O dashboard apresenta os valores da API e todos os componentes recebem os campos esperados.
+- [x] O relatório de giro refaz a consulta ao mudar o período e respeita os limites no fuso da loja.
+- [x] Inadimplência e estoque parado vêm do backend, com as colunas atuais preservadas.
+- [x] O CSV exportado corresponde às linhas exibidas e abre corretamente no Excel.
+- [x] Staff não dispara consultas de dashboard/relatórios e recebe UX adequada se acessar a rota.
+- [x] Testes cobrem filtros, export, estados de carregamento e erro e conversão de centavos.
+
+## Implementação (2026-11-21)
+
+- **CSV** (`src/lib/csv.ts`): `buildCsv` (separador `;`, BOM, CRLF, aspas em `;`, `,`, aspas e quebra de linha, e apóstrofo antes de texto que começa com `=`, `+`, `-`, `@`, tab ou CR) e `downloadCsv`. Valores em reais saem como "84,90" (`centsToCsvDecimal`). O `exportCsv` antigo de `format.ts` saiu.
+- **Dashboard** (`src/pages/Dashboard/`): uma só chamada a `GET /dashboard`, que só dispara para owner. KPIs, ciclo da peça (`stageCounts`) e lotes em aberto vêm da resposta, com centavos convertidos só na tela e "—" quando `avgTurnoverDays` é `null`. A data do cabeçalho e as datas de devolução usam o fuso da loja.
+- **Relatórios** (`src/pages/Relatorios/`), uma aba por relatório; cada aba só consulta a API quando está aberta:
+  - **giro:** período em datas locais da loja, com atalhos "Mês atual", "Mês anterior" e "Últimos 90 dias". A tela valida `from <= to` e o limite de 366 dias (contando os dois dias, como o backend) antes de consultar. Mostra o resumo da API (quantidade e valor vendido);
+  - **inadimplência:** linhas do backend, agora com o telefone na tabela (já estava no CSV);
+  - **peças paradas:** dias ajustáveis (30, 60, 90, 180 ou 365), resumo da API e detalhe da peça por `GET /pieces/{id}` ao clicar na linha;
+  - o CSV de cada aba sai das linhas recebidas; o nome do arquivo do giro leva o período.
+- **Erros:** `src/lib/report-errors.ts` (403, período inválido, dias fora da faixa, rede e servidor).
+- **Testes:** `csv.test.ts`, `store-time.test.ts` (contagem de dias), `Dashboard.test.tsx` (valores e centavos, "—", navegação, erro com retry e nenhuma chamada para staff) e `Relatorios.test.tsx` (período no fuso da loja, atalho que refaz a consulta, período inválido sem chamada, CSV do giro e da inadimplência, vazio, erro com retry, troca de dias e detalhe da peça).
+- **Verificação contra o Railway** (só leitura, 14 checks): formato do dashboard, giro com 366 dias aceito e com 367 ou `from > to` recusado, inadimplência, peças paradas com 60/90/365 dias e `days=0` recusado, KPI de parados igual ao relatório de 60 dias e detalhe da peça por id. Produção ainda não tem vendas, então as linhas do giro não foram conferidas com dados reais.
+- **Limitações:** não foi testado em navegador real nem aberto no Excel; fica para a FRONT_18. As colunas de custo e margem entram na FRONT_24.
 
 ## Observações de dependência
 
