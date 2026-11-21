@@ -5,13 +5,13 @@
 ```
 project-root/
   ├── i18n.config.json       # Manifesto de i18n para idiomas suportados e metadados de idioma
-  ├── public/
-  │   └── locales/           # Arquivos de tradução public/locales/{code}.json
+  ├── public/                # Arquivos estáticos (imagens, ícones, logo)
   ├── src/
   │   ├── components/        # Todos os componentes de UI reutilizáveis
   │   │   └── ui/            # Componentes de UI predefinidos e personalizados, agrupados por função
   │   ├── hooks/             # Hooks personalizados do React
   │   ├── i18n/              # Runtime do i18n: config.ts (entrada) + util.ts (helpers)
+  │   ├── locales/           # Arquivos de tradução src/locales/{code}.json (hoje só pt-BR.json)
   │   ├── lib/               # Funções utilitárias e bibliotecas
   │   ├── pages/             # Páginas da aplicação (cada página em seu próprio subdiretório)
   │   ├── App.tsx            # Componente principal da aplicação, configura os provedores de rota
@@ -28,7 +28,7 @@ project-root/
 ## Responsabilidades dos Diretórios
 
 - **public/**: Arquivos estáticos servidos diretamente. Coloque imagens, ícones e `robots.txt` aqui.
-- **public/locales/**: Arquivos de tradução, um por idioma (`{code}.json`). Use chaves simples com pontos (por exemplo, `home.hero.title`); o arquivo de `fallbackLng` é a fonte estrutural de verdade.
+- **src/locales/**: Arquivos de tradução, um por idioma (`{code}.json`), embutidos no build. Hoje só existe `pt-BR.json`. Use chaves simples com pontos (por exemplo, `stock.title`); o arquivo de `fallbackLng` é a fonte estrutural de verdade. O teste `src/i18n/keys.test.ts` falha se o código usar uma chave que não existe no arquivo ou se o arquivo tiver chave sem uso.
 - **public/logo/**: Versões da logo da marca em SVG (`luma-full`, `luma-horizontal`, `luma-symbol`), usadas pelo componente `src/components/logo.tsx`.
 - **i18n.config.json**: Manifesto leve do i18n para o idioma de fallback, rótulos dos idiomas, aliases de detecção do navegador e direção do documento. É a única fonte de verdade para a lista de idiomas.
 - **src/components/**: Todos os componentes de UI.
@@ -36,8 +36,8 @@ project-root/
   - _Agrupe componentes relacionados em subdiretórios quando compartilharem um domínio ou funcionalidade (por exemplo, `form/`, `charts/`)._
 - **src/hooks/**: Hooks personalizados do React. Cada arquivo deve exportar um único hook focado em uma responsabilidade.
 - **src/i18n/**: Apenas dois arquivos.
-  - `config.ts` é o ponto de entrada do runtime: importa o manifesto por meio de `util.ts`, inicializa o i18next (backend HTTP, detector de idioma e integração com React), sincroniza `<html lang/dir>` e reexporta os helpers. Importar este arquivo por seu efeito colateral inicializa o i18next.
-  - `util.ts` contém os helpers puros extraídos do manifesto: `fallbackLng`, `supportedLngs`, `languageOptions`, `normalizeLanguage`, `getLanguageDirection` e os tipos.
+  - `config.ts` é o ponto de entrada do runtime: importa o manifesto por meio de `util.ts`, inicializa o i18next com os arquivos de `src/locales` embutidos e o `fallbackLng` como idioma (não há detecção nem carregamento por HTTP), sincroniza `<html lang/dir>` e reexporta os helpers. Importar este arquivo por seu efeito colateral inicializa o i18next.
+  - `util.ts` contém os helpers puros extraídos do manifesto: `fallbackLng`, `supportedLngs`, `normalizeLanguage`, `getLanguageDirection` e os tipos.
   - Os componentes usam diretamente o `useTranslation()` oficial do `react-i18next`; não existe um wrapper `useT` específico do projeto.
 - **src/lib/**: Funções utilitárias e bibliotecas que não são componentes React nem hooks.
 - **src/pages/**: Todas as páginas relacionadas às rotas.
@@ -91,8 +91,8 @@ Sempre que um novo módulo (como um componente, hook ou utilitário) ou uma nova
 
 - **Os metadados dos idiomas devem passar por `i18n.config.json`.**
 - **Não defina diretamente os idiomas suportados, rótulos, aliases de detecção do navegador ou listas de direção RTL em `src/i18n/*.ts`.**
-- **O conteúdo dos idiomas fica em `public/locales/{code}.json`** como JSON com chaves simples separadas por pontos; o arquivo de `fallbackLng` contém o conjunto canônico de chaves.
-- **O código do runtime lê o manifesto somente por meio de `src/i18n/util.ts`.** Adicionar ou remover um idioma significa editar `i18n.config.json` e o arquivo correspondente `public/locales/{code}.json`; nada em `src/i18n/` precisa ser alterado.
+- **O conteúdo dos idiomas fica em `src/locales/{code}.json`** como JSON com chaves simples separadas por pontos; o arquivo de `fallbackLng` contém o conjunto canônico de chaves.
+- **O código do runtime lê o manifesto somente por meio de `src/i18n/util.ts`.** Adicionar ou remover um idioma significa editar `i18n.config.json` e o arquivo correspondente `src/locales/{code}.json`; nada em `src/i18n/` precisa ser alterado.
 - **As traduções são lidas com o `useTranslation()` oficial do `react-i18next`.** Não use hook personalizado nem conversões nos pontos de chamada.
 
 ## Boas Práticas de Código

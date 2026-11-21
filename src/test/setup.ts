@@ -2,6 +2,7 @@ import "@testing-library/jest-dom/vitest";
 import { cleanup } from "@testing-library/react";
 import { toast } from "sonner";
 import { afterAll, afterEach, beforeAll } from "vitest";
+import "@/i18n/config";
 import { authTokenStore } from "@/lib/api/http";
 import { server } from "./server";
 
