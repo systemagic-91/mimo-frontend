@@ -4,8 +4,9 @@ import { KpiCard } from "@/components/kpi-card";
 import { PieceDetailSheet } from "@/components/piece-detail-sheet";
 import { PieceTracker } from "@/components/piece-tracker";
 import { RemoteQueryState } from "@/components/remote-query-state";
+import { useIsOwner } from "@/hooks/use-is-owner";
 import { useStoreTimezone } from "@/hooks/use-store-timezone";
-import { useCurrentUserQuery, useDashboardQuery } from "@/lib/api/hooks";
+import { useDashboardQuery } from "@/lib/api/hooks";
 import { centsToMoney } from "@/lib/api/mappers";
 import { formatCurrency } from "@/lib/format";
 import { getReportErrorMessage } from "@/lib/report-errors";
@@ -15,7 +16,7 @@ import { OpenConsignmentsTable } from "./OpenConsignmentsTable";
 export default function Dashboard() {
   const timeZone = useStoreTimezone();
   // Só owner chega aqui (HomeRedirect), mas a consulta também não dispara para staff.
-  const isOwner = useCurrentUserQuery().data?.user.role === "owner";
+  const isOwner = useIsOwner();
   const dashboard = useDashboardQuery(isOwner);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);

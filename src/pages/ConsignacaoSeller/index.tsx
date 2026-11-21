@@ -3,9 +3,10 @@ import { ArrowLeft } from "lucide-react";
 import { RemoteQueryState } from "@/components/remote-query-state";
 import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
+import { useIsOwner } from "@/hooks/use-is-owner";
 import { useStoreTimezone } from "@/hooks/use-store-timezone";
 import { ApiError } from "@/lib/api/http";
-import { useCurrentUserQuery, useSellerQuery } from "@/lib/api/hooks";
+import { useSellerQuery } from "@/lib/api/hooks";
 import { fromBackendSellerStatus } from "@/lib/api/mappers";
 import { getConsignmentErrorMessage } from "@/lib/consignment-errors";
 import { SELLER_STATUS_LABEL } from "@/lib/status";
@@ -20,7 +21,7 @@ import { SellerStatsCards } from "./SellerStatsCards";
 export default function ConsignacaoSeller() {
   const { sellerId = "" } = useParams();
   const timeZone = useStoreTimezone();
-  const isOwner = useCurrentUserQuery().data?.user.role === "owner";
+  const isOwner = useIsOwner();
   const seller = useSellerQuery(sellerId);
 
   const back = (
