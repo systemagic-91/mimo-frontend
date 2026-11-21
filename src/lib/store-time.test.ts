@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   addDaysToDate,
+  countDaysInclusive,
   dateInZone,
   endOfDayInZone,
   formatDateInZone,
@@ -24,6 +25,12 @@ describe("store time", () => {
     expect(addDaysToDate("2026-11-30", 1)).toBe("2026-12-01");
     expect(addDaysToDate("2026-12-31", 30)).toBe("2027-01-30");
     expect(addDaysToDate("2026-03-01", -1)).toBe("2026-02-28");
+  });
+
+  it("counts the days of a period including both ends", () => {
+    expect(countDaysInclusive("2026-11-01", "2026-11-01")).toBe(1);
+    expect(countDaysInclusive("2026-01-01", "2026-12-31")).toBe(365);
+    expect(countDaysInclusive("2026-03-01", "2026-02-28")).toBe(0);
   });
 
   it("returns 23:59:59 of the local day as an instant", () => {

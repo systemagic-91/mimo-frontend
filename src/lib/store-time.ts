@@ -64,6 +64,13 @@ function zoneOffsetMs(instant: number, timeZone: string): number {
   return asUtc - Math.floor(instant / 1000) * 1000;
 }
 
+/** Quantidade de dias de `from` a `to`, contando os dois (datas locais). */
+export function countDaysInclusive(from: string, to: string): number {
+  const [fy, fm, fd] = parseDate(from);
+  const [ty, tm, td] = parseDate(to);
+  return Math.round((Date.UTC(ty, tm - 1, td) - Date.UTC(fy, fm - 1, fd)) / 86_400_000) + 1;
+}
+
 /** Instante ISO de 23:59:59 da data local no fuso da loja. */
 export function endOfDayInZone(date: string, timeZone: string): string {
   const [year, month, day] = parseDate(date);
