@@ -24,13 +24,19 @@ function installJsdomFetchShim() {
   };
 }
 
-// APIs de layout que o jsdom não implementa e o Select do Radix usa ao abrir.
+// APIs de layout que o jsdom não implementa: o Select do Radix as usa ao abrir, e o Checkbox e o Switch
+// medem o próprio tamanho com `ResizeObserver`.
 function installJsdomLayoutPolyfills() {
   if (typeof window === "undefined") return;
   const proto = window.HTMLElement.prototype;
   proto.hasPointerCapture ??= () => false;
   proto.releasePointerCapture ??= () => undefined;
   proto.scrollIntoView ??= () => undefined;
+  globalThis.ResizeObserver ??= class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  };
 }
 
 beforeAll(() => {
