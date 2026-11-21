@@ -8,9 +8,11 @@ import {
 } from "@/components/ui/sheet";
 import { Separator } from "@/components/ui/separator";
 import { PieceCode } from "@/components/piece-code";
+import { PieceCostsSection } from "@/components/piece-costs-section";
 import { RemoteQueryState } from "@/components/remote-query-state";
 import { StatusBadge } from "@/components/status-badge";
 import { PieceTimeline } from "@/components/piece-timeline";
+import { useIsOwner } from "@/hooks/use-is-owner";
 import { usePieceEventsQuery, usePieceQuery } from "@/lib/api/hooks";
 import { centsToMoney, fromBackendPieceStage } from "@/lib/api/mappers";
 import type { PieceDto } from "@/lib/api/types";
@@ -87,6 +89,7 @@ function PieceDetails({
   piece: PieceDto;
   children: React.ReactNode;
 }) {
+  const isOwner = useIsOwner();
   const stage = fromBackendPieceStage(piece.status);
   const value = formatCurrency(centsToMoney(piece.valueCents));
   return (
@@ -122,6 +125,9 @@ function PieceDetails({
         <InfoRow label="Recebida em" value={formatDate(piece.createdAt)} />
         {piece.note && <InfoRow label="Observação" value={piece.note} />}
       </div>
+
+      {/* Pelo papel, não pela presença de null: para owner, null também quer dizer "não informado". */}
+      {isOwner && <PieceCostsSection piece={piece} />}
 
       <Separator className="my-5" />
       <h4 className="mb-4 font-serif text-base font-medium text-foreground">
