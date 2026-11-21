@@ -65,23 +65,3 @@ export function startOfMonthIso(): string {
   const now = new Date();
   return new Date(now.getFullYear(), now.getMonth(), 1, 12).toISOString();
 }
-
-/** Exporta CSV (separador ; e BOM para acentuação no Excel) */
-export function exportCsv(
-  filename: string,
-  headers: string[],
-  rows: (string | number)[][],
-): void {
-  const escape = (cell: string | number) => {
-    const s = String(cell);
-    return /[";\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-  };
-  const csv = [headers, ...rows].map((r) => r.map(escape).join(";")).join("\n");
-  const blob = new Blob([`\uFEFF${csv}`], { type: "text/csv;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
-}
