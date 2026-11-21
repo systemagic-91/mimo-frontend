@@ -1,4 +1,6 @@
-import type { PieceDto, PieceEventDto, PieceListResponse } from "@/lib/api/types";
+import type { QueryClient } from "@tanstack/react-query";
+import { queryKeys } from "@/lib/api/query-keys";
+import type { PieceDto, PieceEventDto, PieceListResponse, UserRole } from "@/lib/api/types";
 
 /** URL base da API nos testes (`VITE_API_BASE_URL` do `vite.config.ts`). */
 export const api = "http://localhost:8080/api/v1";
@@ -46,4 +48,21 @@ export function pieceList(
         options.totalValueCents ?? items.reduce((sum, item) => sum + item.valueCents, 0),
     },
   };
+}
+
+/** Coloca a pessoa logada no cache, como o bootstrap da sessão faria. */
+export function setCurrentUser(queryClient: QueryClient, role: UserRole) {
+  queryClient.setQueryData(queryKeys.auth.me(), {
+    user: {
+      id: `u-${role}`,
+      name: role === "owner" ? "Bia Dona" : "Ana Equipe",
+      email: `${role}@luma.com.br`,
+      role,
+      active: true,
+      mustChangePassword: false,
+      createdAt: "2026-10-01T12:00:00Z",
+      updatedAt: "2026-10-01T12:00:00Z",
+    },
+    session: { loggedAt: "2026-11-21T12:00:00Z", expiresAt: "2026-11-21T12:15:00Z" },
+  });
 }

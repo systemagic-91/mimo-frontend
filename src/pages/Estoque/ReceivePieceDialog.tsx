@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { toast } from "sonner";
+import { CostField } from "@/components/cost-field";
 import { PieceCode } from "@/components/piece-code";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,11 +21,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useIdempotencyKey } from "@/hooks/use-idempotency-key";
+import { useIsOwner } from "@/hooks/use-is-owner";
 import { usePieceNextCodeQuery, useReceivePieceMutation } from "@/lib/api/hooks";
 import { fromBackendPieceStage } from "@/lib/api/mappers";
 import type { ReceivePieceInput } from "@/lib/api/pieces";
 import type { PieceDto } from "@/lib/api/types";
-import { getPieceErrorMessage, parseMoneyToCents } from "@/lib/piece-errors";
+import { getPieceErrorMessage, parseCostToCents, parseMoneyToCents } from "@/lib/piece-errors";
 import { PIECE_TYPES, STAGE_LABEL } from "@/lib/status";
 
 type InitialStage = ReceivePieceInput["stage"];
@@ -43,12 +45,15 @@ export function ReceivePieceDialog({
   const receive = useReceivePieceMutation();
   const nextCode = usePieceNextCodeQuery();
   const idempotency = useIdempotencyKey();
+  const isOwner = useIsOwner();
   const [type, setType] = useState<string>(PIECE_TYPES[0]);
   const [value, setValue] = useState("");
   const [stage, setStage] = useState<InitialStage>("fabrica");
   const [note, setNote] = useState("");
+  const [factoryCost, setFactoryCost] = useState("");
   const [error, setError] = useState<string | null>(null);
   const pending = receive.isPending;
+  const factoryCostCents = parseCostToCents(factoryCost);
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -57,12 +62,15 @@ export function ReceivePieceDialog({
       setError("Informe um valor maior que zero, com até 2 casas decimais (ex.: 84,90).");
       return;
     }
+    if (isOwner && factoryCostCents === undefined) return;
     setError(null);
     const input: ReceivePieceInput = {
       type,
       valueCents,
       stage,
       note: note.trim() || undefined,
+      // Só owner manda custo, e só quando informado: staff nunca envia o campo (o backend responde 403).
+      ...(isOwner && factoryCostCents != null ? { factoryCostCents } : {}),
     };
     receive.mutate(
       { input, idempotencyKey: idempotency.keyFor(input) },
@@ -143,6 +151,16 @@ export function ReceivePieceDialog({
               </SelectContent>
             </Select>
           </div>
+          {isOwner && (
+            <CostField
+              id="rec-factory-cost"
+              label="Custo da fábrica (R$, opcional)"
+              value={factoryCost}
+              onChange={setFactoryCost}
+              disabled={pending}
+              invalid={factoryCostCents === undefined}
+            />
+          )}
           <div className="space-y-1.5">
             <Label htmlFor="rec-note">Observação (opcional)</Label>
             <Input

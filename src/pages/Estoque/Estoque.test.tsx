@@ -8,7 +8,8 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { authTokenStore } from "@/lib/api/http";
 import { createApiQueryClient } from "@/lib/api/query-client";
 import { server } from "@/test/server";
-import { api, makeEvent, makePiece, pieceList } from "@/test/fixtures";
+import { api, makeEvent, makePiece, pieceList, setCurrentUser } from "@/test/fixtures";
+import type { UserRole } from "@/lib/api/types";
 import Estoque from ".";
 
 const anel = makePiece({ id: "p-1", code: "LU-0001", type: "Anel", valueCents: 6490 });
@@ -23,9 +24,11 @@ const colar = makePiece({
 
 let listRequests: URLSearchParams[];
 
-function renderEstoque() {
+function renderEstoque(role?: UserRole) {
+  const queryClient = createApiQueryClient();
+  if (role) setCurrentUser(queryClient, role);
   render(
-    <QueryClientProvider client={createApiQueryClient()}>
+    <QueryClientProvider client={queryClient}>
       <MemoryRouter>
         <Toaster />
         <Estoque />
@@ -150,6 +153,58 @@ describe("inventory screen", () => {
     expect(keys[1]).toBe(keys[0]);
     // Abre o detalhe da peça criada, com os dados do servidor.
     expect(await screen.findByRole("heading", { name: "LU-0813" })).toBeInTheDocument();
+  });
+
+  it("lets the owner inform the factory cost, sending zero but never an empty field", async () => {
+    const bodies: unknown[] = [];
+    const created = makePiece({ id: "p-new", code: "LU-0813", status: "FABRICA", currentLocation: "Fábrica" });
+    server.use(
+      http.get(`${api}/pieces/next-code`, () => HttpResponse.json({ code: "LU-0812" })),
+      http.post(`${api}/pieces/receive`, async ({ request }) => {
+        bodies.push(await request.json());
+        return HttpResponse.json({ piece: created, events: [] }, { status: 201 });
+      }),
+      http.get(`${api}/pieces/p-new`, () => HttpResponse.json(created)),
+      http.get(`${api}/pieces/p-new/events`, () => HttpResponse.json([])),
+    );
+    const user = userEvent.setup();
+    renderEstoque("owner");
+    await screen.findByText("LU-0001");
+
+    await user.click(screen.getByRole("button", { name: "Receber peça" }));
+    let dialog = within(await screen.findByRole("dialog"));
+    await user.type(dialog.getByLabelText("Valor de venda (R$)"), "84,90");
+    await user.type(dialog.getByLabelText("Custo da fábrica (R$, opcional)"), "-3");
+    expect(dialog.getByText(/igual ou maior que zero/)).toBeInTheDocument();
+    await user.click(dialog.getByRole("button", { name: "Confirmar recebimento" }));
+    expect(bodies).toHaveLength(0);
+
+    await user.clear(dialog.getByLabelText("Custo da fábrica (R$, opcional)"));
+    await user.type(dialog.getByLabelText("Custo da fábrica (R$, opcional)"), "0");
+    await user.click(dialog.getByRole("button", { name: "Confirmar recebimento" }));
+    expect(await screen.findByText("Peça recebida")).toBeInTheDocument();
+    expect(bodies[0]).toEqual({ type: "Brinco", valueCents: 8490, stage: "FABRICA", factoryCostCents: 0 });
+
+    // Fecha o detalhe aberto e recebe outra, agora sem custo: o campo não vai.
+    await user.keyboard("{Escape}");
+    await user.click(screen.getByRole("button", { name: "Receber peça" }));
+    dialog = within(await screen.findByRole("dialog"));
+    await user.type(dialog.getByLabelText("Valor de venda (R$)"), "10");
+    await user.click(dialog.getByRole("button", { name: "Confirmar recebimento" }));
+    await waitFor(() => expect(bodies).toHaveLength(2));
+    expect(bodies[1]).toEqual({ type: "Brinco", valueCents: 1000, stage: "FABRICA" });
+  });
+
+  it("does not show the factory cost to staff", async () => {
+    server.use(http.get(`${api}/pieces/next-code`, () => HttpResponse.json({ code: "LU-0812" })));
+    const user = userEvent.setup();
+    renderEstoque("staff");
+    await screen.findByText("LU-0001");
+
+    await user.click(screen.getByRole("button", { name: "Receber peça" }));
+    const dialog = within(await screen.findByRole("dialog"));
+    expect(dialog.getByLabelText("Valor de venda (R$)")).toBeInTheDocument();
+    expect(dialog.queryByLabelText(/Custo/)).not.toBeInTheDocument();
   });
 
   it("validates the value locally and shows API validation errors without a false success", async () => {
