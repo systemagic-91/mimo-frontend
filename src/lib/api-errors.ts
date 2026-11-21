@@ -51,6 +51,7 @@ const CODE_KEYS: Record<string, string> = {
   INTERNAL_ERROR: "apiError.INTERNAL_ERROR",
   NETWORK_ERROR: "apiError.NETWORK_ERROR",
   REQUEST_TIMEOUT: "apiError.NETWORK_ERROR",
+  INVALID_RESPONSE: "apiError.INVALID_RESPONSE",
 };
 
 export interface ApiErrorContext {
@@ -87,5 +88,7 @@ export function apiErrorMessage(error: unknown, context: ApiErrorContext = {}): 
   if (error.status === 0 || error.status === 408) return i18n.t(CODE_KEYS.NETWORK_ERROR);
   if (error.status === 403) return i18n.t(CODE_KEYS.FORBIDDEN);
   if (error.status >= 500) return i18n.t(CODE_KEYS.INTERNAL_ERROR);
+  // Resposta de erro sem JSON (`HTTP_ERROR`): o corpo pode ser HTML de proxy, então não vai para a tela.
+  if (error.code === "HTTP_ERROR") return i18n.t(fallback);
   return error.detail || i18n.t(fallback);
 }

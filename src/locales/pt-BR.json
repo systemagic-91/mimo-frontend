@@ -18,6 +18,7 @@
   "apiError.INVALID_PAGINATION": "Filtro ou ordenação inválidos. Limpe os filtros e tente de novo.",
   "apiError.INVALID_PIECE_TRANSITION": "Esta peça não está mais no banho de ouro (talvez já tenha sido etiquetada). Escolha outra peça.",
   "apiError.INVALID_REQUEST": "Não foi possível entender o pedido. Confira os dados e tente de novo.",
+  "apiError.INVALID_RESPONSE": "O servidor mandou uma resposta que não deu para entender. Tente de novo.",
   "apiError.ITEM_NOT_WITH_SELLER": "Esta peça já foi vendida ou devolvida por outra pessoa. O lote foi recarregado.",
   "apiError.LAST_OWNER": "A loja precisa de pelo menos um(a) sócio(a) ativo(a). Torne outra pessoa sócia antes de fazer esta mudança.",
   "apiError.NETWORK_ERROR": "Não foi possível conectar ao servidor. Verifique sua conexão e tente de novo.",

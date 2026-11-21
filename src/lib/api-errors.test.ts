@@ -33,4 +33,11 @@ describe("api errors", () => {
     expect(apiErrorMessage(error(418, "SOMETHING_NEW"))).toBe("texto do backend");
     expect(apiErrorMessage(new Error("boom"))).toBe("Não foi possível concluir a operação.");
   });
+
+  it("never shows the raw body of an error response without JSON", () => {
+    expect(apiErrorMessage(error(404, "HTTP_ERROR", { detail: "<html>proxy</html>" }))).toBe(
+      "Não foi possível concluir a operação.",
+    );
+    expect(apiErrorMessage(error(200, "INVALID_RESPONSE"))).toMatch(/^O servidor mandou uma resposta/);
+  });
 });
