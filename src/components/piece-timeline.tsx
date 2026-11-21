@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { fromBackendPieceStage } from "@/lib/api/mappers";
 import type { PieceEventDto } from "@/lib/api/types";
 import { STAGE_LABEL } from "@/lib/status";
@@ -24,12 +25,13 @@ function sortPieceEvents(events: PieceEventDto[]): PieceEventDto[] {
 
 export function PieceTimeline({ events }: { events: PieceEventDto[] }) {
   const timeZone = useStoreTimezone();
+  const { t } = useTranslation();
   if (events.length === 0) {
-    return <p className="text-sm text-muted-foreground">Sem histórico.</p>;
+    return <p className="text-sm text-muted-foreground">{t("timeline.empty")}</p>;
   }
   return (
     <ol
-      aria-label="Linha do tempo"
+      aria-label={t("timeline.label")}
       className="relative ml-0.5 space-y-4 border-l border-border pl-4"
     >
       {sortPieceEvents(events).map((e) => {

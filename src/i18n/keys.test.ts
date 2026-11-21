@@ -48,4 +48,12 @@ describe("pt-BR.json", () => {
     const unused = [...keys].filter((key) => !used.has(key) && !used.has(baseOf(key)));
     expect(unused).toEqual([]);
   });
+
+  it("gives every plural a _zero form, because pt-BR treats 0 as singular", () => {
+    const incomplete = [...keys]
+      .filter((key) => key.endsWith("_one"))
+      .map(baseOf)
+      .filter((base) => !keys.has(`${base}_zero`) || !keys.has(`${base}_other`));
+    expect(incomplete).toEqual([]);
+  });
 });

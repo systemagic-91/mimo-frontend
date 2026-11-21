@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Briefcase, Droplets, Factory, Search, Tag } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { piecesApi } from "@/lib/api/pieces";
 import { getPieceErrorMessage } from "@/lib/piece-errors";
@@ -8,10 +9,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 const STEPS: { stage: PieceStage; label: string; icon: typeof Factory }[] = [
-  { stage: "fabrica", label: "Fábrica", icon: Factory },
-  { stage: "banho_ouro", label: "Banho de ouro", icon: Droplets },
-  { stage: "etiquetada", label: "Etiquetada", icon: Tag },
-  { stage: "consignacao", label: "Com vendedora", icon: Briefcase },
+  { stage: "fabrica", label: "tracker.step.fabrica", icon: Factory },
+  { stage: "banho_ouro", label: "tracker.step.banho_ouro", icon: Droplets },
+  { stage: "etiquetada", label: "tracker.step.etiquetada", icon: Tag },
+  { stage: "consignacao", label: "tracker.step.consignacao", icon: Briefcase },
 ];
 
 export function PieceTracker({
@@ -21,6 +22,7 @@ export function PieceTracker({
   counts: Record<PieceStage, number>;
   onOpenPiece: (pieceId: string) => void;
 }) {
+  const { t } = useTranslation();
   const [query, setQuery] = useState("");
   const [searching, setSearching] = useState(false);
 
@@ -35,8 +37,8 @@ export function PieceTracker({
       if (piece) {
         onOpenPiece(piece.id);
       } else {
-        toast.error("Peça não encontrada", {
-          description: `Nenhuma peça com o código ${q}.`,
+        toast.error(t("tracker.notFound"), {
+          description: t("tracker.notFoundDescription", { code: q }),
         });
       }
     } catch (error) {
@@ -50,11 +52,11 @@ export function PieceTracker({
     <div className="rounded-lg border bg-card p-4 shadow-none md:p-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h3 className="font-serif text-lg font-medium text-foreground">
-          Ciclo da peça
+          {t("tracker.title")}
         </h3>
         <div className="flex w-full gap-2 sm:max-w-xs">
           <Input
-            placeholder="Buscar código (ex: LU-0813)"
+            placeholder={t("tracker.searchPlaceholder")}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && void handleSearch()}
@@ -65,7 +67,7 @@ export function PieceTracker({
             size="icon"
             disabled={searching}
             onClick={() => void handleSearch()}
-            aria-label="Buscar peça"
+            aria-label={t("tracker.searchLabel")}
           >
             <Search className="h-4 w-4" />
           </Button>
@@ -87,7 +89,7 @@ export function PieceTracker({
                 {counts[s.stage]}
               </span>
               <span className="text-[11px] text-muted-foreground">
-                {s.label}
+                {t(s.label)}
               </span>
             </div>
           ))}

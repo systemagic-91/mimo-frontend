@@ -2,6 +2,7 @@
  * Formatação de tudo o que a tela mostra: moeda e datas sempre em pt-BR, e datas no fuso da loja
  * (`settings.timezone`, via `useStoreTimezone`). Nenhuma tela formata por conta própria.
  */
+import i18n from "@/i18n/config";
 import { centsToMoney } from "@/lib/api/mappers";
 import { dateInZone } from "@/lib/store-time";
 
@@ -46,8 +47,10 @@ export function formatLongDate(instant: Date | string, timeZone: string): string
 
 /** "hoje" | "em 5 dias" | "há 3 dias" | "ontem" */
 export function formatRelativeDays(days: number): string {
-  if (days === 0) return "hoje";
-  if (days === 1) return "amanhã";
-  if (days === -1) return "ontem";
-  return days > 0 ? `em ${days} dias` : `há ${Math.abs(days)} dias`;
+  if (days === 0) return i18n.t("relative.today");
+  if (days === 1) return i18n.t("relative.tomorrow");
+  if (days === -1) return i18n.t("relative.yesterday");
+  return days > 0
+    ? i18n.t("relative.inDays", { count: days })
+    : i18n.t("relative.daysAgo", { count: Math.abs(days) });
 }

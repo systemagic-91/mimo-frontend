@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { Navigate, useLocation } from "react-router-dom";
 import { toast } from "sonner";
 import { RemoteQueryState } from "@/components/remote-query-state";
@@ -14,6 +15,7 @@ export function RequireAuth({ children }: { children: React.ReactNode }) {
   const currentUser = useCurrentUserQuery();
   const queryClient = useQueryClient();
   const location = useLocation();
+  const { t } = useTranslation();
   useEffect(() => {
     const removeDomainQueries = () =>
       queryClient.removeQueries({
@@ -50,7 +52,7 @@ export function RequireAuth({ children }: { children: React.ReactNode }) {
     return (
       <RemoteQueryState
         state="error"
-        message="Não foi possível validar sua sessão."
+        message={t("common.sessionCheckError")}
         onRetry={() => void currentUser.refetch()}
       />
     );
@@ -78,12 +80,13 @@ export function RequireRole({
   children: React.ReactNode;
 }) {
   const currentUser = useCurrentUserQuery();
+  const { t } = useTranslation();
   if (currentUser.isPending) return <RemoteQueryState state="loading" />;
   if (currentUser.isError) {
     return (
       <RemoteQueryState
         state="error"
-        message="Não foi possível validar sua sessão."
+        message={t("common.sessionCheckError")}
         onRetry={() => void currentUser.refetch()}
       />
     );
@@ -95,10 +98,11 @@ export function RequireRole({
 
 /** Explica por que a pessoa saiu da página antes de levá-la ao início. */
 function RestrictedRedirect() {
+  const { t } = useTranslation();
   useEffect(() => {
-    toast.info("Esta área é restrita a sócios(as) da loja.", {
+    toast.info(t("common.restricted"), {
       id: "restricted-route",
     });
-  }, []);
+  }, [t]);
   return <Navigate to="/" replace />;
 }

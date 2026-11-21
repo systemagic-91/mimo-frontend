@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Link, NavLink, Outlet } from "react-router-dom";
 import {
   BarChart3,
@@ -42,43 +43,42 @@ interface NavItem {
 const NAV: NavItem[] = [
   {
     to: "/",
-    label: "Dashboard",
-    short: "Início",
+    label: "nav.dashboard",
+    short: "nav.dashboard.short",
     icon: LayoutDashboard,
     roles: ["owner"],
     end: true,
   },
-  { to: "/estoque", label: "Estoque", short: "Estoque", icon: Package },
+  { to: "/estoque", label: "nav.stock", icon: Package },
   {
     to: "/consignacao",
-    label: "Consignação",
-    short: "Consign.",
+    label: "nav.consignment",
+    short: "nav.consignment.short",
     icon: Briefcase,
   },
   {
     to: "/consignacao/nova",
-    label: "Nova consignação",
-    short: "Nova",
+    label: "nav.newConsignment",
+    short: "nav.newConsignment.short",
     icon: PackagePlus,
   },
-  { to: "/etiquetagem", label: "Etiquetagem", short: "Etiqueta", icon: Tag },
+  { to: "/etiquetagem", label: "nav.labeling", short: "nav.labeling.short", icon: Tag },
   {
     to: "/relatorios",
-    label: "Relatórios",
-    short: "Relatórios",
+    label: "nav.reports",
     icon: BarChart3,
     roles: ["owner"],
   },
   {
     to: "/configuracoes",
-    label: "Configurações",
-    short: "Configurações",
+    label: "nav.settings",
     icon: Settings,
     roles: ["owner"],
   },
 ];
 
 function SidebarLink({ item }: { item: NavItem }) {
+  const { t } = useTranslation();
   return (
     <NavLink
       to={item.to}
@@ -93,12 +93,13 @@ function SidebarLink({ item }: { item: NavItem }) {
       }
     >
       <item.icon className="h-4 w-4" />
-      {item.label}
+      {t(item.label)}
     </NavLink>
   );
 }
 
 function BottomLink({ item }: { item: NavItem }) {
+  const { t } = useTranslation();
   return (
     <NavLink
       to={item.to}
@@ -114,7 +115,7 @@ function BottomLink({ item }: { item: NavItem }) {
     >
       <item.icon className="h-5 w-5" />
       <span className="max-w-full truncate whitespace-nowrap">
-        {item.short ?? item.label}
+        {t(item.short ?? item.label)}
       </span>
     </NavLink>
   );
@@ -123,6 +124,7 @@ function BottomLink({ item }: { item: NavItem }) {
 export function AppShell() {
   const currentUser = useCurrentUserQuery();
   const logoutMutation = useLogoutMutation();
+  const { t } = useTranslation();
   const user = currentUser.data?.user;
   if (!user) return null;
 
@@ -132,7 +134,7 @@ export function AppShell() {
   const handleLogout = () => {
     logoutMutation.mutate(undefined, {
       onError: () =>
-        toast.error("A sessão foi encerrada neste dispositivo, mas não foi possível confirmar a revogação no servidor."),
+        toast.error(t("nav.logoutError")),
     });
   };
 
@@ -169,7 +171,7 @@ export function AppShell() {
           >
             <Link to={CHANGE_PASSWORD_PATH}>
               <KeyRound className="h-4 w-4" />
-              Trocar senha
+              {t("nav.changePassword")}
             </Link>
           </Button>
           <Button
@@ -179,7 +181,7 @@ export function AppShell() {
             disabled={logoutMutation.isPending}
           >
             <LogOut className="h-4 w-4" />
-            Sair
+            {t("nav.logout")}
           </Button>
         </div>
       </aside>
@@ -214,7 +216,7 @@ export function AppShell() {
             trigger={
               <span className="flex flex-1 flex-col items-center justify-center gap-1 py-2 text-[10px] text-muted-foreground hover:text-foreground">
                 <MoreHorizontal className="h-5 w-5" />
-                Mais
+                {t("nav.more")}
               </span>
             }
             session={user}
@@ -240,6 +242,7 @@ function MoreSheet({
   onLogout: () => void;
   logoutPending: boolean;
 }) {
+  const { t } = useTranslation();
   return (
     <Sheet>
       <SheetTrigger asChild>
@@ -247,7 +250,7 @@ function MoreSheet({
           <Button
             variant="ghost"
             size="icon"
-            aria-label="Menu"
+            aria-label={t("nav.menu")}
             className="text-muted-foreground"
           >
             <MoreHorizontal className="h-5 w-5" />
@@ -281,7 +284,7 @@ function MoreSheet({
                   }
                 >
                   <item.icon className="h-4 w-4" />
-                  {item.label}
+                  {t(item.label)}
                 </NavLink>
               ))}
             </div>
@@ -293,7 +296,7 @@ function MoreSheet({
           className="flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left text-sm text-muted-foreground hover:text-foreground"
         >
           <KeyRound className="h-4 w-4" />
-          Trocar senha
+          {t("nav.changePassword")}
         </Link>
         <button
           onClick={onLogout}
@@ -301,7 +304,7 @@ function MoreSheet({
           className="flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left text-sm text-muted-foreground hover:text-foreground"
         >
           <LogOut className="h-4 w-4" />
-          Sair
+          {t("nav.logout")}
         </button>
       </SheetContent>
     </Sheet>

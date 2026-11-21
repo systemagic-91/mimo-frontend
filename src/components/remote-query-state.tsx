@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 
 type RemoteQueryStateProps =
@@ -8,12 +9,13 @@ type RemoteQueryStateProps =
   | { state: "success"; children: ReactNode };
 
 export function RemoteQueryState(props: RemoteQueryStateProps) {
+  const { t } = useTranslation();
   if (props.state === "success") return <>{props.children}</>;
 
   if (props.state === "loading") {
     return (
       <div role="status" aria-live="polite" className="py-8 text-center text-sm text-muted-foreground">
-        Carregando…
+        {t("common.loading")}
       </div>
     );
   }
@@ -22,10 +24,10 @@ export function RemoteQueryState(props: RemoteQueryStateProps) {
     return (
       <div role="alert" className="space-y-3 py-8 text-center">
         <p className="text-sm text-destructive">
-          {props.message || "Não foi possível carregar os dados."}
+          {props.message || t("common.loadError")}
         </p>
         <Button type="button" variant="outline" onClick={props.onRetry}>
-          Tentar novamente
+          {t("common.retry")}
         </Button>
       </div>
     );
