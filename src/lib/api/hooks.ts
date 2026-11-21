@@ -285,7 +285,13 @@ export function useSellerCommissionQuery(
 export function useCreateSellerMutation() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (input: CreateSellerRequest) => sellersApi.create(input),
+    mutationFn: ({
+      input,
+      idempotencyKey,
+    }: {
+      input: CreateSellerRequest;
+      idempotencyKey: string;
+    }) => sellersApi.create(input, idempotencyKey),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.sellers.all }),
   });
 }

@@ -35,8 +35,12 @@ export const sellersApi = {
     });
   },
 
-  create(input: CreateSellerRequest) {
-    return apiRequest<SellerDto>("/sellers", { method: "POST", body: input });
+  create(input: CreateSellerRequest, idempotencyKey: string) {
+    return apiRequest<SellerDto>("/sellers", {
+      method: "POST",
+      headers: { "Idempotency-Key": idempotencyKey },
+      body: input,
+    });
   },
 
   update(id: string, input: UpdateSellerRequest) {
