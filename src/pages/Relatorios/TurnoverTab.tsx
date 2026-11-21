@@ -15,17 +15,10 @@ import {
 } from "@/components/ui/table";
 import { useIsOwner } from "@/hooks/use-is-owner";
 import { useTurnoverReportQuery } from "@/lib/api/hooks";
-import { centsToMoney } from "@/lib/api/mappers";
 import { centsToCsvDecimal, downloadCsv } from "@/lib/csv";
-import { formatCurrency } from "@/lib/format";
+import { formatCents, formatDate } from "@/lib/format";
 import { getReportErrorMessage } from "@/lib/report-errors";
-import {
-  addDaysToDate,
-  countDaysInclusive,
-  formatDateInZone,
-  periodRange,
-  todayInZone,
-} from "@/lib/store-time";
+import { addDaysToDate, countDaysInclusive, periodRange, todayInZone } from "@/lib/store-time";
 import { ExportButton } from "./ExportButton";
 
 /** Limite do backend para o período do giro. */
@@ -40,7 +33,7 @@ function shortcuts(timeZone: string) {
   ];
 }
 
-const money = (cents: number | null) => (cents == null ? "—" : formatCurrency(centsToMoney(cents)));
+const money = (cents: number | null) => (cents == null ? "—" : formatCents(cents));
 const csvMoney = (cents: number | null) => (cents == null ? "" : centsToCsvDecimal(cents));
 
 /**
@@ -79,7 +72,7 @@ export function TurnoverTab({ timeZone }: { timeZone: string }) {
         row.code,
         row.type,
         centsToCsvDecimal(row.valueCents),
-        formatDateInZone(row.soldAt, timeZone),
+        formatDate(row.soldAt, timeZone),
         row.sellerName,
         row.daysToSell,
         ...(isOwner
@@ -138,7 +131,7 @@ export function TurnoverTab({ timeZone }: { timeZone: string }) {
         <div className="space-y-0.5 text-sm text-muted-foreground">
           <p>
             {summary.soldCount} venda{summary.soldCount === 1 ? "" : "s"} ·{" "}
-            {formatCurrency(centsToMoney(summary.soldValueCents))}
+            {formatCents(summary.soldValueCents)}
           </p>
           {isOwner && summary.soldCount > 0 && (
             <p>
@@ -191,10 +184,10 @@ export function TurnoverTab({ timeZone }: { timeZone: string }) {
                     </TableCell>
                     <TableCell className="text-foreground">{row.type}</TableCell>
                     <TableCell className="text-right tabular-nums text-foreground">
-                      {formatCurrency(centsToMoney(row.valueCents))}
+                      {formatCents(row.valueCents)}
                     </TableCell>
                     <TableCell className="text-muted-foreground">
-                      {formatDateInZone(row.soldAt, timeZone)}
+                      {formatDate(row.soldAt, timeZone)}
                     </TableCell>
                     <TableCell className="text-muted-foreground">{row.sellerName}</TableCell>
                     <TableCell className="text-right tabular-nums text-foreground">{row.daysToSell}</TableCell>

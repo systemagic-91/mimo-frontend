@@ -13,12 +13,13 @@ import { RemoteQueryState } from "@/components/remote-query-state";
 import { StatusBadge } from "@/components/status-badge";
 import { PieceTimeline } from "@/components/piece-timeline";
 import { useIsOwner } from "@/hooks/use-is-owner";
+import { useStoreTimezone } from "@/hooks/use-store-timezone";
 import { usePieceEventsQuery, usePieceQuery } from "@/lib/api/hooks";
-import { centsToMoney, fromBackendPieceStage } from "@/lib/api/mappers";
+import { fromBackendPieceStage } from "@/lib/api/mappers";
 import type { PieceDto } from "@/lib/api/types";
 import { getPieceErrorMessage } from "@/lib/piece-errors";
 import { STAGE_LABEL } from "@/lib/status";
-import { formatCurrency, formatDate } from "@/lib/format";
+import { formatCents, formatDate } from "@/lib/format";
 
 function InfoRow({ label, value }: { label: string; value: string }) {
   return (
@@ -90,8 +91,9 @@ function PieceDetails({
   children: React.ReactNode;
 }) {
   const isOwner = useIsOwner();
+  const timeZone = useStoreTimezone();
   const stage = fromBackendPieceStage(piece.status);
-  const value = formatCurrency(centsToMoney(piece.valueCents));
+  const value = formatCents(piece.valueCents);
   return (
     <>
       <SheetHeader className="text-left">
@@ -122,7 +124,7 @@ function PieceDetails({
         <InfoRow label="Tipo" value={piece.type} />
         <InfoRow label="Valor" value={value} />
         <InfoRow label="Localização" value={piece.currentLocation} />
-        <InfoRow label="Recebida em" value={formatDate(piece.createdAt)} />
+        <InfoRow label="Recebida em" value={formatDate(piece.createdAt, timeZone)} />
         {piece.note && <InfoRow label="Observação" value={piece.note} />}
       </div>
 

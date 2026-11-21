@@ -1,10 +1,9 @@
 import { CalendarDays, Check, HandCoins, Undo2 } from "lucide-react";
 import { PieceCode } from "@/components/piece-code";
 import { Button } from "@/components/ui/button";
-import { centsToMoney, fromBackendConsignmentItemStatus } from "@/lib/api/mappers";
+import { fromBackendConsignmentItemStatus } from "@/lib/api/mappers";
 import type { ConsignmentItemDto } from "@/lib/api/types";
-import { formatCurrency } from "@/lib/format";
-import { formatDateInZone, formatLocalDate } from "@/lib/store-time";
+import { formatCents, formatDate, formatLocalDate } from "@/lib/format";
 import type { ItemAction } from "./ItemDateDialog";
 
 /**
@@ -32,7 +31,7 @@ export function ItemRow({
       <div className="flex min-w-0 items-center gap-3">
         <PieceCode code={item.codeSnapshot} />
         <span className="text-sm text-muted-foreground">
-          {item.typeSnapshot} · {formatCurrency(centsToMoney(item.valueCentsSnapshot))} · comissão{" "}
+          {item.typeSnapshot} · {formatCents(item.valueCentsSnapshot)} · comissão{" "}
           {item.commissionRateSnapshot}%
         </span>
       </div>
@@ -70,13 +69,13 @@ export function ItemRow({
         <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
           <span className="flex items-center gap-1.5 text-success">
             <HandCoins className="h-3.5 w-3.5" />
-            Vendida em {formatDateInZone(item.soldAt, timeZone)}
+            Vendida em {formatDate(item.soldAt, timeZone)}
           </span>
           {item.paymentDueDate && (
             <span className="text-muted-foreground">
               Pagamento até {formatLocalDate(item.paymentDueDate)}
               {item.amountDueCents != null &&
-                ` · repassar ${formatCurrency(centsToMoney(item.amountDueCents))}`}
+                ` · repassar ${formatCents(item.amountDueCents)}`}
             </span>
           )}
         </span>
@@ -85,7 +84,7 @@ export function ItemRow({
       {status === "devolvida" && item.returnedAt && (
         <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <Undo2 className="h-3.5 w-3.5" />
-          Devolvida em {formatDateInZone(item.returnedAt, timeZone)}
+          Devolvida em {formatDate(item.returnedAt, timeZone)}
         </span>
       )}
     </li>

@@ -1,6 +1,7 @@
 import { fromBackendPieceStage } from "@/lib/api/mappers";
 import type { PieceEventDto } from "@/lib/api/types";
 import { STAGE_LABEL } from "@/lib/status";
+import { useStoreTimezone } from "@/hooks/use-store-timezone";
 import { formatDateTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -22,6 +23,7 @@ function sortPieceEvents(events: PieceEventDto[]): PieceEventDto[] {
 }
 
 export function PieceTimeline({ events }: { events: PieceEventDto[] }) {
+  const timeZone = useStoreTimezone();
   if (events.length === 0) {
     return <p className="text-sm text-muted-foreground">Sem histórico.</p>;
   }
@@ -45,7 +47,7 @@ export function PieceTimeline({ events }: { events: PieceEventDto[] }) {
                 {STAGE_LABEL[stage]}
               </span>
               <span className="shrink-0 text-xs text-muted-foreground">
-                {formatDateTime(e.occurredAt)}
+                {formatDateTime(e.occurredAt, timeZone)}
               </span>
             </div>
             {e.note && (

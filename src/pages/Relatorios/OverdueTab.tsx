@@ -8,9 +8,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useOverdueReportQuery } from "@/lib/api/hooks";
-import { centsToMoney } from "@/lib/api/mappers";
 import { centsToCsvDecimal, downloadCsv } from "@/lib/csv";
-import { formatCurrency } from "@/lib/format";
+import { formatCents } from "@/lib/format";
 import { getReportErrorMessage } from "@/lib/report-errors";
 import { ExportButton } from "./ExportButton";
 
@@ -71,7 +70,7 @@ export function OverdueTab() {
                     <TableCell className="text-right tabular-nums">{row.lateLots}</TableCell>
                     <TableCell className="text-right tabular-nums">{row.piecesInHand}</TableCell>
                     <TableCell className="text-right tabular-nums text-late">
-                      {formatCurrency(centsToMoney(row.valueAtRiskCents))}
+                      {formatCents(row.valueAtRiskCents)}
                     </TableCell>
                     <TableCell className="text-right tabular-nums text-late">
                       {row.maxOverdueDays} dia{row.maxOverdueDays === 1 ? "" : "s"}

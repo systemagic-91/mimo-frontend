@@ -1,7 +1,6 @@
-import { centsToMoney } from "@/lib/api/mappers";
+
 import type { ConsignmentDetailsDto } from "@/lib/api/types";
-import { formatCurrency } from "@/lib/format";
-import { formatDateInZone } from "@/lib/store-time";
+import { formatCents, formatDate } from "@/lib/format";
 
 const CELL_BORDER = { borderBottom: "1px solid #e5ded5", fontWeight: 600 } as const;
 const SIGNATURE = {
@@ -48,11 +47,11 @@ export function ConsignmentReceipt({
           </div>
           <div>
             <div style={{ color: "#6b6259" }}>Entregue em</div>
-            <div style={{ fontWeight: 600 }}>{formatDateInZone(consignment.deliveredAt, timeZone)}</div>
+            <div style={{ fontWeight: 600 }}>{formatDate(consignment.deliveredAt, timeZone)}</div>
           </div>
           <div>
             <div style={{ color: "#6b6259" }}>Prazo de devolução</div>
-            <div style={{ fontWeight: 600 }}>{formatDateInZone(consignment.dueAt, timeZone)}</div>
+            <div style={{ fontWeight: 600 }}>{formatDate(consignment.dueAt, timeZone)}</div>
           </div>
           <div>
             <div style={{ color: "#6b6259" }}>Prazo de pagamento</div>
@@ -90,7 +89,7 @@ export function ConsignmentReceipt({
                 </td>
                 <td className="py-1.5">{item.typeSnapshot}</td>
                 <td className="py-1.5 text-right">
-                  {formatCurrency(centsToMoney(item.valueCentsSnapshot))}
+                  {formatCents(item.valueCentsSnapshot)}
                 </td>
               </tr>
             ))}
@@ -100,7 +99,7 @@ export function ConsignmentReceipt({
               <td className="pt-2 font-semibold" colSpan={2}>
                 {items.length} peça{items.length === 1 ? "" : "s"}
               </td>
-              <td className="pt-2 text-right font-semibold">{formatCurrency(centsToMoney(totalCents))}</td>
+              <td className="pt-2 text-right font-semibold">{formatCents(totalCents)}</td>
             </tr>
           </tfoot>
         </table>

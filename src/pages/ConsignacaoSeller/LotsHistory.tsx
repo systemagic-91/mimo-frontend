@@ -5,11 +5,9 @@ import { PieceCode } from "@/components/piece-code";
 import { RemoteQueryState } from "@/components/remote-query-state";
 import { StatusBadge } from "@/components/status-badge";
 import { useConsignmentsQuery } from "@/lib/api/hooks";
-import { centsToMoney } from "@/lib/api/mappers";
 import { getConsignmentErrorMessage } from "@/lib/consignment-errors";
-import { formatCurrency, formatRelativeDays } from "@/lib/format";
+import { formatCents, formatDate, formatRelativeDays } from "@/lib/format";
 import { CONSIGNMENT_STATUS_LABEL } from "@/lib/status";
-import { formatDateInZone } from "@/lib/store-time";
 import { cn } from "@/lib/utils";
 import { LotDetails } from "./LotDetails";
 
@@ -68,11 +66,11 @@ export function LotsHistory({ sellerId, timeZone }: { sellerId: string; timeZone
                     <div className="flex flex-wrap items-center gap-2">
                       <PieceCode code={lot.code} />
                       <span className="text-sm text-muted-foreground">
-                        Entregue em {formatDateInZone(lot.deliveredAt, timeZone)}
+                        Entregue em {formatDate(lot.deliveredAt, timeZone)}
                       </span>
                       <span className="text-sm text-muted-foreground">
                         · Devolução{" "}
-                        <span className="text-foreground">{formatDateInZone(lot.dueAt, timeZone)}</span>
+                        <span className="text-foreground">{formatDate(lot.dueAt, timeZone)}</span>
                         {lot.status !== "quitada" && (
                           <span className="ml-1 text-xs">{formatRelativeDays(lot.dueInDays)}</span>
                         )}
@@ -80,7 +78,7 @@ export function LotsHistory({ sellerId, timeZone }: { sellerId: string; timeZone
                     </div>
                     <p className="mt-0.5 text-xs text-muted-foreground">
                       {lot.piecesInHand} peça{lot.piecesInHand === 1 ? "" : "s"} com a vendedora ·{" "}
-                      {formatCurrency(centsToMoney(lot.valueInHandCents))} · pagamento{" "}
+                      {formatCents(lot.valueInHandCents)} · pagamento{" "}
                       {lot.paymentTermDays ? `em ${lot.paymentTermDays} dias` : "com prazo não informado"}
                     </p>
                   </div>

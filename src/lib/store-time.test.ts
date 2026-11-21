@@ -4,8 +4,6 @@ import {
   countDaysInclusive,
   dateInZone,
   endOfDayInZone,
-  formatDateInZone,
-  formatLocalDate,
   periodRange,
   todayInZone,
 } from "./store-time";
@@ -37,11 +35,6 @@ describe("store time", () => {
     expect(endOfDayInZone("2026-11-30", SP)).toBe("2026-12-01T02:59:59.000Z");
     expect(endOfDayInZone("2026-07-15", "Europe/Lisbon")).toBe("2026-07-15T22:59:59.000Z");
     expect(endOfDayInZone("2026-01-15", "Europe/Lisbon")).toBe("2026-01-15T23:59:59.000Z");
-  });
-
-  it("formats dates in pt-BR without shifting the day", () => {
-    expect(formatLocalDate("2026-11-30")).toBe("30/11/2026");
-    expect(formatDateInZone("2026-12-01T02:59:59.999Z", SP)).toBe("30/11/2026");
   });
 
   it("builds commission periods in the store timezone", () => {

@@ -18,9 +18,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useStalePiecesReportQuery } from "@/lib/api/hooks";
-import { centsToMoney } from "@/lib/api/mappers";
 import { centsToCsvDecimal, downloadCsv } from "@/lib/csv";
-import { formatCurrency } from "@/lib/format";
+import { formatCents } from "@/lib/format";
 import { getReportErrorMessage } from "@/lib/report-errors";
 import { ExportButton } from "./ExportButton";
 
@@ -64,7 +63,7 @@ export function StaleTab() {
       {report.data && (
         <p className="text-sm text-muted-foreground">
           {report.data.summary.count} peça{report.data.summary.count === 1 ? "" : "s"} ·{" "}
-          {formatCurrency(centsToMoney(report.data.summary.valueCents))}
+          {formatCents(report.data.summary.valueCents)}
         </p>
       )}
 
@@ -106,7 +105,7 @@ export function StaleTab() {
                     </TableCell>
                     <TableCell className="text-foreground">{row.type}</TableCell>
                     <TableCell className="text-right tabular-nums text-foreground">
-                      {formatCurrency(centsToMoney(row.valueCents))}
+                      {formatCents(row.valueCents)}
                     </TableCell>
                     <TableCell className="text-right tabular-nums text-late">
                       {row.daysStopped} dia{row.daysStopped === 1 ? "" : "s"}

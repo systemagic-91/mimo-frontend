@@ -1,52 +1,47 @@
-export function formatCurrency(value: number): string {
-  return new Intl.NumberFormat("pt-BR", {
-    style: "currency",
-    currency: "BRL",
-  }).format(value);
+/**
+ * Formatação de tudo o que a tela mostra: moeda e datas sempre em pt-BR, e datas no fuso da loja
+ * (`settings.timezone`, via `useStoreTimezone`). Nenhuma tela formata por conta própria.
+ */
+import { centsToMoney } from "@/lib/api/mappers";
+import { dateInZone } from "@/lib/store-time";
+
+const currency = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
+
+/** "R$ 1.234,56" a partir de centavos. */
+export function formatCents(cents: number): string {
+  return currency.format(centsToMoney(cents));
 }
 
-export function formatDate(iso: string): string {
-  return new Intl.DateTimeFormat("pt-BR", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  }).format(new Date(iso));
+/** "30/11/2026" a partir de uma data local `YYYY-MM-DD`, sem converter fuso. */
+export function formatLocalDate(date: string): string {
+  const [year, month, day] = date.split("-");
+  return `${day}/${month}/${year}`;
 }
 
-export function formatDateTime(iso: string): string {
+/** "30/11/2026" de um instante, no fuso da loja. */
+export function formatDate(instant: string, timeZone: string): string {
+  return formatLocalDate(dateInZone(instant, timeZone));
+}
+
+/** "30/11/2026 14:05" de um instante, no fuso da loja. */
+export function formatDateTime(instant: string, timeZone: string): string {
   return new Intl.DateTimeFormat("pt-BR", {
+    timeZone,
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
-  }).format(new Date(iso));
+  })
+    .format(new Date(instant))
+    .replace(",", "");
 }
 
-export function addDays(date: Date, days: number): Date {
-  const d = new Date(date);
-  d.setDate(d.getDate() + days);
-  return d;
-}
-
-export function toDateInputValue(date: Date): string {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, "0");
-  const d = String(date.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
-}
-
-export function fromDateInputValue(value: string): string {
-  return new Date(`${value}T12:00:00`).toISOString();
-}
-
-export function daysBetween(a: Date, b: Date): number {
-  const ms = b.getTime() - a.getTime();
-  return Math.round(ms / 86_400_000);
-}
-
-export function daysFromNow(iso: string): number {
-  return daysBetween(new Date(), new Date(iso));
+/** "Sábado, 21 de novembro" no fuso da loja. */
+export function formatLongDate(instant: Date | string, timeZone: string): string {
+  return new Intl.DateTimeFormat("pt-BR", { timeZone, weekday: "long", day: "numeric", month: "long" })
+    .format(new Date(instant))
+    .replace(/^\p{L}/u, (letter) => letter.toUpperCase());
 }
 
 /** "hoje" | "em 5 dias" | "há 3 dias" | "ontem" */
@@ -55,13 +50,4 @@ export function formatRelativeDays(days: number): string {
   if (days === 1) return "amanhã";
   if (days === -1) return "ontem";
   return days > 0 ? `em ${days} dias` : `há ${Math.abs(days)} dias`;
-}
-
-export function todayIso(): string {
-  return new Date().toISOString();
-}
-
-export function startOfMonthIso(): string {
-  const now = new Date();
-  return new Date(now.getFullYear(), now.getMonth(), 1, 12).toISOString();
 }

@@ -3,10 +3,8 @@ import { Link } from "react-router-dom";
 import { ConsignmentReceipt } from "@/components/consignment-receipt";
 import { PieceCode } from "@/components/piece-code";
 import { Button } from "@/components/ui/button";
-import { centsToMoney } from "@/lib/api/mappers";
 import type { ConsignmentDetailsDto } from "@/lib/api/types";
-import { formatCurrency } from "@/lib/format";
-import { formatDateInZone } from "@/lib/store-time";
+import { formatCents, formatDate } from "@/lib/format";
 
 /** Lote criado: tudo vem da resposta `201` (código oficial, vencimento e snapshots). */
 export function CreatedLot({
@@ -31,9 +29,9 @@ export function CreatedLot({
             </h2>
             <p className="text-sm text-muted-foreground">
               {consignment.items.length} peça{consignment.items.length === 1 ? "" : "s"} com{" "}
-              {consignment.seller.name} · devolução em {formatDateInZone(consignment.dueAt, timeZone)} ·
+              {consignment.seller.name} · devolução em {formatDate(consignment.dueAt, timeZone)} ·
               pagamento em {consignment.paymentTermDays} dias ·{" "}
-              {formatCurrency(centsToMoney(totalCents))}
+              {formatCents(totalCents)}
             </p>
           </div>
         </div>

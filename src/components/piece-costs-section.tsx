@@ -4,13 +4,12 @@ import { toast } from "sonner";
 import { CostField } from "@/components/cost-field";
 import { Button } from "@/components/ui/button";
 import { useUpdatePieceCostsMutation } from "@/lib/api/hooks";
-import { centsToMoney } from "@/lib/api/mappers";
 import type { PieceDto, UpdatePieceCostsRequest } from "@/lib/api/types";
-import { formatCurrency } from "@/lib/format";
+import { formatCents } from "@/lib/format";
 import { centsToInputValue, getPieceErrorMessage, parseCostToCents } from "@/lib/piece-errors";
 
 function costLabel(cents: number | null | undefined): string {
-  return cents == null ? "não informado" : formatCurrency(centsToMoney(cents));
+  return cents == null ? "não informado" : formatCents(cents);
 }
 
 function CostRow({ label, cents }: { label: string; cents: number | null | undefined }) {

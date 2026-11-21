@@ -9,11 +9,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { centsToMoney } from "@/lib/api/mappers";
+
 import type { ConsignmentListItem } from "@/lib/api/types";
-import { formatCurrency, formatRelativeDays } from "@/lib/format";
+import { formatCents, formatDate, formatRelativeDays } from "@/lib/format";
 import { CONSIGNMENT_STATUS_LABEL } from "@/lib/status";
-import { formatDateInZone } from "@/lib/store-time";
 
 /** Lotes abertos de `GET /dashboard`, já com status visual, dias até o vencimento e o que está em posse. */
 export function OpenConsignmentsTable({
@@ -66,10 +65,10 @@ export function OpenConsignmentsTable({
                 <TableCell className="font-medium text-foreground">{lot.seller.name}</TableCell>
                 <TableCell className="text-right tabular-nums">{lot.piecesInHand}</TableCell>
                 <TableCell className="text-right tabular-nums text-foreground">
-                  {formatCurrency(centsToMoney(lot.valueInHandCents))}
+                  {formatCents(lot.valueInHandCents)}
                 </TableCell>
                 <TableCell>
-                  <span className="text-foreground">{formatDateInZone(lot.dueAt, timeZone)}</span>
+                  <span className="text-foreground">{formatDate(lot.dueAt, timeZone)}</span>
                   <span className="ml-2 text-xs text-muted-foreground">
                     {formatRelativeDays(lot.dueInDays)}
                   </span>

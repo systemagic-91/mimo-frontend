@@ -11,10 +11,9 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { useStoreTimezone } from "@/hooks/use-store-timezone";
 import { useSellerCommissionQuery, useSellerPaymentScheduleQuery } from "@/lib/api/hooks";
-import { centsToMoney } from "@/lib/api/mappers";
 import { getConsignmentErrorMessage } from "@/lib/consignment-errors";
-import { formatCurrency } from "@/lib/format";
-import { type CommissionPeriod, formatLocalDate, periodRange } from "@/lib/store-time";
+import { formatCents, formatLocalDate } from "@/lib/format";
+import { type CommissionPeriod, periodRange } from "@/lib/store-time";
 
 const PERIODS: { value: CommissionPeriod; label: string }[] = [
   { value: "mes_atual", label: "Mês atual" },
@@ -75,13 +74,13 @@ export function CommissionCard({ sellerId }: { sellerId: string }) {
           <div>
             <dt className="text-xs text-muted-foreground">Valor vendido</dt>
             <dd className="mt-0.5 text-lg font-semibold tabular-nums text-foreground">
-              {formatCurrency(centsToMoney(commission.data.soldValueCents))}
+              {formatCents(commission.data.soldValueCents)}
             </dd>
           </div>
           <div>
             <dt className="text-xs text-muted-foreground">Comissão da vendedora</dt>
             <dd className="mt-0.5 text-lg font-semibold tabular-nums text-gold">
-              {formatCurrency(centsToMoney(commission.data.commissionCents))}
+              {formatCents(commission.data.commissionCents)}
             </dd>
           </div>
         </dl>
@@ -117,7 +116,7 @@ export function CommissionCard({ sellerId }: { sellerId: string }) {
                     {group.soldCount} venda{group.soldCount === 1 ? "" : "s"}
                   </p>
                   <p className="text-base font-semibold tabular-nums text-foreground">
-                    {formatCurrency(centsToMoney(group.amountDueCents))}
+                    {formatCents(group.amountDueCents)}
                   </p>
                 </div>
                 {group.firstDueDate && group.lastDueDate && (
@@ -136,7 +135,7 @@ export function CommissionCard({ sellerId }: { sellerId: string }) {
           <p className="mt-3 text-right text-sm text-muted-foreground">
             Total a repassar:{" "}
             <span className="font-semibold tabular-nums text-foreground">
-              {formatCurrency(centsToMoney(schedule.data.totalDueCents))}
+              {formatCents(schedule.data.totalDueCents)}
             </span>
           </p>
         </>

@@ -81,17 +81,6 @@ export function endOfDayInZone(date: string, timeZone: string): string {
   return new Date(instant).toISOString();
 }
 
-/** "30/11/2026" a partir de uma data local `YYYY-MM-DD`, sem converter fuso. */
-export function formatLocalDate(date: string): string {
-  const [year, month, day] = parseDate(date);
-  return `${String(day).padStart(2, "0")}/${String(month).padStart(2, "0")}/${year}`;
-}
-
-/** "30/11/2026" de um instante, no fuso da loja. */
-export function formatDateInZone(instant: string, timeZone: string): string {
-  return formatLocalDate(dateInZone(instant, timeZone));
-}
-
 export type CommissionPeriod = "mes_atual" | "mes_anterior" | "historico";
 
 /** Início do histórico da loja para o período "todo o histórico". */

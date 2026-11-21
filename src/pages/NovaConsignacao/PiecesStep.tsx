@@ -7,9 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { usePiecesQuery } from "@/lib/api/hooks";
-import { centsToMoney } from "@/lib/api/mappers";
 import type { PieceDto } from "@/lib/api/types";
-import { formatCurrency } from "@/lib/format";
+import { formatCents } from "@/lib/format";
 import { getPieceErrorMessage } from "@/lib/piece-errors";
 import { cn } from "@/lib/utils";
 
@@ -113,7 +112,7 @@ export function PiecesStep({
                   <PieceCode code={piece.code} />
                   <span className="min-w-0 flex-1 truncate text-sm text-muted-foreground">{piece.type}</span>
                   <span className="text-sm tabular-nums text-foreground">
-                    {formatCurrency(centsToMoney(piece.valueCents))}
+                    {formatCents(piece.valueCents)}
                   </span>
                 </button>
               );
@@ -136,7 +135,7 @@ export function PiecesStep({
               {selected.size} peça{selected.size === 1 ? "" : "s"} · valor total
             </span>
             <span className="font-semibold tabular-nums text-gold">
-              {formatCurrency(centsToMoney(totalCents))}
+              {formatCents(totalCents)}
             </span>
           </div>
           <ul className="mt-2 flex flex-wrap gap-1.5" aria-label="Peças selecionadas">

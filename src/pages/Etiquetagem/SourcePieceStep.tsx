@@ -7,9 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { usePiecesQuery } from "@/lib/api/hooks";
-import { centsToMoney } from "@/lib/api/mappers";
 import type { PieceDto } from "@/lib/api/types";
-import { formatCurrency } from "@/lib/format";
+import { formatCents } from "@/lib/format";
 import { getPieceErrorMessage } from "@/lib/piece-errors";
 import { cn } from "@/lib/utils";
 
@@ -86,7 +85,7 @@ export function SourcePieceStep({
                     <span className="flex flex-col">
                       <PieceCode code={piece.code} />
                       <span className="text-xs text-muted-foreground">
-                        {piece.type} · {formatCurrency(centsToMoney(piece.valueCents))}
+                        {piece.type} · {formatCents(piece.valueCents)}
                       </span>
                     </span>
                     {active && <Check className="h-4 w-4 text-gold" aria-hidden />}

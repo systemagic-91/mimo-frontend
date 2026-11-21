@@ -7,8 +7,7 @@ import { RemoteQueryState } from "@/components/remote-query-state";
 import { useIsOwner } from "@/hooks/use-is-owner";
 import { useStoreTimezone } from "@/hooks/use-store-timezone";
 import { useDashboardQuery } from "@/lib/api/hooks";
-import { centsToMoney } from "@/lib/api/mappers";
-import { formatCurrency } from "@/lib/format";
+import { formatCents, formatLongDate } from "@/lib/format";
 import { getReportErrorMessage } from "@/lib/report-errors";
 import { OpenConsignmentsTable } from "./OpenConsignmentsTable";
 
@@ -21,14 +20,7 @@ export default function Dashboard() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
 
-  const todayLabel = new Intl.DateTimeFormat("pt-BR", {
-    timeZone,
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-  })
-    .format(new Date())
-    .replace(/^\w/, (c) => c.toUpperCase());
+  const todayLabel = formatLongDate(new Date(), timeZone);
 
   return (
     <div className="space-y-6">
@@ -51,7 +43,7 @@ export default function Dashboard() {
             <KpiCard
               label="Peças ativas em consignação"
               value={dashboard.data.kpis.activeInHand}
-              sub={`${formatCurrency(centsToMoney(dashboard.data.kpis.activeInHandValueCents))} em posse das vendedoras`}
+              sub={`${formatCents(dashboard.data.kpis.activeInHandValueCents)} em posse das vendedoras`}
               icon={Briefcase}
               accent="gold"
             />
@@ -68,7 +60,7 @@ export default function Dashboard() {
             <KpiCard
               label="Estoque parado há +60 dias"
               value={dashboard.data.kpis.staleCount}
-              sub={`${formatCurrency(centsToMoney(dashboard.data.kpis.staleValueCents))} parados em estoque`}
+              sub={`${formatCents(dashboard.data.kpis.staleValueCents)} parados em estoque`}
               icon={PackageX}
               accent="late"
             />
@@ -77,10 +69,8 @@ export default function Dashboard() {
               value={dashboard.data.kpis.overdueSellers}
               sub={
                 dashboard.data.overdueSellers.length
-                  ? `${formatCurrency(
-                      centsToMoney(
-                        dashboard.data.overdueSellers.reduce((sum, row) => sum + row.valueAtRiskCents, 0),
-                      ),
+                  ? `${formatCents(
+                      dashboard.data.overdueSellers.reduce((sum, row) => sum + row.valueAtRiskCents, 0),
                     )} em risco`
                   : "Todas em dia"
               }

@@ -23,10 +23,11 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
+import { useStoreTimezone } from "@/hooks/use-store-timezone";
 import { usePiecesQuery } from "@/lib/api/hooks";
-import { centsToMoney, fromBackendPieceStage } from "@/lib/api/mappers";
+import { fromBackendPieceStage } from "@/lib/api/mappers";
 import type { PieceListParams } from "@/lib/api/pieces";
-import { formatCurrency, formatDate } from "@/lib/format";
+import { formatCents, formatDate } from "@/lib/format";
 import { getPieceErrorMessage } from "@/lib/piece-errors";
 import { PIECE_STAGES, STAGE_LABEL } from "@/lib/status";
 import type { PieceStage } from "@/lib/types";
@@ -39,6 +40,7 @@ const SEARCH_DELAY_MS = 300;
 type StatusFilter = "todos" | PieceStage;
 
 export default function Estoque() {
+  const timeZone = useStoreTimezone();
   const [search, setSearch] = useState("");
   const q = useDebouncedValue(search.trim(), SEARCH_DELAY_MS);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("todos");
@@ -86,7 +88,7 @@ export default function Estoque() {
           {/* Quantidade e valor do filtro inteiro, vindos da API (não a soma da página). */}
           <p className="mt-0.5 text-sm text-muted-foreground" aria-live="polite">
             {data
-              ? `${data.pagination.total} peça${data.pagination.total === 1 ? "" : "s"} · ${formatCurrency(centsToMoney(data.summary.totalValueCents))}`
+              ? `${data.pagination.total} peça${data.pagination.total === 1 ? "" : "s"} · ${formatCents(data.summary.totalValueCents)}`
               : "Carregando…"}
           </p>
         </div>
@@ -200,7 +202,7 @@ export default function Estoque() {
                       </TableCell>
                       <TableCell className="text-foreground">{p.type}</TableCell>
                       <TableCell className="text-right tabular-nums text-foreground">
-                        {formatCurrency(centsToMoney(p.valueCents))}
+                        {formatCents(p.valueCents)}
                       </TableCell>
                       <TableCell className="hidden text-muted-foreground md:table-cell">
                         {p.currentLocation}
@@ -209,7 +211,7 @@ export default function Estoque() {
                         <StatusBadge status={stage} label={STAGE_LABEL[stage]} />
                       </TableCell>
                       <TableCell className="hidden text-right text-muted-foreground md:table-cell">
-                        {formatDate(p.updatedAt)}
+                        {formatDate(p.updatedAt, timeZone)}
                       </TableCell>
                     </TableRow>
                   );

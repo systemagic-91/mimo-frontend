@@ -1,8 +1,7 @@
 import { RemoteQueryState } from "@/components/remote-query-state";
 import { useSellerStatsQuery } from "@/lib/api/hooks";
-import { centsToMoney } from "@/lib/api/mappers";
 import { getConsignmentErrorMessage } from "@/lib/consignment-errors";
-import { formatCurrency } from "@/lib/format";
+import { formatCents } from "@/lib/format";
 
 /** Números da vendedora (só owner): vêm prontos de `GET /sellers/{id}/stats`. */
 export function SellerStatsCards({ sellerId }: { sellerId: string }) {
@@ -21,11 +20,11 @@ export function SellerStatsCards({ sellerId }: { sellerId: string }) {
 
   const cards = [
     { label: "Peças em posse", value: String(stats.data.inHand) },
-    { label: "Valor em posse", value: formatCurrency(centsToMoney(stats.data.inHandValueCents)) },
-    { label: "Total vendido", value: formatCurrency(centsToMoney(stats.data.totalSoldValueCents)) },
+    { label: "Valor em posse", value: formatCents(stats.data.inHandValueCents) },
+    { label: "Total vendido", value: formatCents(stats.data.totalSoldValueCents) },
     {
       label: "Comissão total",
-      value: formatCurrency(centsToMoney(stats.data.totalCommissionCents)),
+      value: formatCents(stats.data.totalCommissionCents),
       gold: true,
     },
   ];

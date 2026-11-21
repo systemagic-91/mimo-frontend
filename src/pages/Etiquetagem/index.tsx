@@ -20,10 +20,9 @@ import { useIdempotencyKey } from "@/hooks/use-idempotency-key";
 import { useIsOwner } from "@/hooks/use-is-owner";
 import { ApiError } from "@/lib/api/http";
 import { useLabelPieceMutation } from "@/lib/api/hooks";
-import { centsToMoney } from "@/lib/api/mappers";
 import { queryKeys } from "@/lib/api/query-keys";
 import type { LabelPieceRequest, PieceDto } from "@/lib/api/types";
-import { formatCurrency } from "@/lib/format";
+import { formatCents } from "@/lib/format";
 import {
   centsToInputValue,
   getPieceErrorMessage,
@@ -157,7 +156,7 @@ export default function Etiquetagem() {
           />
         )}
         <p className="text-sm text-muted-foreground">
-          {result.type} · {formatCurrency(centsToMoney(result.valueCents))} ·{" "}
+          {result.type} · {formatCents(result.valueCents)} ·{" "}
           {result.currentLocation}
         </p>
         <div className="flex flex-col gap-2 pt-2">
@@ -322,12 +321,12 @@ export default function Etiquetagem() {
             <p className="text-sm text-muted-foreground">
               {type} ·{" "}
               {valueCents !== null
-                ? formatCurrency(centsToMoney(valueCents))
+                ? formatCents(valueCents)
                 : "valor não informado"}
             </p>
             {isOwner && bathCostCents != null && (
               <p className="text-xs text-muted-foreground">
-                Custo do banho: {formatCurrency(centsToMoney(bathCostCents))}
+                Custo do banho: {formatCents(bathCostCents)}
               </p>
             )}
           </div>

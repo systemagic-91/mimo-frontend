@@ -1,9 +1,7 @@
 import { PieceCode } from "@/components/piece-code";
 import { Separator } from "@/components/ui/separator";
-import { centsToMoney } from "@/lib/api/mappers";
 import type { PieceDto, SellerDto } from "@/lib/api/types";
-import { formatCurrency } from "@/lib/format";
-import { formatLocalDate } from "@/lib/store-time";
+import { formatCents, formatLocalDate } from "@/lib/format";
 
 /** Passo 4: confere o que vai ser enviado. O código do lote só existe depois da resposta da API. */
 export function ReviewStep({
@@ -51,7 +49,7 @@ export function ReviewStep({
               <span className="text-muted-foreground">{piece.type}</span>
             </span>
             <span className="tabular-nums text-foreground">
-              {formatCurrency(centsToMoney(piece.valueCents))}
+              {formatCents(piece.valueCents)}
             </span>
           </li>
         ))}
@@ -62,7 +60,7 @@ export function ReviewStep({
           {pieces.length} peça{pieces.length === 1 ? "" : "s"}
         </span>
         <span className="font-semibold tabular-nums text-foreground">
-          {formatCurrency(centsToMoney(totalCents))}
+          {formatCents(totalCents)}
         </span>
       </div>
     </section>

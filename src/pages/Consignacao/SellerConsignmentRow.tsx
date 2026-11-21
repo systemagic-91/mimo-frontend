@@ -1,10 +1,9 @@
 import { StatusBadge } from "@/components/status-badge";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { useStoreTimezone } from "@/hooks/use-store-timezone";
-import { centsToMoney, fromBackendSellerStatus } from "@/lib/api/mappers";
+import { fromBackendSellerStatus } from "@/lib/api/mappers";
 import type { SellerListItem } from "@/lib/api/types";
-import { formatCurrency, formatRelativeDays } from "@/lib/format";
-import { formatDateInZone } from "@/lib/store-time";
+import { formatCents, formatDate, formatRelativeDays } from "@/lib/format";
 
 const STATUS_LABEL = { em_dia: "Em dia", atrasada: "Atrasado", inativa: "Inativa" } as const;
 
@@ -47,12 +46,12 @@ export function SellerConsignmentRow({
       </TableCell>
       <TableCell className="text-right tabular-nums text-foreground">{item.piecesInHand}</TableCell>
       <TableCell className="text-right tabular-nums text-foreground">
-        {formatCurrency(centsToMoney(item.valueInHandCents))}
+        {formatCents(item.valueInHandCents)}
       </TableCell>
       <TableCell>
         {item.nextDueAt ? (
           <>
-            <span className="text-foreground">{formatDateInZone(item.nextDueAt, timeZone)}</span>
+            <span className="text-foreground">{formatDate(item.nextDueAt, timeZone)}</span>
             {item.nextDueDays != null && (
               <span className="ml-2 text-xs text-muted-foreground">
                 {formatRelativeDays(item.nextDueDays)}
