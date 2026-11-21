@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 
-/** Confirmação de ações que deslogam a pessoa (desativar, mudar papel). Fica aberta até a ação terminar. */
+/** Confirmação de ações com efeito amplo (desativar, mudar papel, inativar vendedora, mudar o fuso). Fica aberta até a ação terminar. */
 export function ConfirmActionDialog({
   open,
   title,
