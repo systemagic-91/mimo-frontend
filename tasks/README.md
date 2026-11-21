@@ -34,6 +34,8 @@ As tarefas estão numeradas por prioridade global. A numeração indica priorida
 |         27 | [BACK_27_PRAZO_DE_PAGAMENTO_NO_LOTE.md](BACK_27_PRAZO_DE_PAGAMENTO_NO_LOTE.md)                                     | Prazo de pagamento guardado no lote e agenda de repasses da vendedora                   | ✅ Concluída  |
 |         28 | [BACK_28_LOGS_DOS_FLUXOS.md](BACK_28_LOGS_DOS_FLUXOS.md)                                                           | Logs com SLF4J nos fluxos: padrão econômico, liga/desliga e vendas sempre logadas       | ⏳ Pendente   |
 
+² Falta a primeira execução do CI no GitHub (depois do push) e a verificação na Vercel (FRONT_22), que depende do deploy.
+
 ## Ordem de execução do frontend (2026-10-31)
 
 Todo o backend está pronto. A FRONT_11, a FRONT_12, a FRONT_20, a FRONT_13, a FRONT_14, a FRONT_15, a FRONT_16, a FRONT_24, a FRONT_17 e a FRONT_18 estão concluídas, e a FRONT_22 só espera a verificação em navegador real, que entra nos E2E da FRONT_18.
