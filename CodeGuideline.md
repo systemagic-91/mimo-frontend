@@ -94,6 +94,10 @@ Sempre que um novo módulo (como um componente, hook ou utilitário) ou uma nova
 - **O conteúdo dos idiomas fica em `src/locales/{code}.json`** como JSON com chaves simples separadas por pontos; o arquivo de `fallbackLng` contém o conjunto canônico de chaves.
 - **O código do runtime lê o manifesto somente por meio de `src/i18n/util.ts`.** Adicionar ou remover um idioma significa editar `i18n.config.json` e o arquivo correspondente `src/locales/{code}.json`; nada em `src/i18n/` precisa ser alterado.
 - **As traduções são lidas com o `useTranslation()` oficial do `react-i18next`.** Não use hook personalizado nem conversões nos pontos de chamada.
+- **Nenhum texto da interface fica no código.** Rótulos, mensagens, `aria-label`, toasts e estados de carregamento, vazio e erro vêm do `pt-BR.json`. Fora de componentes (mensagens de erro, rótulos dos enums em `src/lib/status.ts`), use `i18n.t` de `@/i18n/config`.
+- **Plurais usam os sufixos do i18next com `_zero`:** `chave_zero`, `chave_one` e `chave_other`. O `pt-BR` trata 0 como singular, então sem `_zero` apareceria "0 dia".
+- **Erros da API são mapeados pelo `code`** em `src/lib/api-errors.ts` (`apiError.<CODE>`); cada área só troca o texto de um código ou campo quando o contexto pede. O `detail` do backend é o último recurso.
+- **Moeda e datas só por `src/lib/format.ts`** (`formatCents`, `formatDate`, `formatDateTime`, `formatLocalDate`, `formatLongDate`), sempre em pt-BR e no fuso da loja (`useStoreTimezone`). Valores e enums enviados à API nunca são traduzidos.
 
 ## Boas Práticas de Código
 

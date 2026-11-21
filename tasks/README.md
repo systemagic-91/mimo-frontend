@@ -22,7 +22,7 @@ As tarefas estão numeradas por prioridade global. A numeração indica priorida
 |         14 | [FRONT_14_VENDEDORAS_E_CONFIGURACOES.md](FRONT_14_VENDEDORAS_E_CONFIGURACOES.md)                                   | Administração de vendedores e parâmetros                                                | ✅ Concluída  |
 |         15 | [FRONT_15_CONSIGNACOES_E_PRESTACAO_DE_CONTAS.md](FRONT_15_CONSIGNACOES_E_PRESTACAO_DE_CONTAS.md)                   | Wizard, histórico, venda e devolução                                                    | ✅ Concluída  |
 |         16 | [FRONT_16_DASHBOARD_E_RELATORIOS.md](FRONT_16_DASHBOARD_E_RELATORIOS.md)                                           | KPIs, relatórios e exportação                                                           | ✅ Concluída  |
-|         17 | [FRONT_17_I18N_E_CONTEUDO_DOS_IDIOMAS.md](FRONT_17_I18N_E_CONTEUDO_DOS_IDIOMAS.md)                                 | Textos em pt-BR pelo i18n; remove o seletor de idioma                                   | ⏳ Pendente   |
+|         17 | [FRONT_17_I18N_E_CONTEUDO_DOS_IDIOMAS.md](FRONT_17_I18N_E_CONTEUDO_DOS_IDIOMAS.md)                                 | Textos em pt-BR pelo i18n; remove o seletor de idioma                                   | ✅ Concluída  |
 |         18 | [FRONT_18_REMOVER_PERSISTENCIA_LOCAL_E_VALIDAR_FLUXOS.md](FRONT_18_REMOVER_PERSISTENCIA_LOCAL_E_VALIDAR_FLUXOS.md) | Remoção do banco local e validação ponta a ponta                                        | ⏳ Pendente   |
 |         19 | [BACK_19_GESTAO_DE_USUARIOS.md](BACK_19_GESTAO_DE_USUARIOS.md)                                                     | Cadastro de usuários pelo owner e troca obrigatória de senha                            | ✅ Concluída   |
 |         20 | [FRONT_20_GESTAO_DE_USUARIOS.md](FRONT_20_GESTAO_DE_USUARIOS.md)                                                   | Tela de usuários e de troca de senha                                                    | ✅ Concluída  |
@@ -35,7 +35,7 @@ As tarefas estão numeradas por prioridade global. A numeração indica priorida
 
 ## Ordem de execução do frontend (2026-10-31)
 
-Todo o backend está pronto. A FRONT_11, a FRONT_12, a FRONT_20, a FRONT_13, a FRONT_14, a FRONT_15, a FRONT_16 e a FRONT_24 estão concluídas, e a FRONT_22 só espera a verificação em navegador real, que entra nos E2E da FRONT_18.
+Todo o backend está pronto. A FRONT_11, a FRONT_12, a FRONT_20, a FRONT_13, a FRONT_14, a FRONT_15, a FRONT_16, a FRONT_24 e a FRONT_17 estão concluídas, e a FRONT_22 só espera a verificação em navegador real, que entra nos E2E da FRONT_18.
 
 1. **FRONT_20 – Usuários e troca de senha.** Sem ela, ninguém além do primeiro owner consegue usar o sistema: todo usuário criado nasce com troca obrigatória de senha. Ela também ajusta o cliente HTTP (tratamento do `403 PASSWORD_CHANGE_REQUIRED` e do `401` de senha atual errada) antes que as outras telas dependam dele, e cria as abas da página de Configurações.
 2. **FRONT_13 – Estoque, etiquetagem e fotos.** Cria as peças que todas as outras telas usam.
@@ -57,7 +57,7 @@ Todo o backend está pronto. A FRONT_11, a FRONT_12, a FRONT_20, a FRONT_13, a F
 - **Observabilidade (BACK_10):** tracing só com IDs nos logs, métricas protegidas para owner, logs em JSON só em produção e backup manual com `pg_dump`.
 - **Frontend:** cliente HTTP, hooks React Query (`src/lib/api/hooks.ts`), login remoto, troca de senha (`/trocar-senha`) e a aba Usuários de Configurações (FRONT_20) prontos. Estoque, detalhe da peça e Etiquetagem usam a API (FRONT_13), assim como as abas de vendedoras e de parâmetros de Configurações (FRONT_14) a consignação: lista, wizard, página da vendedora, venda e devolução (FRONT_15), e o Dashboard e os Relatórios (FRONT_16). Custos e margem para owner estão no recebimento, na etiquetagem, no detalhe da peça e no giro (FRONT_24). Nenhuma tela usa mais o banco local; `src/lib/db.ts` e `src/lib/domain.ts` só saem na FRONT_18.
 - **Testes do frontend:** Vitest + Testing Library + MSW configurados (`npm test`); `npm run check` roda lint e verificação de tipos. Detalhes dos scripts em `SCRIPTS_NPM.md`.
-- **i18n:** i18next está inicializado, mas as páginas não usam `useTranslation`; arquivos `en` e `zh-CN` têm conteúdo placeholder e o fallback é `en`. Decisão: ficar só com `pt-BR` (FRONT_17).
+- **i18n:** só `pt-BR` (FRONT_17). Todos os textos vêm de `src/locales/pt-BR.json`, os erros da API são mapeados pelo `code` e moeda e datas passam por `src/lib/format.ts` no fuso da loja. O teste `src/i18n/keys.test.ts` acusa chave ausente ou sem uso.
 
 ## Decisões de produto
 
