@@ -1,4 +1,5 @@
 import { Gem } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import {
   Sheet,
   SheetContent,
@@ -42,6 +43,7 @@ export function PieceDetailSheet({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
+  const { t } = useTranslation();
   const enabled = open && Boolean(pieceId);
   const piece = usePieceQuery(pieceId ?? "", enabled);
   const events = usePieceEventsQuery(pieceId ?? "", enabled);
@@ -51,12 +53,12 @@ export function PieceDetailSheet({
       <SheetContent className="w-full overflow-y-auto sm:max-w-md">
         {piece.isPending ? (
           <>
-            <SheetTitle className="sr-only">Detalhe da peça</SheetTitle>
+            <SheetTitle className="sr-only">{t("piece.detail.title")}</SheetTitle>
             <RemoteQueryState state="loading" />
           </>
         ) : piece.isError ? (
           <>
-            <SheetTitle className="sr-only">Detalhe da peça</SheetTitle>
+            <SheetTitle className="sr-only">{t("piece.detail.title")}</SheetTitle>
             <RemoteQueryState
               state="error"
               message={getPieceErrorMessage(piece.error)}
@@ -70,7 +72,7 @@ export function PieceDetailSheet({
             ) : events.isError ? (
               <RemoteQueryState
                 state="error"
-                message="Não foi possível carregar a linha do tempo."
+                message={t("piece.detail.timelineError")}
                 onRetry={() => void events.refetch()}
               />
             ) : (
@@ -90,6 +92,7 @@ function PieceDetails({
   piece: PieceDto;
   children: React.ReactNode;
 }) {
+  const { t } = useTranslation();
   const isOwner = useIsOwner();
   const timeZone = useStoreTimezone();
   const stage = fromBackendPieceStage(piece.status);
@@ -112,7 +115,7 @@ function PieceDetails({
         {piece.photoUrl ? (
           <img
             src={piece.photoUrl}
-            alt={`Foto da peça ${piece.code}`}
+            alt={t("piece.detail.photoAlt", { code: piece.code })}
             className="h-full w-full object-cover"
           />
         ) : (
@@ -121,11 +124,11 @@ function PieceDetails({
       </div>
 
       <div className="mt-4 space-y-2.5 rounded-lg border bg-muted/30 p-4">
-        <InfoRow label="Tipo" value={piece.type} />
-        <InfoRow label="Valor" value={value} />
-        <InfoRow label="Localização" value={piece.currentLocation} />
-        <InfoRow label="Recebida em" value={formatDate(piece.createdAt, timeZone)} />
-        {piece.note && <InfoRow label="Observação" value={piece.note} />}
+        <InfoRow label={t("piece.detail.type")} value={piece.type} />
+        <InfoRow label={t("piece.detail.value")} value={value} />
+        <InfoRow label={t("piece.detail.location")} value={piece.currentLocation} />
+        <InfoRow label={t("piece.detail.receivedAt")} value={formatDate(piece.createdAt, timeZone)} />
+        {piece.note && <InfoRow label={t("piece.detail.note")} value={piece.note} />}
       </div>
 
       {/* Pelo papel, não pela presença de null: para owner, null também quer dizer "não informado". */}
@@ -133,7 +136,7 @@ function PieceDetails({
 
       <Separator className="my-5" />
       <h4 className="mb-4 font-serif text-base font-medium text-foreground">
-        Linha do tempo
+        {t("piece.detail.timeline")}
       </h4>
       {children}
     </>

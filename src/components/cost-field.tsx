@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { FieldError } from "@/components/field-error";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,20 +20,21 @@ export function CostField({
   /** O texto não é um valor válido. */
   invalid?: boolean;
 }) {
+  const { t } = useTranslation();
   return (
     <div className="space-y-1.5">
       <Label htmlFor={id}>{label}</Label>
       <Input
         id={id}
         inputMode="decimal"
-        placeholder="Não informado"
+        placeholder={t("common.notInformed")}
         value={value}
         onChange={(event) => onChange(event.target.value)}
         disabled={disabled}
         aria-invalid={invalid}
       />
       <FieldError
-        message={invalid ? "Informe um valor igual ou maior que zero, com até 2 casas (ex.: 12,50)." : undefined}
+        message={invalid ? t("costs.invalid") : undefined}
       />
     </div>
   );

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Link, useNavigate } from "react-router-dom";
 import { KeyRound } from "lucide-react";
 import { Logo } from "@/components/logo";
@@ -7,6 +8,8 @@ import type { LoginNoticeState } from "@/components/auth/paths";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import i18n from "@/i18n/config";
+import { apiErrorMessage } from "@/lib/api-errors";
 import { ApiError } from "@/lib/api/http";
 import {
   useChangePasswordMutation,
@@ -19,30 +22,21 @@ const MAX_PASSWORD = 72;
 
 function getChangePasswordErrorMessage(error: unknown): string {
   if (error instanceof ApiError) {
-    if (error.code === "INVALID_CREDENTIALS") return "A senha atual está incorreta.";
-    if (error.status === 401) return "Sua sessão expirou. Saia e entre novamente.";
-    if (error.code === "PASSWORD_UNCHANGED") {
-      return "A nova senha precisa ser diferente da atual.";
-    }
+    if (error.code === "INVALID_CREDENTIALS") return i18n.t("auth.changePassword.wrongCurrent");
+    if (error.status === 401) return i18n.t("auth.changePassword.sessionExpired");
     if (error.code === "VALIDATION_ERROR") {
-      return `A nova senha precisa ter de ${MIN_PASSWORD} a ${MAX_PASSWORD} caracteres.`;
-    }
-    if (error.code === "RATE_LIMITED") {
-      return "Muitas tentativas. Aguarde alguns minutos e tente de novo.";
-    }
-    if (error.status === 0 || error.status === 408) {
-      return "Não foi possível conectar ao servidor. Verifique sua conexão e tente novamente.";
+      return i18n.t("auth.changePassword.length", { min: MIN_PASSWORD, max: MAX_PASSWORD });
     }
   }
-  return "Não foi possível trocar a senha. Tente novamente.";
+  return apiErrorMessage(error, { fallback: "auth.changePassword.failed" });
 }
 
 function validate(current: string, next: string, confirmation: string): string | null {
   if (next.length < MIN_PASSWORD || next.length > MAX_PASSWORD) {
-    return `A nova senha precisa ter de ${MIN_PASSWORD} a ${MAX_PASSWORD} caracteres.`;
+    return i18n.t("auth.changePassword.length", { min: MIN_PASSWORD, max: MAX_PASSWORD });
   }
-  if (next === current) return "A nova senha precisa ser diferente da atual.";
-  if (next !== confirmation) return "A confirmação não confere com a nova senha.";
+  if (next === current) return i18n.t("apiError.PASSWORD_UNCHANGED");
+  if (next !== confirmation) return i18n.t("auth.changePassword.mismatch");
   return null;
 }
 
@@ -51,6 +45,7 @@ export default function TrocarSenha() {
   const currentUser = useCurrentUserQuery();
   const changePassword = useChangePasswordMutation();
   const logout = useLogoutMutation();
+  const { t } = useTranslation();
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmation, setConfirmation] = useState("");
@@ -71,7 +66,7 @@ export default function TrocarSenha() {
       {
         onSuccess: () => {
           const state: LoginNoticeState = {
-            notice: "Senha alterada. Entre com a nova senha.",
+            notice: t("auth.changePassword.done"),
           };
           navigate("/login", { replace: true, state });
         },
@@ -101,17 +96,17 @@ export default function TrocarSenha() {
           <div className="space-y-1">
             <h1 className="flex items-center gap-2 font-serif text-xl font-medium text-foreground">
               <KeyRound className="h-5 w-5 text-gold" />
-              Trocar senha
+              {t("auth.changePassword.title")}
             </h1>
             <p className="text-sm text-muted-foreground">
               {forced
-                ? "Sua senha é temporária. Defina uma senha nova para continuar."
-                : "Depois da troca, todas as suas sessões são encerradas e você entra de novo."}
+                ? t("auth.changePassword.forcedHint")
+                : t("auth.changePassword.hint")}
             </p>
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="current-password">Senha atual</Label>
+            <Label htmlFor="current-password">{t("auth.changePassword.current")}</Label>
             <Input
               id="current-password"
               type="password"
@@ -123,7 +118,7 @@ export default function TrocarSenha() {
             />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="new-password">Nova senha</Label>
+            <Label htmlFor="new-password">{t("auth.changePassword.new")}</Label>
             <Input
               id="new-password"
               type="password"
@@ -135,11 +130,11 @@ export default function TrocarSenha() {
               required
             />
             <p id="new-password-hint" className="text-xs text-muted-foreground">
-              De {MIN_PASSWORD} a {MAX_PASSWORD} caracteres.
+              {t("auth.changePassword.newHint", { min: MIN_PASSWORD, max: MAX_PASSWORD })}
             </p>
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="confirm-password">Confirmar nova senha</Label>
+            <Label htmlFor="confirm-password">{t("auth.changePassword.confirm")}</Label>
             <Input
               id="confirm-password"
               type="password"
@@ -158,7 +153,7 @@ export default function TrocarSenha() {
           )}
 
           <Button type="submit" className="w-full" disabled={pending}>
-            {pending ? "Salvando…" : "Trocar senha"}
+            {pending ? t("common.saving") : t("auth.changePassword.submit")}
           </Button>
 
           {forced ? (
@@ -169,11 +164,11 @@ export default function TrocarSenha() {
               onClick={() => logout.mutate()}
               disabled={pending || logout.isPending}
             >
-              Sair
+              {t("auth.changePassword.logout")}
             </Button>
           ) : (
             <Button asChild type="button" variant="ghost" className="w-full text-muted-foreground">
-              <Link to="/">Cancelar</Link>
+              <Link to="/">{t("common.cancel")}</Link>
             </Button>
           )}
         </form>

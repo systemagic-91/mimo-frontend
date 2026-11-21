@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 
 type LogoVariant = "full" | "horizontal" | "symbol";
@@ -23,10 +24,11 @@ export function Logo({
   size?: "sm" | "md" | "lg";
   className?: string;
 }) {
+  const { t } = useTranslation();
   return (
     <img
       src={SOURCES[variant]}
-      alt="Luma Semijoias"
+      alt={t("brand.full")}
       className={cn(HEIGHTS[variant][size], "w-auto shrink-0", className)}
     />
   );

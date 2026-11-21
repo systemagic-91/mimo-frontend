@@ -1,15 +1,17 @@
 import { useState } from "react";
 import { Pencil } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { CostField } from "@/components/cost-field";
 import { Button } from "@/components/ui/button";
+import i18n from "@/i18n/config";
 import { useUpdatePieceCostsMutation } from "@/lib/api/hooks";
 import type { PieceDto, UpdatePieceCostsRequest } from "@/lib/api/types";
 import { formatCents } from "@/lib/format";
 import { centsToInputValue, getPieceErrorMessage, parseCostToCents } from "@/lib/piece-errors";
 
 function costLabel(cents: number | null | undefined): string {
-  return cents == null ? "não informado" : formatCents(cents);
+  return cents == null ? i18n.t("costs.notInformed") : formatCents(cents);
 }
 
 function CostRow({ label, cents }: { label: string; cents: number | null | undefined }) {
@@ -27,6 +29,7 @@ function CostRow({ label, cents }: { label: string; cents: number | null | undef
  */
 export function PieceCostsSection({ piece }: { piece: PieceDto }) {
   const updateCosts = useUpdatePieceCostsMutation();
+  const { t } = useTranslation();
   const [editing, setEditing] = useState(false);
   const [factory, setFactory] = useState("");
   const [bath, setBath] = useState("");
@@ -57,7 +60,7 @@ export function PieceCostsSection({ piece }: { piece: PieceDto }) {
       {
         onSuccess: () => {
           setEditing(false);
-          toast.success("Custos atualizados");
+          toast.success(t("costs.saved"));
         },
         onError: (cause) => setError(getPieceErrorMessage(cause)),
       },
@@ -68,25 +71,25 @@ export function PieceCostsSection({ piece }: { piece: PieceDto }) {
     return (
       <div className="mt-4 space-y-2.5 rounded-lg border bg-muted/30 p-4">
         <div className="flex items-center justify-between">
-          <h4 className="text-sm font-medium text-foreground">Custos</h4>
+          <h4 className="text-sm font-medium text-foreground">{t("costs.title")}</h4>
           <Button variant="ghost" size="sm" className="h-7" onClick={startEditing}>
             <Pencil className="h-3.5 w-3.5" />
-            Editar custos
+            {t("costs.edit")}
           </Button>
         </div>
-        <CostRow label="Fábrica" cents={piece.factoryCostCents} />
-        <CostRow label="Banho" cents={piece.bathCostCents} />
-        <CostRow label="Total" cents={piece.totalCostCents} />
+        <CostRow label={t("costs.factory")} cents={piece.factoryCostCents} />
+        <CostRow label={t("costs.bath")} cents={piece.bathCostCents} />
+        <CostRow label={t("costs.total")} cents={piece.totalCostCents} />
       </div>
     );
   }
 
   return (
     <form onSubmit={save} className="mt-4 space-y-3 rounded-lg border bg-muted/30 p-4" noValidate>
-      <h4 className="text-sm font-medium text-foreground">Editar custos</h4>
+      <h4 className="text-sm font-medium text-foreground">{t("costs.edit")}</h4>
       <CostField
         id="cost-factory"
-        label="Custo da fábrica (R$)"
+        label={t("costs.factoryLabel")}
         value={factory}
         onChange={setFactory}
         disabled={pending}
@@ -94,13 +97,13 @@ export function PieceCostsSection({ piece }: { piece: PieceDto }) {
       />
       <CostField
         id="cost-bath"
-        label="Custo do banho (R$)"
+        label={t("costs.bathLabel")}
         value={bath}
         onChange={setBath}
         disabled={pending}
         invalid={bathCents === undefined}
       />
-      <p className="text-xs text-muted-foreground">Deixe vazio para marcar como não informado.</p>
+      <p className="text-xs text-muted-foreground">{t("costs.emptyHint")}</p>
       {error && (
         <p role="alert" className="rounded-md border border-late/30 bg-late-bg px-3 py-2 text-sm text-late">
           {error}
@@ -108,14 +111,14 @@ export function PieceCostsSection({ piece }: { piece: PieceDto }) {
       )}
       <div className="flex justify-end gap-2">
         <Button type="button" variant="outline" size="sm" onClick={() => setEditing(false)} disabled={pending}>
-          Cancelar
+          {t("common.cancel")}
         </Button>
         <Button
           type="submit"
           size="sm"
           disabled={pending || factoryCents === undefined || bathCents === undefined}
         >
-          {pending ? "Salvando…" : "Salvar custos"}
+          {pending ? t("common.saving") : t("costs.save")}
         </Button>
       </div>
     </form>

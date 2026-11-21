@@ -1,10 +1,12 @@
 import { useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { useLocation } from "react-router-dom";
 import { Logo } from "@/components/logo";
 import { Button } from "@/components/ui/button";
 
 const NotFound = () => {
   const location = useLocation();
+  const { t } = useTranslation();
 
   useEffect(() => {
     console.error(
@@ -19,11 +21,11 @@ const NotFound = () => {
       <div className="text-center">
         <h1 className="font-serif text-5xl font-medium text-gold">404</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Página não encontrada.
+          {t("notFound.message")}
         </p>
       </div>
       <a href="/">
-        <Button variant="outline">Voltar ao início</Button>
+        <Button variant="outline">{t("notFound.backHome")}</Button>
       </a>
     </div>
   );

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import { RemoteQueryState } from "@/components/remote-query-state";
 import type { LoginNoticeState } from "@/components/auth/paths";
@@ -6,23 +7,18 @@ import { Logo } from "@/components/logo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import i18n from "@/i18n/config";
+import { apiErrorMessage } from "@/lib/api-errors";
 import { ApiError } from "@/lib/api/http";
 import { useCurrentUserQuery, useLoginMutation } from "@/lib/api/hooks";
 
 function getLoginErrorMessage(error: unknown): string {
-  if (error instanceof ApiError) {
-    if (error.status === 401) return "E-mail ou senha inválidos.";
-    if (error.code === "USER_INACTIVE") {
-      return "Esta conta está desativada. Fale com um(a) sócio(a) da loja para reativá-la.";
-    }
-    if (error.code === "RATE_LIMITED") {
-      return "Muitas tentativas de login. Aguarde alguns minutos e tente de novo.";
-    }
-    if (error.status === 0 || error.status === 408) {
-      return "Não foi possível conectar ao servidor. Verifique sua conexão e tente novamente.";
-    }
-  }
-  return "Não foi possível entrar. Tente novamente.";
+  // No login, qualquer 401 quer dizer e-mail ou senha errados.
+  if (error instanceof ApiError && error.status === 401) return i18n.t("apiError.INVALID_CREDENTIALS");
+  return apiErrorMessage(error, {
+    codes: { RATE_LIMITED: "auth.login.rateLimited" },
+    fallback: "auth.login.failed",
+  });
 }
 
 export default function Login() {
@@ -30,6 +26,7 @@ export default function Login() {
   const location = useLocation();
   const currentUser = useCurrentUserQuery();
   const loginMutation = useLoginMutation();
+  const { t } = useTranslation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -89,25 +86,25 @@ export default function Login() {
 
           {currentUser.isError && (
             <div role="alert" className="space-y-2 rounded-md border p-3 text-sm">
-              <p>Não foi possível validar uma sessão existente.</p>
+              <p>{t("auth.login.sessionCheckError")}</p>
               <Button
                 type="button"
                 variant="link"
                 className="h-auto p-0"
                 onClick={() => void currentUser.refetch()}
               >
-                Tentar novamente
+                {t("common.retry")}
               </Button>
             </div>
           )}
 
           <div className="space-y-1.5">
-            <Label htmlFor="email">E-mail</Label>
+            <Label htmlFor="email">{t("auth.login.email")}</Label>
             <Input
               id="email"
               type="email"
               autoComplete="email"
-              placeholder="voce@luma.com.br"
+              placeholder={t("auth.login.emailPlaceholder")}
               value={email}
               onChange={(event) => setEmail(event.target.value)}
               disabled={loginMutation.isPending}
@@ -115,7 +112,7 @@ export default function Login() {
             />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="password">Senha</Label>
+            <Label htmlFor="password">{t("auth.login.password")}</Label>
             <Input
               id="password"
               type="password"
@@ -138,7 +135,7 @@ export default function Login() {
             className="w-full"
             disabled={loginMutation.isPending}
           >
-            {loginMutation.isPending ? "Entrando…" : "Entrar"}
+            {loginMutation.isPending ? t("auth.login.submitting") : t("auth.login.submit")}
           </Button>
         </form>
       </div>

@@ -1,4 +1,5 @@
 
+import { useTranslation } from "react-i18next";
 import type { ConsignmentDetailsDto } from "@/lib/api/types";
 import { formatCents, formatDate } from "@/lib/format";
 
@@ -21,6 +22,7 @@ export function ConsignmentReceipt({
   consignment: ConsignmentDetailsDto;
   timeZone: string;
 }) {
+  const { t } = useTranslation();
   const { items } = consignment;
   const totalCents = items.reduce((sum, item) => sum + item.valueCentsSnapshot, 0);
 
@@ -29,34 +31,36 @@ export function ConsignmentReceipt({
       <div className="p-8" style={{ fontFamily: "'IBM Plex Sans', sans-serif" }}>
         <div className="flex items-center justify-between border-b pb-4" style={{ borderColor: "#e5ded5" }}>
           <div>
-            <div style={{ fontFamily: "Fraunces, serif", fontSize: 26, fontWeight: 500 }}>Luma</div>
+            <div style={{ fontFamily: "Fraunces, serif", fontSize: 26, fontWeight: 500 }}>{t("brand.name")}</div>
             <div style={{ fontSize: 9, letterSpacing: "0.32em", textTransform: "uppercase" }}>
-              semijoias
+              {t("brand.tagline")}
             </div>
           </div>
           <div className="text-right">
-            <div style={{ fontWeight: 600 }}>Relatório de itens entregues</div>
-            <div style={{ fontSize: 12, color: "#6b6259" }}>Lote {consignment.code} · Consignação</div>
+            <div style={{ fontWeight: 600 }}>{t("receipt.title")}</div>
+            <div style={{ fontSize: 12, color: "#6b6259" }}>{t("receipt.lot", { code: consignment.code })}</div>
           </div>
         </div>
 
         <div className="mt-5 grid grid-cols-2 gap-4" style={{ fontSize: 13 }}>
           <div>
-            <div style={{ color: "#6b6259" }}>Vendedora</div>
+            <div style={{ color: "#6b6259" }}>{t("receipt.seller")}</div>
             <div style={{ fontWeight: 600 }}>{consignment.seller.name}</div>
           </div>
           <div>
-            <div style={{ color: "#6b6259" }}>Entregue em</div>
+            <div style={{ color: "#6b6259" }}>{t("receipt.deliveredAt")}</div>
             <div style={{ fontWeight: 600 }}>{formatDate(consignment.deliveredAt, timeZone)}</div>
           </div>
           <div>
-            <div style={{ color: "#6b6259" }}>Prazo de devolução</div>
+            <div style={{ color: "#6b6259" }}>{t("receipt.dueAt")}</div>
             <div style={{ fontWeight: 600 }}>{formatDate(consignment.dueAt, timeZone)}</div>
           </div>
           <div>
-            <div style={{ color: "#6b6259" }}>Prazo de pagamento</div>
+            <div style={{ color: "#6b6259" }}>{t("receipt.paymentTerm")}</div>
             <div style={{ fontWeight: 600 }}>
-              {consignment.paymentTermDays ? `${consignment.paymentTermDays} dias` : "Não informado"}
+              {consignment.paymentTermDays
+                ? t("common.days", { count: consignment.paymentTermDays })
+                : t("common.notInformed")}
             </div>
           </div>
         </div>
@@ -71,13 +75,13 @@ export function ConsignmentReceipt({
           <thead>
             <tr>
               <th className="py-2 text-left" style={CELL_BORDER}>
-                Código
+                {t("receipt.code")}
               </th>
               <th className="py-2 text-left" style={CELL_BORDER}>
-                Tipo
+                {t("receipt.type")}
               </th>
               <th className="py-2 text-right" style={CELL_BORDER}>
-                Valor
+                {t("receipt.value")}
               </th>
             </tr>
           </thead>
@@ -97,7 +101,7 @@ export function ConsignmentReceipt({
           <tfoot>
             <tr>
               <td className="pt-2 font-semibold" colSpan={2}>
-                {items.length} peça{items.length === 1 ? "" : "s"}
+                {t("common.pieces", { count: items.length })}
               </td>
               <td className="pt-2 text-right font-semibold">{formatCents(totalCents)}</td>
             </tr>
@@ -105,8 +109,8 @@ export function ConsignmentReceipt({
         </table>
 
         <div className="mt-12 grid grid-cols-2 gap-10">
-          <div style={SIGNATURE}>Vendedora</div>
-          <div style={SIGNATURE}>Luma Semijoias</div>
+          <div style={SIGNATURE}>{t("receipt.seller")}</div>
+          <div style={SIGNATURE}>{t("brand.full")}</div>
         </div>
       </div>
     </div>
