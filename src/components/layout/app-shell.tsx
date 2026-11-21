@@ -26,7 +26,7 @@ import {
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import type { Role } from "@/lib/types";
+import type { UserRole as Role } from "@/lib/api/types";
 import type { ApiUser } from "@/lib/api/types";
 import type { LucideIcon } from "lucide-react";
 import { toast } from "sonner";

@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { piecesApi } from "@/lib/api/pieces";
 import { getPieceErrorMessage } from "@/lib/piece-errors";
-import type { PieceStage } from "@/lib/types";
+import type { PieceStage } from "@/lib/api/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 

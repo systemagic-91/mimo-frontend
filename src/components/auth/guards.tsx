@@ -8,7 +8,7 @@ import { queryKeys } from "@/lib/api/query-keys";
 import { authTokenStore } from "@/lib/api/http";
 import { useCurrentUserQuery } from "@/lib/api/hooks";
 import type { AuthSessionResponse } from "@/lib/api/types";
-import type { Role } from "@/lib/types";
+import type { UserRole as Role } from "@/lib/api/types";
 import { CHANGE_PASSWORD_PATH } from "./paths";
 
 export function RequireAuth({ children }: { children: React.ReactNode }) {

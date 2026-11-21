@@ -31,7 +31,7 @@ import type { PieceListParams } from "@/lib/api/pieces";
 import { formatCents, formatDate } from "@/lib/format";
 import { getPieceErrorMessage } from "@/lib/piece-errors";
 import { PIECE_STAGES, STAGE_LABEL } from "@/lib/status";
-import type { PieceStage } from "@/lib/types";
+import type { PieceStage } from "@/lib/api/types";
 import { ReceivePieceDialog } from "./ReceivePieceDialog";
 import { SortableHead, type SortField, type SortState } from "./SortableHead";
 

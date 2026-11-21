@@ -1,5 +1,5 @@
 import i18n from "@/i18n/config";
-import type { PieceStage, Role } from "./types";
+import type { PieceStage, UserRole as Role } from "./api/types";
 
 /**
  * Rótulos dos enums da API. O texto vem do pt-BR.json; o valor enviado à API nunca é traduzido.
